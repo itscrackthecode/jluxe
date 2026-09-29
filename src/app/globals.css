@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --viridian-950:#062f29;
+  --viridian-900:#073b33;
+  --viridian-800:#0b4a3f;
+  --viridian-700:#146052;
+  --cream:#f5f1e8;
+  --sand:#e6dbc8;
+  --gold:#c5a46d;
+  --ink:#13221f;
+  --muted:#6d7773;
+}
+
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--cream); color:var(--ink); font-family:'DM Sans',sans-serif; }
+button,a { -webkit-tap-highlight-color:transparent; }
+:where(a,button,input,select,textarea):focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+.font-display { font-family:'Playfair Display',serif; }
+::selection { background:var(--viridian-800); color:#fff; }
+
+.hero-glow { background: radial-gradient(circle at 72% 25%, rgba(197,164,109,.24), transparent 30%), linear-gradient(135deg, #052e29 0%, #0a4a3f 48%, #163d37 100%); }
+.foliage { background-image: radial-gradient(ellipse at 20% 30%, rgba(255,255,255,.08), transparent 38%), radial-gradient(ellipse at 85% 75%, rgba(0,0,0,.2), transparent 40%); }
+.card-image { background:linear-gradient(135deg, #1c6659, #082f2a 55%, #c2a474); }
+
+.container-xl { width:min(1200px, calc(100% - 40px)); margin-inline:auto; }
+@media (max-width:640px){ .container-xl{width:min(100% - 28px,1200px);} }
