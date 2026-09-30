@@ -1,52 +1,161 @@
 import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
 
 const enquirySchema = z.object({
-  name: z.string().min(2, 'Please enter your full name.'),
-  email: z.string().email('Please enter a valid email address.'),
-  phone: z.string().min(6, 'Please enter a valid phone or WhatsApp number.'),
-  interest: z.string().min(1, 'Please choose an area of interest.'),
-  message: z.string().min(12, 'Please add a little more detail so we can help.'),
-});
+  name: z.string().trim().min(2).max(150),
+  email: z.string().trim().email().max(320),
+  phone: z.string().trim().min(6).max(32),
+  interestedServiceId: z.string().trim().uuid().optional(),
+  interestedServiceLabel: z.string().trim().min(1).max(150),
+  message: z.string().trim().min(12).max(10_000),
+}).strict();
+
+export const runtime = 'nodejs';
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+async function sendEnquiryNotification(
+  input: z.infer<typeof enquirySchema>,
+  propertyId: string | null,
+  submittedAt: Date,
+) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const recipient = process.env.ENQUIRY_NOTIFICATION_EMAIL?.trim();
+
+  if (!apiKey || !recipient) {
+    throw new Error('Email notification configuration is missing.');
+  }
+
+  const from = process.env.RESEND_FROM_EMAIL?.trim()
+    || 'JLUXE Enquiries <onboarding@resend.dev>';
+  const serviceLabel = input.interestedServiceLabel.replace(/[\r\n]+/g, ' ');
+  const submittedDate = submittedAt.toISOString();
+  const propertyReference = propertyId ? `Property reference: ${propertyId}` : null;
+  const resend = new Resend(apiKey);
+  const result = await resend.emails.send({
+    from,
+    to: recipient,
+    replyTo: input.email,
+    subject: `New JLUXE Enquiry - ${serviceLabel}`,
+    text: [
+      'New JLUXE Enquiry',
+      '',
+      `Name: ${input.name}`,
+      `Email: ${input.email}`,
+      `Phone / WhatsApp: ${input.phone}`,
+      `Interested service: ${input.interestedServiceLabel}`,
+      ...(propertyReference ? [propertyReference] : []),
+      `Submitted: ${submittedDate}`,
+      '',
+      'Message:',
+      input.message,
+    ].join('\n'),
+    html: [
+      '<h1>New JLUXE Enquiry</h1>',
+      '<dl>',
+      `<dt><strong>Name</strong></dt><dd>${escapeHtml(input.name)}</dd>`,
+      `<dt><strong>Email</strong></dt><dd>${escapeHtml(input.email)}</dd>`,
+      `<dt><strong>Phone / WhatsApp</strong></dt><dd>${escapeHtml(input.phone)}</dd>`,
+      `<dt><strong>Interested service</strong></dt><dd>${escapeHtml(input.interestedServiceLabel)}</dd>`,
+      ...(propertyReference
+        ? [`<dt><strong>Property reference</strong></dt><dd>${escapeHtml(propertyId!)}</dd>`]
+        : []),
+      `<dt><strong>Submitted</strong></dt><dd>${escapeHtml(submittedDate)}</dd>`,
+      '</dl>',
+      '<h2>Message</h2>',
+      `<p style="white-space: pre-wrap">${escapeHtml(input.message)}</p>`,
+    ].join(''),
+  });
+
+  if (result.error) {
+    throw new Error(result.error.name || 'ResendError');
+  }
+}
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const parsed = enquirySchema.safeParse(body);
+  let body: unknown;
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          error: parsed.error.issues[0]?.message ?? 'Please review the form and try again.',
-        },
-        { status: 400 },
-      );
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: 'Invalid JSON body.' },
+      { status: 400 },
+    );
+  }
+
+  const parsed = enquirySchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: 'Validation failed.' },
+      { status: 400 },
+    );
+  }
+
+  const input = parsed.data;
+
+  try {
+    if (input.interestedServiceId) {
+      const service = await prisma.service.findUnique({
+        where: { id: input.interestedServiceId },
+        select: { id: true },
+      });
+
+      if (!service) {
+        return NextResponse.json(
+          { success: false, error: 'The selected service was not found.' },
+          { status: 400 },
+        );
+      }
     }
 
-    const { email, name, phone, interest, message } = parsed.data;
+    const enquiry = await prisma.enquiry.create({
+      data: {
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        interestedServiceId: input.interestedServiceId ?? null,
+        interestedServiceLabel: input.interestedServiceLabel,
+        message: input.message,
+      },
+      select: {
+        propertyId: true,
+        createdAt: true,
+      },
+    });
 
-    if (process.env.ENQUIRY_API_MODE === 'live') {
-      // Replace this stub with the real PostgreSQL and email integration when the backend is available.
-      // Keep all secrets in environment variables, never in client code.
+    try {
+      await sendEnquiryNotification(input, enquiry.propertyId, enquiry.createdAt);
+    } catch (error) {
+      console.error('Failed to send enquiry notification email.', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: 'Your enquiry has been accepted and queued for review. The database/email integration can be connected in the next backend phase.',
-        data: {
-          email,
-          name,
-          phone,
-          interest,
-          messageLength: message.length,
-        },
+        message: 'Your enquiry has been submitted successfully.',
       },
-      { status: 202 },
+      { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    console.error('Failed to process public enquiry.', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+
     return NextResponse.json(
-      { error: 'Something went wrong while processing your enquiry.' },
+      { success: false, error: 'Unable to submit your enquiry right now.' },
       { status: 500 },
     );
   }

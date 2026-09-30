@@ -2,16 +2,16 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 const enquirySchema = z.object({
-  name: z.string().min(2, 'Please enter your full name.'),
-  email: z.string().email('Please enter a valid email address.'),
-  phone: z.string().min(6, 'Please enter a valid phone or WhatsApp number.'),
-  interest: z.string().min(1, 'Please choose an area of interest.'),
-  message: z.string().min(12, 'Please add a little more detail so we can help.'),
+  name: z.string().trim().min(2, 'Please enter your full name.').max(150),
+  email: z.string().trim().email('Please enter a valid email address.').max(320),
+  phone: z.string().trim().min(6, 'Please enter a valid phone or WhatsApp number.').max(32),
+  interest: z.string().trim().min(1, 'Please choose an area of interest.').max(150),
+  message: z.string().trim().min(12, 'Please add a little more detail so we can help.').max(10000),
 });
 
 type EnquiryFormValues = z.infer<typeof enquirySchema>;
@@ -25,7 +25,9 @@ const interestOptions = [
 ];
 
 export default function EnquiryForm() {
-  const [submissionState, setSubmissionState] = useState<'idle' | 'success'>('idle');
+  const [submissionState, setSubmissionState] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submissionError, setSubmissionError] = useState('');
+  const submissionLock = useRef(false);
 
   const {
     register,
@@ -48,11 +50,43 @@ export default function EnquiryForm() {
     setValue('message', `I'm interested in ${property}.`);
   }, [setValue]);
 
-  const onSubmit = async (_values: EnquiryFormValues) => {
+  const onSubmit = async (values: EnquiryFormValues) => {
+    if (submissionLock.current) return;
+
+    submissionLock.current = true;
     setSubmissionState('idle');
-    await new Promise((resolve) => window.setTimeout(resolve, 350));
-    setSubmissionState('success');
-    reset();
+    setSubmissionError('');
+
+    try {
+      const response = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          interestedServiceLabel: values.interest,
+          message: values.message,
+        }),
+      });
+
+      const result = await response.json().catch(() => null) as { success?: boolean } | null;
+      if (!response.ok || result?.success !== true) {
+        setSubmissionState('error');
+        setSubmissionError(response.status === 400
+          ? 'Please review your details and try again.'
+          : 'We couldn’t submit your enquiry right now. Please try again.');
+        return;
+      }
+
+      setSubmissionState('success');
+      reset();
+    } catch {
+      setSubmissionState('error');
+      setSubmissionError('We couldn’t submit your enquiry right now. Please try again.');
+    } finally {
+      submissionLock.current = false;
+    }
   };
 
   return (
@@ -149,8 +183,11 @@ export default function EnquiryForm() {
           {submissionState === 'success' && (
             <div role="status" aria-live="polite" className="flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]">
               <CheckCircle2 className="h-4 w-4" />
-              Your enquiry has been received locally for now. It has not been sent by email.
+              Your enquiry has been submitted successfully.
             </div>
+          )}
+          {submissionState === 'error' && (
+            <p role="alert" className="border-l-2 border-red-600 bg-[var(--cream)] px-3 py-2 text-sm text-red-700">{submissionError}</p>
           )}
         </div>
       </form>
