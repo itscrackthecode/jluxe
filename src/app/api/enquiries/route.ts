@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { createEnquiry, findServiceById } from '@/lib/db/queries/enquiries';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2).max(150),
@@ -106,10 +106,7 @@ export async function POST(request: Request) {
 
   try {
     if (input.interestedServiceId) {
-      const service = await prisma.service.findUnique({
-        where: { id: input.interestedServiceId },
-        select: { id: true },
-      });
+      const service = await findServiceById(input.interestedServiceId);
 
       if (!service) {
         return NextResponse.json(
@@ -119,19 +116,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const enquiry = await prisma.enquiry.create({
-      data: {
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        interestedServiceId: input.interestedServiceId ?? null,
-        interestedServiceLabel: input.interestedServiceLabel,
-        message: input.message,
-      },
-      select: {
-        propertyId: true,
-        createdAt: true,
-      },
+    const enquiry = await createEnquiry({
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      interestedServiceId: input.interestedServiceId,
+      interestedServiceLabel: input.interestedServiceLabel,
+      message: input.message,
     });
 
     try {

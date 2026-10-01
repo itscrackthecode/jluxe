@@ -3,19 +3,19 @@
 import Link from 'next/link';
 import { RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { PropertyStatus, PropertyType, PublicationStatus } from '@/generated/prisma/enums';
+import { propertyStatuses, propertyTypes, publicationStatuses, type PropertyStatus, type PropertyType, type PublicationStatus } from '@/lib/db/types';
 
 type PropertyRow = {
   id: string;
   slug: string;
   title: string;
   location: string | null;
-  propertyType: typeof PropertyType[keyof typeof PropertyType];
+  propertyType: PropertyType;
   priceAmount: string | null;
   priceCurrency: string | null;
   priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
-  status: typeof PropertyStatus[keyof typeof PropertyStatus];
-  publicationStatus: typeof PublicationStatus[keyof typeof PublicationStatus];
+  status: PropertyStatus;
+  publicationStatus: PublicationStatus;
   updatedAt: string;
 };
 
@@ -116,14 +116,14 @@ export default function PropertyList() {
           <span className="mb-1.5 block">Publication</span>
           <select value={publicationStatus} onChange={(event) => { setPublicationStatus(event.target.value); setPage(1); }} className="min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]">
             <option value="">All publication states</option>
-            {Object.values(PublicationStatus).map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            {publicationStatuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}
           </select>
         </label>
         <label className="block text-xs font-medium text-[var(--muted)]">
           <span className="mb-1.5 block">Property status</span>
           <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]">
             <option value="">All property statuses</option>
-            {Object.values(PropertyStatus).map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            {propertyStatuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}
           </select>
         </label>
       </div>

@@ -1,40 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { EnquiryStatus, Prisma } from '@/generated/prisma/client';
+import { enquiryStatuses } from '@/lib/db/types';
 import { getAdminSession } from '@/lib/admin-session';
-import { prisma } from '@/lib/prisma';
+import { findEnquiryById, updateEnquiryStatus } from '@/lib/db/queries/enquiries';
 
 const idSchema = z.string().uuid();
 const statusUpdateSchema = z.object({
-  status: z.enum(EnquiryStatus),
+  status: z.enum(enquiryStatuses),
 }).strict();
-
-const enquiryDetailSelect = {
-  id: true,
-  name: true,
-  email: true,
-  phone: true,
-  interestedServiceId: true,
-  interestedServiceLabel: true,
-  propertyId: true,
-  message: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-  interestedService: {
-    select: {
-      title: true,
-      slug: true,
-    },
-  },
-  property: {
-    select: {
-      title: true,
-      slug: true,
-      location: true,
-    },
-  },
-} satisfies Prisma.EnquirySelect;
 
 export const runtime = 'nodejs';
 
@@ -52,7 +25,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   try {
-    const enquiry = await prisma.enquiry.findUnique({ where: { id }, select: enquiryDetailSelect });
+    const enquiry = await findEnquiryById(id);
     if (!enquiry) {
       return NextResponse.json({ success: false, error: 'Enquiry not found.' }, { status: 404 });
     }
@@ -90,18 +63,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   try {
-    const enquiry = await prisma.enquiry.update({
-      where: { id },
-      data: { status: parsed.data.status },
-      select: { id: true, status: true, updatedAt: true },
-    });
-
-    return NextResponse.json({ success: true, data: enquiry });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    const enquiry = await updateEnquiryStatus(id, parsed.data.status);
+    if (!enquiry) {
       return NextResponse.json({ success: false, error: 'Enquiry not found.' }, { status: 404 });
     }
 
+    return NextResponse.json({ success: true, data: enquiry });
+  } catch (error) {
     console.error('Failed to update admin enquiry status.', {
       errorName: error instanceof Error ? error.name : 'UnknownError',
     });

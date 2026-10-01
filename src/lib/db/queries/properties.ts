@@ -1,0 +1,186 @@
+import { pool, withTransaction } from '../pool';
+import type {
+  Property,
+  PropertyMediaItem,
+  PropertyStatus,
+  PropertyType,
+  PublicationStatus,
+  UUID,
+} from '../types';
+
+export type PropertySort = 'latest' | 'price_asc' | 'price_desc';
+export type AdminProperty = Omit<Property, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+const adminPropertyColumns = `
+  "id", "slug", "title", "description", "location", "propertyType", "priceAmount",
+  "priceCurrency", "priceMode", "plotSize", "plotSizeUnit", "status",
+  "representationType", "publicationStatus",
+  TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'),
+    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
+  TO_CHAR("updatedAt" AT TIME ZONE current_setting('TimeZone'),
+    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt"`;
+export type PublicProperty = Omit<Pick<
+  Property,
+  | 'id' | 'slug' | 'title' | 'description' | 'location' | 'propertyType'
+  | 'priceAmount' | 'priceCurrency' | 'priceMode' | 'plotSize' | 'plotSizeUnit'
+  | 'status' | 'representationType' | 'createdAt'
+>, 'createdAt'> & { createdAt: string };
+
+function escapeLikeValue(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+export async function listPublicProperties(filters: {
+  location?: string;
+  propertyType?: PropertyType;
+  status?: PropertyStatus;
+  sort: PropertySort;
+  limit: number;
+  offset: number;
+}): Promise<{ data: PublicProperty[]; total: number }> {
+  const values = [
+    filters.location ? escapeLikeValue(filters.location) : null,
+    filters.propertyType ?? null,
+    filters.status ?? null,
+  ];
+  const conditions = `
+    "publicationStatus" = 'PUBLISHED'
+    AND ($1::text IS NULL OR "location" ILIKE '%' || $1 || '%' ESCAPE E'\\\\')
+    AND ($2::"PropertyType" IS NULL OR "propertyType" = $2::"PropertyType")
+    AND ($3::"PropertyStatus" IS NULL OR "status" = $3::"PropertyStatus")`;
+  const orderBy: Record<PropertySort, string> = {
+    latest: '"createdAt" DESC, "id" DESC',
+    price_asc: '"priceAmount" ASC NULLS LAST, "id" ASC',
+    price_desc: '"priceAmount" DESC NULLS LAST, "id" ASC',
+  };
+
+  const [countResult, rowsResult] = await Promise.all([
+    pool.query<{ total: string }>(`SELECT COUNT(*) AS "total" FROM "Property" WHERE ${conditions}`, values),
+    pool.query<PublicProperty>(
+      `SELECT "id", "slug", "title", "description", "location", "propertyType",
+              "priceAmount", "priceCurrency", "priceMode", "plotSize", "plotSizeUnit",
+              "status", "representationType",
+              TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'),
+                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
+       FROM "Property" WHERE ${conditions}
+       ORDER BY ${orderBy[filters.sort]} LIMIT $4 OFFSET $5`,
+      [...values, filters.limit, filters.offset],
+    ),
+  ]);
+
+  return { data: rowsResult.rows, total: Number(countResult.rows[0]?.total ?? 0) };
+}
+
+export async function listAdminProperties(filters: {
+  search?: string;
+  publicationStatus?: PublicationStatus;
+  status?: PropertyStatus;
+  limit: number;
+  offset: number;
+}): Promise<{ data: AdminProperty[]; total: number }> {
+  const escapedSearch = filters.search?.replace(/[\\%_]/g, '\\$&');
+  const values = [
+    escapedSearch ? `%${escapedSearch}%` : null,
+    filters.publicationStatus ?? null,
+    filters.status ?? null,
+  ];
+  const conditions = `
+    ($1::text IS NULL OR "title" ILIKE $1 ESCAPE E'\\\\' OR "location" ILIKE $1 ESCAPE E'\\\\')
+    AND ($2::"PublicationStatus" IS NULL OR "publicationStatus" = $2::"PublicationStatus")
+    AND ($3::"PropertyStatus" IS NULL OR "status" = $3::"PropertyStatus")`;
+
+  return withTransaction(async (client) => {
+    const countResult = await client.query<{ total: string }>(
+      `SELECT COUNT(*) AS "total" FROM "Property" WHERE ${conditions}`,
+      values,
+    );
+    const rowsResult = await client.query<AdminProperty>(
+      `SELECT ${adminPropertyColumns} FROM "Property" WHERE ${conditions}
+       ORDER BY "updatedAt" DESC, "id" DESC LIMIT $4 OFFSET $5`,
+      [...values, filters.limit, filters.offset],
+    );
+
+    return { data: rowsResult.rows, total: Number(countResult.rows[0]?.total ?? 0) };
+  });
+}
+
+export async function findPropertyById(id: UUID): Promise<AdminProperty | null> {
+  const result = await pool.query<AdminProperty>(
+    `SELECT ${adminPropertyColumns} FROM "Property" WHERE "id" = $1 LIMIT 1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function findPublishedPropertyBySlug(slug: string): Promise<PublicProperty | null> {
+  const result = await pool.query<PublicProperty>(
+    `SELECT "id", "slug", "title", "description", "location", "propertyType",
+            "priceAmount", "priceCurrency", "priceMode", "plotSize", "plotSizeUnit",
+            "status", "representationType",
+            TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'),
+              'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
+     FROM "Property"
+     WHERE "slug" = $1 AND "publicationStatus" = 'PUBLISHED'
+     LIMIT 1`,
+    [slug],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function listPropertyMedia(propertyId: UUID): Promise<PropertyMediaItem[]> {
+  const result = await pool.query<PropertyMediaItem>(
+    `SELECT pm."propertyId", pm."mediaId", pm."position", pm."altText",
+            m."id", m."storageKey", m."mimeType", m."width", m."height"
+     FROM "PropertyMedia" pm
+     JOIN "Media" m ON m."id" = pm."mediaId"
+     WHERE pm."propertyId" = $1
+     ORDER BY pm."position" ASC`,
+    [propertyId],
+  );
+  return result.rows;
+}
+
+export type PropertyWrite = Pick<
+  Property,
+  | 'slug' | 'title' | 'description' | 'location' | 'propertyType' | 'priceAmount'
+  | 'priceCurrency' | 'priceMode' | 'plotSize' | 'plotSizeUnit' | 'status'
+  | 'representationType' | 'publicationStatus'
+>;
+
+export async function createProperty(input: PropertyWrite): Promise<AdminProperty> {
+  const result = await pool.query<AdminProperty>(
+    `INSERT INTO "Property" (
+       "slug", "title", "description", "location", "propertyType", "priceAmount",
+       "priceCurrency", "priceMode", "plotSize", "plotSizeUnit", "status",
+       "representationType", "publicationStatus", "updatedAt"
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+    RETURNING ${adminPropertyColumns}`,
+    [
+      input.slug, input.title, input.description, input.location, input.propertyType,
+      input.priceAmount, input.priceCurrency, input.priceMode, input.plotSize,
+      input.plotSizeUnit, input.status, input.representationType, input.publicationStatus,
+    ],
+  );
+  return result.rows[0];
+}
+
+export async function updateProperty(id: UUID, input: PropertyWrite): Promise<AdminProperty | null> {
+  const result = await pool.query<AdminProperty>(
+    `UPDATE "Property" SET
+       "slug" = $2, "title" = $3, "description" = $4, "location" = $5,
+       "propertyType" = $6, "priceAmount" = $7, "priceCurrency" = $8,
+       "priceMode" = $9, "plotSize" = $10, "plotSizeUnit" = $11, "status" = $12,
+       "representationType" = $13, "publicationStatus" = $14, "updatedAt" = NOW()
+     WHERE "id" = $1
+    RETURNING ${adminPropertyColumns}`,
+    [
+      id, input.slug, input.title, input.description, input.location, input.propertyType,
+      input.priceAmount, input.priceCurrency, input.priceMode, input.plotSize,
+      input.plotSizeUnit, input.status, input.representationType, input.publicationStatus,
+    ],
+  );
+  return result.rows[0] ?? null;
+}

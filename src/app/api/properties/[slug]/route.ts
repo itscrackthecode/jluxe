@@ -1,39 +1,6 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@/generated/prisma/client';
-import { prisma } from '@/lib/prisma';
-
-const propertyDetailSelect = {
-  id: true,
-  slug: true,
-  title: true,
-  description: true,
-  location: true,
-  propertyType: true,
-  priceAmount: true,
-  priceCurrency: true,
-  priceMode: true,
-  plotSize: true,
-  plotSizeUnit: true,
-  status: true,
-  representationType: true,
-  createdAt: true,
-  media: {
-    orderBy: { position: 'asc' },
-    select: {
-      position: true,
-      altText: true,
-      media: {
-        select: {
-          id: true,
-          storageKey: true,
-          mimeType: true,
-          width: true,
-          height: true,
-        },
-      },
-    },
-  },
-} satisfies Prisma.PropertySelect;
+import { formatNumericValue } from '@/lib/db/numeric';
+import { findPublishedPropertyBySlug, listPropertyMedia } from '@/lib/db/queries/properties';
 
 export const runtime = 'nodejs';
 
@@ -51,13 +18,7 @@ export async function GET(
   }
 
   try {
-    const property = await prisma.property.findFirst({
-      where: {
-        slug,
-        publicationStatus: 'PUBLISHED',
-      },
-      select: propertyDetailSelect,
-    });
+    const property = await findPublishedPropertyBySlug(slug);
 
     if (!property) {
       return NextResponse.json(
@@ -66,16 +27,20 @@ export async function GET(
       );
     }
 
-    const { media, ...propertyData } = property;
+    const media = await listPropertyMedia(property.id);
 
     return NextResponse.json({
       success: true,
       data: {
-        ...propertyData,
-        priceAmount: property.priceAmount?.toString() ?? null,
-        plotSize: property.plotSize?.toString() ?? null,
-        images: media.map(({ media: image, position, altText }) => ({
-          ...image,
+        ...property,
+        priceAmount: formatNumericValue(property.priceAmount),
+        plotSize: formatNumericValue(property.plotSize),
+        images: media.map(({ id, storageKey, mimeType, width, height, position, altText }) => ({
+          id,
+          storageKey,
+          mimeType,
+          width,
+          height,
           position,
           altText,
         })),

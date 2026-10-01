@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { findAdminByEmail } from '@/lib/db/queries/admins';
 import { clearAdminSession, createAdminSession, verifyAdminPassword } from '@/lib/admin-session';
 
 const loginSchema = z.object({
@@ -24,16 +24,7 @@ export async function loginAdminAction(
   if (!parsed.success) return { error: 'Invalid email or password.' };
 
   try {
-    const admin = await prisma.admin.findUnique({
-      where: { email: parsed.data.email.toLowerCase() },
-      select: {
-        id: true,
-        displayName: true,
-        role: true,
-        isActive: true,
-        passwordHash: true,
-      },
-    });
+    const admin = await findAdminByEmail(parsed.data.email.toLowerCase());
 
     const passwordMatches = await verifyAdminPassword(
       parsed.data.password,
