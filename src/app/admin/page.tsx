@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import AdminShell from '@/components/admin/admin-shell';
 import { getAdminSession } from '@/lib/admin-session';
-import { prisma } from '@/lib/prisma';
+import { countNewEnquiries } from '@/lib/db/queries/enquiries';
 
 export const metadata = {
   title: 'Admin Dashboard | JLUXE',
@@ -12,7 +12,7 @@ export const metadata = {
 export default async function AdminDashboardPage() {
   const admin = await getAdminSession();
   if (!admin) redirect('/admin/login');
-  const newEnquiries = await prisma.enquiry.count({ where: { status: 'NEW' } });
+  const newEnquiries = await countNewEnquiries();
 
   return (
     <AdminShell admin={admin} active="Dashboard">

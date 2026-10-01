@@ -3,10 +3,11 @@ import { emitKeypressEvents } from 'node:readline';
 import { stdin, stdout } from 'node:process';
 import { loadEnvConfig } from '@next/env';
 import { z } from 'zod';
-import { AdminRole } from '../src/generated/prisma/enums';
+import { hasPostgresErrorCode } from '../src/lib/db/errors';
+import { adminRoles, type AdminRole } from '../src/lib/db/types';
 import { hashAdminPassword } from '../src/lib/admin-password';
 
-const roles = Object.values(AdminRole);
+const roles = adminRoles;
 const emailSchema = z.string().trim().email().max(320);
 const nameSchema = z.string().trim().min(1).max(150);
 const passwordSchema = z.string().min(12).max(128);
@@ -63,16 +64,16 @@ function promptRole() {
 
 async function main() {
   loadEnvConfig(process.cwd());
-  const { prisma } = await import('../src/lib/prisma-client');
+  const [{ createAdmin, findAdminByEmail }, { pool }] = await Promise.all([
+    import('../src/lib/db/queries/admins'),
+    import('../src/lib/db/pool'),
+  ]);
 
   try {
     const name = nameSchema.parse(await promptLine('Name'));
     const email = emailSchema.parse(await promptLine('Email')).toLowerCase();
 
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { email },
-      select: { id: true },
-    });
+    const existingAdmin = await findAdminByEmail(email);
     if (existingAdmin) {
       throw new Error('An Admin account with that email already exists.');
     }
@@ -84,25 +85,31 @@ async function main() {
     }
 
     const roleInput = await promptRole();
-    const role = (roleInput || 'ADMIN').toUpperCase();
-    if (!roles.includes(role as typeof roles[number])) {
+    const roleValue = (roleInput || 'ADMIN').toUpperCase();
+    if (!roles.includes(roleValue as typeof roles[number])) {
       throw new Error(`Role must be one of: ${roles.join(', ')}.`);
     }
+    const role = roleValue as AdminRole;
 
     const passwordHash = await hashAdminPassword(password);
-    const admin = await prisma.admin.create({
-      data: {
+    let admin;
+    try {
+      admin = await createAdmin({
         displayName: name,
         email,
         passwordHash,
-        role: role as typeof AdminRole[keyof typeof AdminRole],
-      },
-      select: { id: true, email: true, displayName: true, role: true },
-    });
+        role,
+      });
+    } catch (error) {
+      if (hasPostgresErrorCode(error, '23505')) {
+        throw new Error('An Admin account with that email already exists.');
+      }
+      throw error;
+    }
 
     console.log(`Admin created: ${admin.displayName} (${admin.role}).`);
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 

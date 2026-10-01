@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Prisma } from '@/generated/prisma/client';
-import { prisma } from '@/lib/prisma';
+import { findServiceBySlug, listPortfolioWorkMedia, listPublicPortfolio } from '@/lib/db/queries/portfolio';
 
 const portfolioQuerySchema = z.object({
   service: z.string().trim().min(1).max(120).optional(),
@@ -11,40 +10,6 @@ const portfolioQuerySchema = z.object({
   page: z.string().regex(/^[1-9]\d*$/).default('1'),
   limit: z.string().regex(/^[1-9]\d*$/).default('12'),
 });
-
-const portfolioSelect = {
-  id: true,
-  slug: true,
-  title: true,
-  description: true,
-  location: true,
-  year: true,
-  featured: true,
-  createdAt: true,
-  service: {
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-    },
-  },
-  media: {
-    orderBy: { position: 'asc' },
-    select: {
-      position: true,
-      altText: true,
-      media: {
-        select: {
-          id: true,
-          storageKey: true,
-          mimeType: true,
-          width: true,
-          height: true,
-        },
-      },
-    },
-  },
-} satisfies Prisma.PortfolioWorkSelect;
 
 export const runtime = 'nodejs';
 
@@ -87,14 +52,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    let serviceId: string | undefined;
-
     if (serviceSlug) {
-      const service = await prisma.service.findUnique({
-        where: { slug: serviceSlug },
-        select: { id: true },
-      });
-
+      const service = await findServiceBySlug(serviceSlug);
       if (!service) {
         return NextResponse.json(
           { success: false, error: 'Service not found.' },
@@ -102,42 +61,46 @@ export async function GET(request: Request) {
         );
       }
 
-      serviceId = service.id;
     }
 
-    const where: Prisma.PortfolioWorkWhereInput = {
-      publicationStatus: 'PUBLISHED',
-      ...(serviceId ? { serviceId } : {}),
-      ...(location ? { location: { contains: location, mode: 'insensitive' } } : {}),
-      ...(featuredValue !== undefined ? { featured: featuredValue === 'true' } : {}),
-    };
+    const { data: works, total } = await listPublicPortfolio({
+      serviceSlug,
+      location,
+      featured: featuredValue === undefined ? undefined : featuredValue === 'true',
+      sort,
+      limit,
+      offset: skip,
+    });
+    const media = await listPortfolioWorkMedia(works.map((work) => work.id));
+    const mediaByWork = new Map<string, Array<{
+      id: string;
+      storageKey: string;
+      mimeType: string;
+      width: number | null;
+      height: number | null;
+      position: number;
+      altText: string | null;
+    }>>();
 
-    const orderBy: Prisma.PortfolioWorkOrderByWithRelationInput[] = sort === 'latest'
-      ? [{ createdAt: 'desc' }, { id: 'desc' }]
-      : sort === 'oldest'
-        ? [{ createdAt: 'asc' }, { id: 'asc' }]
-        : [{ featured: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }];
-
-    const [total, works] = await prisma.$transaction([
-      prisma.portfolioWork.count({ where }),
-      prisma.portfolioWork.findMany({
-        where,
-        select: portfolioSelect,
-        orderBy,
-        skip,
-        take: limit,
-      }),
-    ]);
+    for (const image of media) {
+      const workImages = mediaByWork.get(image.portfolioWorkId) ?? [];
+      workImages.push({
+        id: image.id,
+        storageKey: image.storageKey,
+        mimeType: image.mimeType,
+        width: image.width,
+        height: image.height,
+        position: image.position,
+        altText: image.altText,
+      });
+      mediaByWork.set(image.portfolioWorkId, workImages);
+    }
 
     return NextResponse.json({
       success: true,
-      data: works.map(({ media, ...work }) => ({
+      data: works.map((work) => ({
         ...work,
-        media: media.map(({ media: image, position, altText }) => ({
-          ...image,
-          position,
-          altText,
-        })),
+        media: mediaByWork.get(work.id) ?? [],
       })),
       pagination: {
         page,

@@ -7,10 +7,10 @@ type AdminUser = NonNullable<Awaited<ReturnType<typeof getAdminSession>>>;
 const sections = [
   { label: 'Dashboard', href: '/admin' },
   { label: 'Properties', href: '/admin/properties' },
-  { label: 'Our Work' },
+  { label: 'Our Work', href: '/admin/our-work' },
   { label: 'Enquiries', href: '/admin/enquiries' },
   { label: 'Media' },
-  { label: 'Services' },
+  { label: 'Services', href: '/admin/services' },
 ] as const;
 
 export default function AdminShell({
@@ -19,7 +19,7 @@ export default function AdminShell({
   children,
 }: {
   admin: AdminUser;
-  active: 'Dashboard' | 'Enquiries' | 'Properties';
+  active: 'Dashboard' | 'Enquiries' | 'Properties' | 'Services' | 'Our Work';
   children: React.ReactNode;
 }) {
   return (

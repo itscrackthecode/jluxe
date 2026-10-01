@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import AdminShell from '@/components/admin/admin-shell';
 import PropertyForm from '@/components/admin/property-form';
 import { getAdminSession } from '@/lib/admin-session';
-import { prisma } from '@/lib/prisma';
+import { findPropertyById } from '@/lib/db/queries/properties';
 
 export const metadata = {
   title: 'Edit Property | JLUXE Admin',
@@ -14,7 +14,7 @@ export default async function EditAdminPropertyPage({ params }: { params: Promis
   if (!admin) redirect('/admin/login');
 
   const { id } = await params;
-  const property = await prisma.property.findUnique({ where: { id } });
+  const property = await findPropertyById(id);
   if (!property) notFound();
 
   return (

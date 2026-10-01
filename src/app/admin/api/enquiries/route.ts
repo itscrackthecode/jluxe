@@ -1,32 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { EnquiryStatus, Prisma } from '@/generated/prisma/client';
+import { enquiryStatuses } from '@/lib/db/types';
 import { getAdminSession } from '@/lib/admin-session';
-import { prisma } from '@/lib/prisma';
+import { listAdminEnquiries } from '@/lib/db/queries/enquiries';
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
-  status: z.enum(EnquiryStatus).optional(),
+  status: z.enum(enquiryStatuses).optional(),
   page: z.string().regex(/^[1-9]\d*$/).default('1'),
   limit: z.string().regex(/^[1-9]\d*$/).default('20'),
 });
-
-const enquiryListSelect = {
-  id: true,
-  name: true,
-  email: true,
-  phone: true,
-  interestedServiceLabel: true,
-  status: true,
-  createdAt: true,
-  property: {
-    select: {
-      title: true,
-      slug: true,
-      location: true,
-    },
-  },
-} satisfies Prisma.EnquirySelect;
 
 export const runtime = 'nodejs';
 
@@ -55,36 +38,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Invalid enquiry pagination.' }, { status: 400 });
   }
 
-  const search = parsed.data.search;
-  const where: Prisma.EnquiryWhereInput = {
-    ...(parsed.data.status ? { status: parsed.data.status } : {}),
-    ...(search
-      ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
-            { message: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
-  };
-
   try {
-    const [total, enquiries] = await prisma.$transaction([
-      prisma.enquiry.count({ where }),
-      prisma.enquiry.findMany({
-        where,
-        select: enquiryListSelect,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip,
-        take: limit,
-      }),
-    ]);
+    const { data, total } = await listAdminEnquiries({
+      search: parsed.data.search,
+      status: parsed.data.status,
+      limit,
+      offset: skip,
+    });
 
     return NextResponse.json({
       success: true,
-      data: enquiries,
+      data,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {

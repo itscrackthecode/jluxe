@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { PlotSizeUnit, PriceMode, PropertyStatus, PropertyType, PublicationStatus, RepresentationType } from '@/generated/prisma/enums';
+import { formatNumericValue } from '@/lib/db/numeric';
+import { plotSizeUnits, priceModes, propertyStatuses, propertyTypes, publicationStatuses, representationTypes } from '@/lib/db/types';
 
 const decimalPattern = /^\d+(?:\.\d{1,2})?$/;
 
@@ -23,21 +24,21 @@ export const adminPropertySchema = z.object({
   ),
   description: optionalText(20_000),
   location: optionalText(255),
-  propertyType: z.enum(PropertyType),
+  propertyType: z.enum(propertyTypes),
   priceAmount: optionalDecimal(12),
   priceCurrency: z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? null : value,
     z.string().trim().regex(/^[A-Z]{3}$/).nullable().optional().transform((value) => value ?? null),
   ),
-  priceMode: z.enum(PriceMode),
+  priceMode: z.enum(priceModes),
   plotSize: optionalDecimal(10),
   plotSizeUnit: z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? null : value,
-    z.enum(PlotSizeUnit).nullable().optional().transform((value) => value ?? null),
+    z.enum(plotSizeUnits).nullable().optional().transform((value) => value ?? null),
   ),
-  status: z.enum(PropertyStatus),
-  representationType: z.enum(RepresentationType),
-  publicationStatus: z.enum(PublicationStatus),
+  status: z.enum(propertyStatuses),
+  representationType: z.enum(representationTypes),
+  publicationStatus: z.enum(publicationStatuses),
 }).strict().superRefine((value, context) => {
   if ((value.priceAmount === null) !== (value.priceCurrency === null)) {
     context.addIssue({ code: 'custom', path: ['priceAmount'], message: 'Price amount and currency must be provided together.' });
@@ -64,7 +65,7 @@ export function createPropertySlug(title: string) {
 export function serializeProperty<T extends { priceAmount: { toString(): string } | null; plotSize: { toString(): string } | null }>(property: T) {
   return {
     ...property,
-    priceAmount: property.priceAmount?.toString() ?? null,
-    plotSize: property.plotSize?.toString() ?? null,
+    priceAmount: formatNumericValue(property.priceAmount?.toString() ?? null),
+    plotSize: formatNumericValue(property.plotSize?.toString() ?? null),
   };
 }
