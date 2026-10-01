@@ -1,40 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@/generated/prisma/client';
-import { prisma } from '@/lib/prisma';
-
-const portfolioDetailSelect = {
-  id: true,
-  slug: true,
-  title: true,
-  description: true,
-  location: true,
-  year: true,
-  featured: true,
-  createdAt: true,
-  service: {
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-    },
-  },
-  media: {
-    orderBy: { position: 'asc' },
-    select: {
-      position: true,
-      altText: true,
-      media: {
-        select: {
-          id: true,
-          storageKey: true,
-          mimeType: true,
-          width: true,
-          height: true,
-        },
-      },
-    },
-  },
-} satisfies Prisma.PortfolioWorkSelect;
+import { findPublishedPortfolioBySlug, listPortfolioWorkMedia } from '@/lib/db/queries/portfolio';
 
 export const runtime = 'nodejs';
 
@@ -52,13 +17,7 @@ export async function GET(
   }
 
   try {
-    const work = await prisma.portfolioWork.findFirst({
-      where: {
-        slug,
-        publicationStatus: 'PUBLISHED',
-      },
-      select: portfolioDetailSelect,
-    });
+    const work = await findPublishedPortfolioBySlug(slug);
 
     if (!work) {
       return NextResponse.json(
@@ -67,14 +26,18 @@ export async function GET(
       );
     }
 
-    const { media, ...workData } = work;
+    const media = await listPortfolioWorkMedia([work.id]);
 
     return NextResponse.json({
       success: true,
       data: {
-        ...workData,
-        media: media.map(({ media: image, position, altText }) => ({
-          ...image,
+        ...work,
+        media: media.map(({ id, storageKey, mimeType, width, height, position, altText }) => ({
+          id,
+          storageKey,
+          mimeType,
+          width,
+          height,
           position,
           altText,
         })),

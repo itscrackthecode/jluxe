@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { EnquiryStatus } from '@/generated/prisma/enums';
+import { enquiryStatuses, type EnquiryStatus } from '@/lib/db/types';
 
-type EnquiryStatusValue = typeof EnquiryStatus[keyof typeof EnquiryStatus];
+type EnquiryStatusValue = EnquiryStatus;
 type EnquiryRow = {
   id: string;
   name: string;
@@ -109,7 +109,7 @@ export default function EnquiryList() {
             className="min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]"
           >
             <option value="">All statuses</option>
-            {Object.values(EnquiryStatus).map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+            {enquiryStatuses.map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
           </select>
         </label>
       </div>

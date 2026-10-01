@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { EnquiryStatus } from '@/generated/prisma/enums';
+import { enquiryStatuses, type EnquiryStatus } from '@/lib/db/types';
 
-type EnquiryStatusValue = typeof EnquiryStatus[keyof typeof EnquiryStatus];
+type EnquiryStatusValue = EnquiryStatus;
 type EnquiryDetails = {
   id: string;
   name: string;
@@ -110,7 +110,7 @@ export default function EnquiryDetail({ id }: { id: string }) {
           <label className="text-xs font-medium text-[var(--muted)]">
             <span className="mb-1.5 block">Status</span>
             <select value={status} onChange={(event) => setStatus(event.target.value as EnquiryStatusValue)} className="min-h-10 border border-[var(--viridian-950)]/15 bg-white px-3 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]">
-              {Object.values(EnquiryStatus).map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+              {enquiryStatuses.map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
             </select>
           </label>
           <button type="button" disabled={saving || status === enquiry.status} onClick={updateStatus} className="inline-flex min-h-10 items-center justify-center rounded-full bg-[var(--viridian-900)] px-4 text-sm font-semibold text-white hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-50">

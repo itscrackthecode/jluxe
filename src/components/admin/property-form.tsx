@@ -4,7 +4,20 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { PlotSizeUnit, PriceMode, PropertyStatus, PropertyType, PublicationStatus, RepresentationType } from '@/generated/prisma/enums';
+import {
+  plotSizeUnits,
+  priceModes,
+  propertyStatuses,
+  propertyTypes,
+  publicationStatuses,
+  representationTypes,
+  type PlotSizeUnit,
+  type PriceMode,
+  type PropertyStatus,
+  type PropertyType,
+  type PublicationStatus,
+  type RepresentationType,
+} from '@/lib/db/types';
 import { createPropertySlug } from '@/lib/admin-property';
 
 type PropertyData = {
@@ -13,15 +26,15 @@ type PropertyData = {
   slug: string;
   description: string | null;
   location: string | null;
-  propertyType: typeof PropertyType[keyof typeof PropertyType];
+  propertyType: PropertyType;
   priceAmount: string | null;
   priceCurrency: string | null;
-  priceMode: typeof PriceMode[keyof typeof PriceMode];
+  priceMode: PriceMode;
   plotSize: string | null;
-  plotSizeUnit: typeof PlotSizeUnit[keyof typeof PlotSizeUnit] | null;
-  status: typeof PropertyStatus[keyof typeof PropertyStatus];
-  representationType: typeof RepresentationType[keyof typeof RepresentationType];
-  publicationStatus: typeof PublicationStatus[keyof typeof PublicationStatus];
+  plotSizeUnit: PlotSizeUnit | null;
+  status: PropertyStatus;
+  representationType: RepresentationType;
+  publicationStatus: PublicationStatus;
 };
 
 type FormValues = {
@@ -32,12 +45,12 @@ type FormValues = {
   propertyType: string;
   priceAmount: string;
   priceCurrency: string;
-  priceMode: typeof PriceMode[keyof typeof PriceMode];
+  priceMode: PriceMode;
   plotSize: string;
   plotSizeUnit: string;
   status: string;
   representationType: string;
-  publicationStatus: typeof PublicationStatus[keyof typeof PublicationStatus];
+  publicationStatus: PublicationStatus;
 };
 
 const inputClass = 'min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]';
@@ -147,14 +160,14 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
             <span className="mb-1.5 block">Property type *</span>
             <select required value={values.propertyType} onChange={(event) => update('propertyType', event.target.value)} className={inputClass}>
               <option value="">Select type</option>
-              {Object.values(PropertyType).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              {propertyTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
           </label>
           <label className="block text-xs font-medium text-[var(--muted)]">
             <span className="mb-1.5 block">Property status *</span>
             <select required value={values.status} onChange={(event) => update('status', event.target.value)} className={inputClass}>
               <option value="">Select status</option>
-              {Object.values(PropertyStatus).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              {propertyStatuses.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
           </label>
         </section>
@@ -173,7 +186,7 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
             <label className="block text-xs font-medium text-[var(--muted)]">
               <span className="mb-1.5 block">Price mode *</span>
               <select value={values.priceMode} onChange={(event) => update('priceMode', event.target.value as FormValues['priceMode'])} className={inputClass}>
-                {Object.values(PriceMode).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+                {priceModes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
             </label>
             <label className="block text-xs font-medium text-[var(--muted)]">
@@ -184,7 +197,7 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
               <span className="mb-1.5 block">Plot size unit</span>
               <select value={values.plotSizeUnit} onChange={(event) => update('plotSizeUnit', event.target.value)} className={inputClass}>
                 <option value="">No plot size</option>
-                {Object.values(PlotSizeUnit).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+                {plotSizeUnits.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
             </label>
           </div>
@@ -197,13 +210,13 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
               <span className="mb-1.5 block">JLUXE representation *</span>
               <select required value={values.representationType} onChange={(event) => update('representationType', event.target.value)} className={inputClass}>
                 <option value="">Select representation</option>
-                {Object.values(RepresentationType).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+                {representationTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
             </label>
             <label className="block text-xs font-medium text-[var(--muted)]">
               <span className="mb-1.5 block">Publication status *</span>
               <select value={values.publicationStatus} onChange={(event) => update('publicationStatus', event.target.value as FormValues['publicationStatus'])} className={inputClass}>
-                {Object.values(PublicationStatus).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+                {publicationStatuses.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
             </label>
           </div>

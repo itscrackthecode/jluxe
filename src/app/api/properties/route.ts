@@ -1,33 +1,17 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Prisma, PropertyStatus, PropertyType } from '@/generated/prisma/client';
-import { prisma } from '@/lib/prisma';
+import { propertyStatuses, propertyTypes } from '@/lib/db/types';
+import { formatNumericValue } from '@/lib/db/numeric';
+import { listPublicProperties } from '@/lib/db/queries/properties';
 
 const propertyQuerySchema = z.object({
   location: z.string().trim().min(1).max(255).optional(),
-  propertyType: z.enum(PropertyType).optional(),
-  status: z.enum(PropertyStatus).optional(),
+  propertyType: z.enum(propertyTypes).optional(),
+  status: z.enum(propertyStatuses).optional(),
   sort: z.enum(['latest', 'price_asc', 'price_desc']).default('latest'),
   page: z.string().regex(/^[1-9]\d*$/).default('1'),
   limit: z.string().regex(/^[1-9]\d*$/).default('12'),
 });
-
-const propertySelect = {
-  id: true,
-  slug: true,
-  title: true,
-  description: true,
-  location: true,
-  propertyType: true,
-  priceAmount: true,
-  priceCurrency: true,
-  priceMode: true,
-  plotSize: true,
-  plotSizeUnit: true,
-  status: true,
-  representationType: true,
-  createdAt: true,
-} satisfies Prisma.PropertySelect;
 
 export const runtime = 'nodejs';
 
@@ -69,43 +53,22 @@ export async function GET(request: Request) {
     );
   }
 
-  const where: Prisma.PropertyWhereInput = {
-    publicationStatus: 'PUBLISHED',
-    ...(location ? { location: { contains: location, mode: 'insensitive' } } : {}),
-    ...(propertyType ? { propertyType } : {}),
-    ...(status ? { status } : {}),
-  };
-
-  const orderBy: Prisma.PropertyOrderByWithRelationInput[] = sort === 'latest'
-    ? [{ createdAt: 'desc' }, { id: 'desc' }]
-    : [
-        {
-          priceAmount: {
-            sort: sort === 'price_asc' ? 'asc' : 'desc',
-            nulls: 'last',
-          },
-        },
-        { id: 'asc' },
-      ];
-
   try {
-    const [total, properties] = await prisma.$transaction([
-      prisma.property.count({ where }),
-      prisma.property.findMany({
-        where,
-        select: propertySelect,
-        orderBy,
-        skip,
-        take: limit,
-      }),
-    ]);
+    const { data: properties, total } = await listPublicProperties({
+      location,
+      propertyType,
+      status,
+      sort,
+      limit,
+      offset: skip,
+    });
 
     return NextResponse.json({
       success: true,
       data: properties.map((property) => ({
         ...property,
-        priceAmount: property.priceAmount?.toString() ?? null,
-        plotSize: property.plotSize?.toString() ?? null,
+        priceAmount: formatNumericValue(property.priceAmount),
+        plotSize: formatNumericValue(property.plotSize),
       })),
       pagination: {
         page,
