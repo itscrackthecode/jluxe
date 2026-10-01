@@ -1,8 +1,8 @@
 'use client';
 
-import { PlotSizeUnit, PropertyType } from '@/generated/prisma/enums';
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import { plotSizeUnits, propertyTypes } from '@/lib/db/types';
 
 type FormValues = {
   name: string;
@@ -110,7 +110,7 @@ export default function SellPropertyForm() {
             <span className="mb-2 block text-sm font-medium text-[var(--viridian-950)]">Property Type *</span>
             <select className={inputClass} value={values.propertyType} onChange={(event) => update('propertyType', event.target.value)} required>
               <option value="">Select property type</option>
-              {Object.values(PropertyType).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              {propertyTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
           </label>
         </div>
@@ -135,7 +135,7 @@ export default function SellPropertyForm() {
             <span className="mb-2 block text-sm font-medium text-[var(--viridian-950)]">Area Unit</span>
             <select className={inputClass} value={values.plotSizeUnit} onChange={(event) => update('plotSizeUnit', event.target.value)}>
               <option value="">Select unit</option>
-              {Object.values(PlotSizeUnit).map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              {plotSizeUnits.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
           </label>
         </div>
