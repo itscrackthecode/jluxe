@@ -9,6 +9,7 @@ import {
   Mail,
   Menu,
   MessageCircle,
+  PhoneCall,
   X,
 } from 'lucide-react';
 import { services, siteConfig } from '@/lib/data';
@@ -77,7 +78,6 @@ export default function SiteHeader() {
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-[var(--viridian-950)] md:flex">
             <Link href={siteConfig.nav.about} className="transition hover:text-[var(--gold)]">About</Link>
-
             <div className="relative">
               <button
                 ref={servicesButtonRef}
@@ -148,10 +148,13 @@ export default function SiteHeader() {
           <div className="hidden md:block">
             <Link
               href={siteConfig.nav.contact}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]"
+              aria-label="Let&apos;s Talk"
+              className="jluxe-talk-button"
             >
-              Let&apos;s Talk
-              <ArrowUpRight className="h-4 w-4" />
+              <span className="talk-text">Let&apos;s Talk</span>
+              <span aria-hidden="true" className="talk-icon">
+                <PhoneCall />
+              </span>
             </Link>
           </div>
 

@@ -1,10 +1,14 @@
-import Link from 'next/link';
-import { ArrowDown, ArrowRight } from 'lucide-react';
+import JluxeCtaLink from '@/components/jluxe-cta-link';
 
 export default function RealEstateHero() {
   return (
-    <section className="relative isolate overflow-hidden bg-[var(--viridian-950)] text-white">
-      <div className="container-xl grid min-h-[600px] items-center gap-12 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+    <section
+      className="relative isolate min-h-[620px] overflow-hidden bg-[var(--viridian-950)] text-white sm:min-h-[680px]"
+      style={{ backgroundImage: "url('/assets/images/real-estate.png')", backgroundPosition: 'center', backgroundSize: 'cover' }}
+    >
+      <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(6,47,41,0.96)_0%,rgba(6,47,41,0.82)_42%,rgba(6,47,41,0.52)_74%,rgba(6,47,41,0.34)_100%)]" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_28%,rgba(3,25,21,0.42)_100%)]" />
+      <div className="container-xl relative z-10 flex min-h-[620px] items-center py-20 sm:min-h-[680px] lg:py-24">
         <div className="relative z-10 max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.24em] text-[var(--gold)]">REAL ESTATE</p>
           <h1 className="mt-6 font-display text-5xl leading-[1.04] sm:text-6xl lg:text-7xl">
@@ -14,38 +18,21 @@ export default function RealEstateHero() {
             JLUXE connects buyers, sellers and trusted partners with relevant property opportunities and real estate support.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link
-              href="#buyer-seller"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-white"
+            <JluxeCtaLink
+              href="/properties"
+              className="w-full justify-center sm:w-auto"
             >
               I&apos;m Looking to Buy
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="#buyer-seller"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+            </JluxeCtaLink>
+            <JluxeCtaLink
+              href="/contact/sell-property"
+              className="w-full justify-center sm:w-auto"
             >
               I Want to Sell
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-
-        <div aria-hidden="true" className="relative mx-auto hidden aspect-[1.15/1] w-full max-w-[520px] lg:block">
-          <div className="absolute inset-[5%_3%_8%_10%] border border-white/20" />
-          <div className="absolute inset-[14%_12%_17%_19%] border border-[var(--gold)]/50" />
-          <div className="absolute bottom-[17%] left-[19%] right-[12%] top-1/2 border-y border-white/20" />
-          <div className="absolute bottom-[17%] left-1/2 top-[14%] border-l border-white/20" />
-          <div className="absolute bottom-[17%] right-[29%] top-[14%] border-l border-white/20" />
-          <div className="absolute left-[19%] top-[28%] h-[16%] w-[18%] border border-white/25" />
-          <div className="absolute bottom-[17%] right-[12%] h-[18%] w-[24%] border-l border-t border-white/25" />
-          <div className="absolute bottom-[2%] left-[10%] flex items-center gap-3 text-[10px] font-medium tracking-[0.2em] text-white/55">
-            <ArrowDown className="h-3.5 w-3.5 text-[var(--gold)]" />
-            BUYERS / SELLERS / PARTNERS
+            </JluxeCtaLink>
           </div>
         </div>
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-0 -z-0 h-full w-[42%] border-l border-white/[0.06]" />
     </section>
   );
 }

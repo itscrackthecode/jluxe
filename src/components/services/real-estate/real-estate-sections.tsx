@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import { ArrowRight, Building2, Handshake, Landmark, Megaphone, MessageCircle } from 'lucide-react';
+import { Building2, Handshake, Landmark, Megaphone, MessageCircle, PhoneCall } from 'lucide-react';
 import { realEstateCapabilities, realEstateOpportunities, siteConfig } from '@/lib/data';
+import JluxeCtaLink from '@/components/jluxe-cta-link';
 
 const capabilityIcons = [Building2, Megaphone, Handshake, Landmark];
 
@@ -16,7 +16,7 @@ export function RealEstateCapabilities() {
             const Icon = capabilityIcons[index];
 
             return (
-              <article key={capability.number} className="relative min-w-0 border border-white/15 bg-white/[0.035] p-6 sm:p-7">
+              <article key={capability.number} className="premium-card relative min-w-0 border border-white/15 bg-white/[0.035] p-6 sm:p-7">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{capability.number}</span>
                   <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
@@ -27,36 +27,6 @@ export function RealEstateCapabilities() {
             );
           })}
         </div>
-      </div>
-    </section>
-  );
-}
-
-export function BuyerSellerSection() {
-  return (
-    <section id="buyer-seller" className="scroll-mt-24 bg-[var(--sand)]/35 py-20 sm:py-24">
-      <div className="container-xl grid gap-4 lg:grid-cols-2">
-        <article className="flex min-h-[330px] flex-col items-start border border-[var(--viridian-900)]/10 bg-[var(--viridian-900)] p-7 text-white sm:p-10">
-          <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">LOOKING TO BUY?</p>
-          <h2 className="mt-7 max-w-md font-display text-3xl leading-tight sm:text-4xl">Looking for the right property?</h2>
-          <p className="mt-4 max-w-md text-sm leading-6 text-white/70">
-            Tell us what you&apos;re looking for and explore relevant property opportunities.
-          </p>
-          <Link href="/properties" className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-semibold text-white transition-colors hover:text-[var(--gold)]">
-            Explore Opportunities <ArrowRight className="h-4 w-4" />
-          </Link>
-        </article>
-
-        <article className="flex min-h-[330px] flex-col items-start border border-black/10 bg-[var(--cream)] p-7 text-[var(--viridian-950)] sm:p-10">
-          <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">LOOKING TO SELL?</p>
-          <h2 className="mt-7 max-w-md font-display text-3xl leading-tight sm:text-4xl">Have a property to sell?</h2>
-          <p className="mt-4 max-w-md text-sm leading-6 text-[var(--muted)]">
-            Tell us about your property and discuss how JLUXE can support its marketing and sale.
-          </p>
-          <Link href={siteConfig.nav.contact} className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
-            Sell With JLUXE <ArrowRight className="h-4 w-4" />
-          </Link>
-        </article>
       </div>
     </section>
   );
@@ -79,12 +49,12 @@ export function PropertyOpportunities() {
         {realEstateOpportunities.length > 0 ? (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {realEstateOpportunities.map((opportunity) => (
-              <article key={opportunity.id} className="border border-black/10 bg-white p-6">
+              <article key={opportunity.id} className="premium-card border border-black/10 bg-white p-6">
                 <h3 className="font-display text-2xl text-[var(--viridian-950)]">{opportunity.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{opportunity.summary}</p>
-                <Link href={opportunity.href} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--viridian-950)]">
-                  View opportunity <ArrowRight className="h-4 w-4" />
-                </Link>
+                <JluxeCtaLink href={opportunity.href} className="mt-6">
+                  View opportunity
+                </JluxeCtaLink>
               </article>
             ))}
           </div>
@@ -93,9 +63,9 @@ export function PropertyOpportunities() {
             <p className="max-w-xl font-display text-2xl leading-snug text-[var(--viridian-950)] sm:text-3xl">
               New opportunities will appear here as they become available.
             </p>
-            <Link href={siteConfig.nav.contact} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
-              Talk to JLUXE <ArrowRight className="h-4 w-4" />
-            </Link>
+            <JluxeCtaLink href={siteConfig.nav.contact} className="w-fit shrink-0">
+              Talk to JLUXE
+            </JluxeCtaLink>
           </div>
         )}
       </div>
@@ -115,12 +85,12 @@ export function RealEstateFinalCta() {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href={siteConfig.nav.contact} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-white">
-            Let&apos;s Talk <ArrowRight className="h-4 w-4" />
-          </Link>
-          <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]">
-            <MessageCircle className="h-4 w-4" /> WhatsApp
-          </a>
+          <JluxeCtaLink href={siteConfig.nav.contact} className="w-full justify-center sm:w-auto" icon={<PhoneCall className="h-5 w-5" />}>
+            Let&apos;s Talk
+          </JluxeCtaLink>
+          <JluxeCtaLink href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="w-full justify-center sm:w-auto" icon={<MessageCircle className="h-5 w-5" />}>
+            WhatsApp
+          </JluxeCtaLink>
         </div>
       </div>
     </section>

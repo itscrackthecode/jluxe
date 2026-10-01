@@ -3,7 +3,6 @@ import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
 import RealEstateHero from '@/components/services/real-estate/real-estate-hero';
 import {
-  BuyerSellerSection,
   PropertyOpportunities,
   RealEstateCapabilities,
   RealEstateFinalCta,
@@ -20,7 +19,6 @@ export default function RealEstatePage() {
       <SiteHeader />
       <RealEstateHero />
       <RealEstateCapabilities />
-      <BuyerSellerSection />
       <PropertyOpportunities />
       <RealEstateFinalCta />
       <SiteFooter />

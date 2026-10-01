@@ -78,8 +78,8 @@ function PropertyCard({ property }: { property: ApiProperty }) {
   const plotSize = formatPlotSize(property);
 
   return (
-    <article className="min-w-0 border-b border-[var(--viridian-950)]/15 pb-6">
-      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
+    <article className="premium-card min-w-0 border-b border-[var(--viridian-950)]/15 pb-6">
+      <div className="premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
         Property image unavailable
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--muted)]">
