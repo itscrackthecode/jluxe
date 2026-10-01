@@ -149,9 +149,9 @@ export default function WorkPortfolio() {
         ) : items.length > 0 ? (
           <div className="mt-8 grid gap-8 md:grid-cols-2">
             {items.map((item) => (
-              <article key={item.id} className={`min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
+              <article key={item.id} className={`premium-card min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
                 {item.media[0] && (
-                  <div role="img" aria-label={item.media[0].altText ?? 'Project image preview unavailable'} className={`flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
+                  <div role="img" aria-label={item.media[0].altText ?? 'Project image preview unavailable'} className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
                     {item.media[0].altText ?? 'Project image preview unavailable'}
                   </div>
                 )}

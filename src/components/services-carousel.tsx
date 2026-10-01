@@ -28,7 +28,7 @@ export default function ServicesCarousel() {
               <a
                 key={s.title}
                 href={s.href}
-                className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,58,51,0.94),rgba(6,47,41,0.96))] p-7 text-white shadow-[0_20px_40px_rgba(6,47,41,0.12)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_26px_45px_rgba(6,47,41,0.18)]"
+                className="premium-card group relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,58,51,0.94),rgba(6,47,41,0.96))] p-7 text-white shadow-[0_20px_40px_rgba(6,47,41,0.12)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(197,164,109,0.18),transparent_28%),radial-gradient(circle_at_15%_90%,rgba(255,255,255,0.05),transparent_35%)]" />
                 <div className="absolute -right-12 top-6 h-24 w-24 rounded-full bg-[var(--gold)]/10 blur-2xl" />

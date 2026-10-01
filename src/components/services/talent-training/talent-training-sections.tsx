@@ -33,7 +33,7 @@ export function TalentTrainingServices() {
             const Icon = serviceIcons[index];
 
             return (
-              <article key={service.number} className="min-w-0 bg-[var(--viridian-950)] p-6 transition-colors hover:bg-[var(--viridian-900)] sm:p-7">
+              <article key={service.number} className="premium-card min-w-0 bg-[var(--viridian-950)] p-6 sm:p-7">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{service.number}</span>
                   <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />

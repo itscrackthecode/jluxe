@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Pause, Play } from 'lucide-react';
 import { heroSlides } from '@/lib/data';
+import JluxeCtaLink from '@/components/jluxe-cta-link';
 
 const themes: Record<string, string> = {
   land: 'linear-gradient(115deg,#042e28 0%,#0b4b40 42%,#496a59 70%,#c4a56e 100%)',
@@ -26,6 +27,13 @@ export default function HeroCarousel() {
 
     return () => window.clearInterval(timer);
   }, [isPaused, index]);
+
+  useEffect(() => {
+    heroSlides.forEach((heroSlide) => {
+      const image = new Image();
+      image.src = heroSlide.backgroundImage;
+    });
+  }, []);
 
   const move = (dir: number) => {
     setIndex((current) => (current + dir + heroSlides.length) % heroSlides.length);
@@ -53,6 +61,15 @@ export default function HeroCarousel() {
       className="relative min-h-[640px] overflow-hidden text-white sm:min-h-[720px]"
       style={{ background: themes[slide.theme] }}
     >
+      <div
+        key={slide.backgroundImage}
+        aria-hidden="true"
+        className="hero-background hero-background-blend hero-background-transition absolute inset-0"
+        style={{ backgroundImage: `url("${slide.backgroundImage}")` }}
+      />
+      <div aria-hidden="true" className="hero-brand-wash absolute inset-0" />
+      <div aria-hidden="true" className="hero-vignette absolute inset-0" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,22,19,0.18),rgba(3,22,19,0.32))]" />
       <div className="absolute inset-0 opacity-60 foliage" />
       <div className="absolute -right-24 top-20 h-[420px] w-[420px] rounded-full border border-white/10" />
       <div className="absolute right-[8%] top-[22%] hidden h-48 w-48 rounded-full border border-[var(--gold)]/30 lg:block" />
@@ -69,10 +86,12 @@ export default function HeroCarousel() {
               {slide.title}
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-white/75 sm:text-lg">{slide.body}</p>
-            <a href={slide.href} className="mt-8 inline-flex items-center gap-3 rounded-full bg-[var(--cream)] px-6 py-3.5 text-sm font-semibold text-[var(--viridian-950)] transition hover:bg-white">
+            <JluxeCtaLink
+              href={slide.href}
+              className="mt-8 sm:min-w-[240px]"
+            >
               {slide.cta}
-              <ArrowRight className="h-4 w-4" />
-            </a>
+            </JluxeCtaLink>
           </div>
         </div>
 
