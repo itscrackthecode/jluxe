@@ -184,3 +184,8 @@ export async function updateProperty(id: UUID, input: PropertyWrite): Promise<Ad
   );
   return result.rows[0] ?? null;
 }
+
+export async function deleteProperty(id: UUID): Promise<boolean> {
+  const result = await pool.query('DELETE FROM "Property" WHERE "id" = $1', [id]);
+  return Boolean(result.rowCount);
+}

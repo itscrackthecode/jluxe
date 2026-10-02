@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminSession } from '@/lib/admin-session';
 import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
-import { findPropertyById, updateProperty } from '@/lib/db/queries/properties';
+import { deleteProperty, findPropertyById, updateProperty } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 
 const idSchema = z.string().uuid();
@@ -57,5 +57,18 @@ export async function PUT(request: Request, { params }: RouteContext) {
     if (hasPostgresErrorCode(error, '23505')) return NextResponse.json({ success: false, error: 'A property with this slug already exists.' }, { status: 409 });
     console.error('Failed to update admin property.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
     return NextResponse.json({ success: false, error: 'Unable to update property right now.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  if (!await getAdminSession()) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+  const { id } = await params;
+  if (!idSchema.safeParse(id).success) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
+  try {
+    if (!await deleteProperty(id)) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete admin property.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
+    return NextResponse.json({ success: false, error: 'Unable to delete property right now.' }, { status: 500 });
   }
 }

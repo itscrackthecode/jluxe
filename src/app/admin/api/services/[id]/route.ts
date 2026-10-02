@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { adminServiceSchema } from '@/lib/admin-service';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
-import { findAdminServiceById, updateAdminService } from '@/lib/db/queries/services';
+import { countServicePortfolioReferences, deleteAdminService, findAdminServiceById, updateAdminService } from '@/lib/db/queries/services';
 import { getAdminSession } from '@/lib/admin-session';
 
 const idSchema = z.string().uuid();
@@ -53,5 +53,21 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
     console.error('Failed to update admin service.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
     return NextResponse.json({ success: false, error: 'Unable to update service right now.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  if (!await getAdminSession()) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+  const { id } = await params;
+  if (!idSchema.safeParse(id).success) return NextResponse.json({ success: false, error: 'Service not found.' }, { status: 404 });
+  try {
+    const references = await countServicePortfolioReferences(id);
+    if (references > 0) return NextResponse.json({ success: false, error: `Cannot delete this service because ${references} portfolio item(s) use it. Archive it instead.` }, { status: 409 });
+    const result = await deleteAdminService(id);
+    if (result === 'missing') return NextResponse.json({ success: false, error: 'Service not found.' }, { status: 404 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (hasPostgresErrorCode(error, '23503')) return NextResponse.json({ success: false, error: 'This service is still referenced by another record. Archive it instead.' }, { status: 409 });
+    return NextResponse.json({ success: false, error: 'Unable to delete service right now.' }, { status: 500 });
   }
 }

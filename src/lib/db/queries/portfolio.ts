@@ -274,3 +274,8 @@ export async function updateAdminPortfolioWork(
   );
   return result.rows[0] ? withAdminService(result.rows[0]) : null;
 }
+
+export async function deleteAdminPortfolioWork(id: UUID): Promise<boolean> {
+  const result = await pool.query('DELETE FROM "PortfolioWork" WHERE "id" = $1', [id]);
+  return Boolean(result.rowCount);
+}

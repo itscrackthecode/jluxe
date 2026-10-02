@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { RotateCcw } from 'lucide-react';
+import { Download, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { enquiryStatuses, type EnquiryStatus } from '@/lib/db/types';
 
@@ -79,6 +79,11 @@ export default function EnquiryList() {
     };
   }, [page, retry, search, status]);
 
+  const exportParams = new URLSearchParams();
+  if (search.trim()) exportParams.set('search', search.trim());
+  if (status) exportParams.set('status', status);
+  const currentExportHref = `/admin/api/enquiries/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
+
   return (
     <div>
       <div className="flex flex-col justify-between gap-3 border-b border-[var(--viridian-950)]/15 pb-6 sm:flex-row sm:items-end">
@@ -86,7 +91,11 @@ export default function EnquiryList() {
           <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">INBOX</p>
           <h1 className="mt-2 font-display text-4xl">Enquiries</h1>
         </div>
-        <p className="text-sm text-[var(--muted)]">{total} total</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <a href="/admin/api/enquiries/export" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--viridian-950)]/15 px-4 text-sm font-medium transition-colors hover:border-[var(--gold)]"><Download className="h-4 w-4" /> Export all</a>
+          <a href={currentExportHref} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--viridian-800)]"><Download className="h-4 w-4" /> Export current</a>
+          <p className="text-sm text-[var(--muted)]">{total} total</p>
+        </div>
       </div>
 
       <div className="grid gap-3 border-b border-[var(--viridian-950)]/15 py-4 sm:grid-cols-[minmax(0,1fr)_220px]">
