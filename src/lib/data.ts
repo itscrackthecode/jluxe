@@ -1,8 +1,8 @@
 export const services = [
   { title:'Real Estate', kicker:'01', description:'Property sales, marketing and channel partnership for real opportunities.', href:'/services/real-estate', tone:'land' },
   { title:'Business Solutions', kicker:'02', description:'Marketing, branding, lead generation and business development support.', href:'/services/business-solutions', tone:'business' },
-  { title:'Talent & Training', kicker:'03', description:'Recruitment, staffing and practical training for people and organisations.', href:'/services/talent-training', tone:'training' },
-  { title:'Interiors & Design', kicker:'04', description:'Interior design solutions that turn spaces into purposeful environments.', href:'/contact', tone:'interior' },
+  { title:'Recruitment & Training', kicker:'03', description:'Recruitment, staffing and practical training for people and organisations.', href:'/services/talent-training', tone:'training' },
+  { title:'Interiors & Design', kicker:'04', description:'Interior design solutions that turn spaces into purposeful environments.', href:'/services/interiors-design', tone:'interior' },
   { title:'Boutique', kicker:'05', description:'A new JLUXE venture currently in development.', href:'/contact', tone:'boutique' },
 ];
 
@@ -40,7 +40,7 @@ export const heroSlides = [
   { eyebrow:'JLUXE', title:'Building relationships. Creating possibilities.', body:'Connecting people, services and opportunities across real estate, business, talent and design.', cta:'Explore JLUXE', href:'/about', theme:'land', backgroundImage:'/assets/images/jluxe-hero-bg.png' },
   { eyebrow:'REAL ESTATE', title:'Find the right space. Make the right move.', body:'Property opportunities for buyers, sellers and partners, supported by JLUXE’s real estate network.', cta:'Explore Real Estate', href:'/services/real-estate', theme:'land', backgroundImage:'/assets/images/real-estate.png' },
   { eyebrow:'BUSINESS SOLUTIONS', title:'Ideas that move business forward.', body:'Marketing, branding, lead generation, sales and business development solutions built around real requirements.', cta:'Explore Business Solutions', href:'/services/business-solutions', theme:'business', backgroundImage:'/assets/images/business-solutions.png' },
-  { eyebrow:'TALENT & TRAINING', title:'Connecting talent with opportunity.', body:'Recruitment, staffing, corporate training, college training and career counselling.', cta:'Explore Talent & Training', href:'/services/talent-training', theme:'training', backgroundImage:'/assets/images/talent-training.png' },
+  { eyebrow:'RECRUITMENT & TRAINING', title:'Connecting talent with opportunity.', body:'Recruitment, staffing, corporate training, college training and career counselling.', cta:'Explore Recruitment & Training', href:'/services/talent-training', theme:'training', backgroundImage:'/assets/images/talent-training.png' },
   { eyebrow:'INTERIORS & DESIGN', title:'Spaces designed around you.', body:'Interior designing focused on creating functional, thoughtful and distinctive spaces.', cta:'Explore Interiors & Designs', href:'/contact', theme:'interior', backgroundImage:'/assets/images/interiors-designs.png' },
 ];
 

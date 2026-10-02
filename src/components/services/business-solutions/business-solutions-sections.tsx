@@ -1,6 +1,4 @@
-import Link from 'next/link';
 import {
-  ArrowRight,
   BriefcaseBusiness,
   CalendarDays,
   Landmark,
@@ -10,10 +8,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import {
-  businessSolutionsAudiences,
-  businessSolutionsContact,
   businessSolutionsServices,
-  siteConfig,
 } from '@/lib/data';
 
 const serviceIcons = [Megaphone, Palette, Target, TrendingUp, Landmark, CalendarDays];
@@ -51,43 +46,3 @@ export function BusinessSolutionsServices() {
   );
 }
 
-export function BusinessSolutionsAudience() {
-  return (
-    <section className="bg-[var(--sand)]/35 py-14 sm:py-16">
-      <div className="container-xl flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <h2 className="font-display text-3xl leading-tight text-[var(--viridian-950)] sm:text-4xl">
-          For businesses, corporates and organizations.
-        </h2>
-        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--muted)]">
-          {businessSolutionsAudiences.map((audience) => (
-            <li key={audience} className="flex items-center gap-2">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />
-              {audience}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-export function BusinessSolutionsCta() {
-  return (
-    <section className="bg-[var(--viridian-900)] py-16 text-white sm:py-20">
-      <div className="container-xl flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="font-display text-3xl leading-tight sm:text-4xl">{businessSolutionsContact.heading}</h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-white/70 sm:text-base">{businessSolutionsContact.description}</p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href={businessSolutionsContact.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-white">
-            Let&apos;s Talk <ArrowRight className="h-4 w-4" />
-          </Link>
-          <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]">
-            WhatsApp
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}

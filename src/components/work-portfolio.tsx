@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
+import { getMediaImageUrl } from '@/lib/media';
 
 const pageSize = 12;
 
@@ -150,11 +151,9 @@ export default function WorkPortfolio() {
           <div className="mt-8 grid gap-8 md:grid-cols-2">
             {items.map((item) => (
               <article key={item.id} className={`premium-card min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
-                {item.media[0] && (
-                  <div role="img" aria-label={item.media[0].altText ?? 'Project image preview unavailable'} className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
-                    {item.media[0].altText ?? 'Project image preview unavailable'}
-                  </div>
-                )}
+                <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
+                  <img src={getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
+                </div>
                 <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)]">
                   <span className="text-[var(--gold)]">{item.service.title}</span>
                   {item.location && <span>{item.location}</span>}
