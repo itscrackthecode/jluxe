@@ -118,6 +118,14 @@ export default function PortfolioList({ services }: { services: ServiceOption[] 
     }
   }
 
+  async function removeWork(work: WorkRow) {
+    if (!window.confirm(`Delete “${work.title}”? Its media associations may be removed, but media records are preserved.`)) return;
+    const response = await fetch(`/admin/api/portfolio/${work.id}`, { method: 'DELETE' });
+    const result = await response.json() as { success?: boolean; error?: string };
+    if (!response.ok || !result.success) { setError(result.error ?? 'Unable to delete work.'); return; }
+    setRetry((current) => current + 1);
+  }
+
   return (
     <div>
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--viridian-950)]/15 pb-6 sm:flex-row sm:items-end">
@@ -231,6 +239,7 @@ export default function PortfolioList({ services }: { services: ServiceOption[] 
                     {work.publicationStatus !== 'ARCHIVED' && (
                       <button type="button" onClick={() => void setStatus(work, 'ARCHIVED')} className="text-red-700 hover:text-red-900">Archive</button>
                     )}
+                    <button type="button" onClick={() => void removeWork(work)} className="text-red-700 hover:text-red-900">Delete</button>
                   </div>
                 </td>
               </tr>

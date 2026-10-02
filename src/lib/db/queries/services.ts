@@ -89,3 +89,14 @@ export async function updateAdminService(
   );
   return result.rows[0] ?? null;
 }
+
+export async function countServicePortfolioReferences(id: UUID): Promise<number> {
+  const result = await pool.query<{ total: string }>('SELECT COUNT(*) AS "total" FROM "PortfolioWork" WHERE "serviceId" = $1', [id]);
+  return Number(result.rows[0]?.total ?? 0);
+}
+
+export async function deleteAdminService(id: UUID): Promise<'deleted' | 'missing' | 'in-use'> {
+  if (await countServicePortfolioReferences(id) > 0) return 'in-use';
+  const result = await pool.query('DELETE FROM "Service" WHERE "id" = $1', [id]);
+  return result.rowCount ? 'deleted' : 'missing';
+}

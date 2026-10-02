@@ -62,6 +62,14 @@ export default function PropertyList() {
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
 
+  async function removeProperty(property: PropertyRow) {
+    if (!window.confirm(`Delete “${property.title}”? Related enquiries will be preserved.`)) return;
+    const response = await fetch(`/admin/api/properties/${property.id}`, { method: 'DELETE' });
+    const result = await response.json() as { success?: boolean; error?: string };
+    if (!response.ok || !result.success) { window.alert(result.error ?? 'Unable to delete property.'); return; }
+    setRetry((value) => value + 1);
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -142,7 +150,7 @@ export default function PropertyList() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] border-collapse text-left text-sm">
             <thead><tr className="border-b border-[var(--viridian-950)]/15 text-xs font-medium text-[var(--muted)]">
-              <th scope="col" className="px-3 py-3">Title</th><th scope="col" className="px-3 py-3">Location</th><th scope="col" className="px-3 py-3">Property type</th><th scope="col" className="px-3 py-3">Price</th><th scope="col" className="px-3 py-3">Status</th><th scope="col" className="px-3 py-3">Publication</th><th scope="col" className="px-3 py-3">Updated</th>
+              <th scope="col" className="px-3 py-3">Title</th><th scope="col" className="px-3 py-3">Location</th><th scope="col" className="px-3 py-3">Property type</th><th scope="col" className="px-3 py-3">Price</th><th scope="col" className="px-3 py-3">Status</th><th scope="col" className="px-3 py-3">Publication</th><th scope="col" className="px-3 py-3">Updated</th><th scope="col" className="px-3 py-3">Actions</th>
             </tr></thead>
             <tbody>{items.map((property) => (
               <tr key={property.id} className="border-b border-[var(--viridian-950)]/10 align-top hover:bg-white/60">
@@ -153,6 +161,7 @@ export default function PropertyList() {
                 <td className="px-3 py-4">{label(property.status)}</td>
                 <td className="px-3 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${publicationBadge[property.publicationStatus]}`}>{label(property.publicationStatus)}</span></td>
                 <td className="px-3 py-4 whitespace-nowrap text-xs text-[var(--muted)]">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(property.updatedAt))}</td>
+                <td className="px-3 py-4"><button type="button" onClick={() => void removeProperty(property)} className="text-xs font-medium text-red-700 hover:text-red-900">Delete</button></td>
               </tr>
             ))}</tbody>
           </table>

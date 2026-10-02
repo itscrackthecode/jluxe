@@ -172,3 +172,29 @@ export async function updateEnquiryStatus(
   );
   return result.rows[0] ?? null;
 }
+
+export type EnquiryExportRow = {
+  createdAt: string;
+  name: string;
+  email: string;
+  phone: string;
+  interestedServiceLabel: string;
+  propertyTitle: string | null;
+  message: string;
+  status: EnquiryStatus;
+};
+
+export async function listEnquiriesForExport(filters: { search?: string; status?: EnquiryStatus }): Promise<EnquiryExportRow[]> {
+  const search = filters.search ? `%${filters.search.replace(/[\\%_]/g, '\\$&')}%` : null;
+  const values = [filters.status ?? null, search];
+  const conditions = `($1::"EnquiryStatus" IS NULL OR e."status" = $1::"EnquiryStatus")
+    AND ($2::text IS NULL OR e."name" ILIKE $2 ESCAPE E'\\\\' OR e."email" ILIKE $2 ESCAPE E'\\\\' OR e."phone" ILIKE $2 ESCAPE E'\\\\' OR e."message" ILIKE $2 ESCAPE E'\\\\')`;
+  const result = await pool.query<EnquiryExportRow>(
+    `SELECT TO_CHAR(e."createdAt" AT TIME ZONE current_setting('TimeZone'), 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
+            e."name", e."email", e."phone", e."interestedServiceLabel", p."title" AS "propertyTitle", e."message", e."status"
+     FROM "Enquiry" e LEFT JOIN "Property" p ON p."id" = e."propertyId"
+     WHERE ${conditions} ORDER BY e."createdAt" DESC, e."id" DESC`,
+    values,
+  );
+  return result.rows;
+}

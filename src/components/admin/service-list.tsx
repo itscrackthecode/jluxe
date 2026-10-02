@@ -104,6 +104,14 @@ export default function ServiceList() {
     }
   }
 
+  async function removeService(service: ServiceRow) {
+    if (!window.confirm(`Delete “${service.title}”? Services used by portfolio work must be archived instead.`)) return;
+    const response = await fetch(`/admin/api/services/${service.id}`, { method: 'DELETE' });
+    const result = await response.json() as { success?: boolean; error?: string };
+    if (!response.ok || !result.success) { setError(result.error ?? 'Unable to delete service.'); return; }
+    setRetry((current) => current + 1);
+  }
+
   return (
     <div>
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--viridian-950)]/15 pb-6 sm:flex-row sm:items-end">
@@ -181,6 +189,7 @@ export default function ServiceList() {
                     {service.publicationStatus !== 'ARCHIVED' && (
                       <button type="button" onClick={() => void setStatus(service, 'ARCHIVED')} className="text-red-700 hover:text-red-900">Archive</button>
                     )}
+                    <button type="button" onClick={() => void removeService(service)} className="text-red-700 hover:text-red-900">Delete</button>
                   </div>
                 </td>
               </tr>
