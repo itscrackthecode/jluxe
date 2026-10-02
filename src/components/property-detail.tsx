@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, MessageCircle, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
+import { getMediaImageUrl } from '@/lib/media';
 
 type PropertyImage = {
   id: string;
@@ -172,12 +173,12 @@ export default function PropertyDetail({ slug }: { slug: string }) {
       <section aria-label="Property images" className="bg-[var(--cream)] py-6 sm:py-8">
         <div className="container-xl grid gap-3 sm:grid-cols-2">
           {property.images.length > 0 ? property.images.map((image) => (
-            <div key={image.id} role="img" aria-label={image.altText ?? 'Property image preview unavailable'} className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)]">
-              {image.altText ?? 'Property image preview unavailable'}
+            <div key={image.id} className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)]">
+              <img src={getMediaImageUrl(image.storageKey, 'property')} alt={image.altText ?? 'JLUXE property'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'property'); }} />
             </div>
           )) : (
             <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
-              Property image unavailable
+              <img src={getMediaImageUrl(null, 'property')} alt="JLUXE property placeholder" className="h-full w-full object-cover" />
             </div>
           )}
         </div>

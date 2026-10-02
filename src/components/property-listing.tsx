@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
+import { getFallbackImage } from '@/lib/media';
 
 const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)]';
 const pageSize = 12;
@@ -80,7 +81,7 @@ function PropertyCard({ property }: { property: ApiProperty }) {
   return (
     <article className="premium-card min-w-0 border-b border-[var(--viridian-950)]/15 pb-6">
       <div className="premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
-        Property image unavailable
+        <img src={getFallbackImage('property')} alt="JLUXE property placeholder" className="h-full w-full object-cover" />
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--muted)]">
         <span>{formatPropertyType(property.propertyType)}</span>

@@ -9,7 +9,7 @@ const sections = [
   { label: 'Properties', href: '/admin/properties' },
   { label: 'Our Work', href: '/admin/our-work' },
   { label: 'Enquiries', href: '/admin/enquiries' },
-  { label: 'Media' },
+  { label: 'Media', href: '/admin/media' },
   { label: 'Services', href: '/admin/services' },
 ] as const;
 
@@ -19,7 +19,7 @@ export default function AdminShell({
   children,
 }: {
   admin: AdminUser;
-  active: 'Dashboard' | 'Enquiries' | 'Properties' | 'Services' | 'Our Work';
+  active: 'Dashboard' | 'Enquiries' | 'Properties' | 'Services' | 'Our Work' | 'Media';
   children: React.ReactNode;
 }) {
   return (
@@ -48,7 +48,7 @@ export default function AdminShell({
         <aside aria-label="Admin navigation">
           <p className="mb-3 text-[10px] font-semibold tracking-[0.18em] text-[var(--muted)]">WORKSPACE</p>
           <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
-            {sections.map((section) => 'href' in section ? (
+            {sections.map((section) => (
               <Link
                 key={section.label}
                 href={section.href}
@@ -57,10 +57,6 @@ export default function AdminShell({
               >
                 {section.label}
               </Link>
-            ) : (
-              <span key={section.label} aria-disabled="true" className="rounded-lg px-3 py-2.5 text-sm text-[var(--muted)]">
-                {section.label}<span className="ml-2 text-[10px]">Later</span>
-              </span>
             ))}
           </nav>
         </aside>
