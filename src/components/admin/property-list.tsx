@@ -61,6 +61,15 @@ export default function PropertyList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [savedNotice, setSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).get('saved')) return;
+    setSavedNotice(true);
+    window.history.replaceState(null, '', window.location.pathname);
+    const timer = window.setTimeout(() => setSavedNotice(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function removeProperty(property: PropertyRow) {
     if (!window.confirm(`Delete “${property.title}”? Related enquiries will be preserved.`)) return;
@@ -114,6 +123,12 @@ export default function PropertyList() {
         </div>
         <Link href="/admin/properties/new" className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[var(--viridian-900)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">Add property</Link>
       </div>
+
+      {savedNotice && (
+        <div role="status" className="mt-4 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Property saved successfully.
+        </div>
+      )}
 
       <div className="grid gap-3 border-b border-[var(--viridian-950)]/15 py-4 sm:grid-cols-[minmax(0,1fr)_200px_200px]">
         <label className="block text-xs font-medium text-[var(--muted)]">

@@ -25,9 +25,9 @@ type ListResponse = {
 const statusStyles: Record<EnquiryStatusValue, string> = {
   NEW: 'bg-emerald-50 text-emerald-800',
   CONTACTED: 'bg-sky-50 text-sky-800',
-  IN_PROGRESS: 'bg-amber-50 text-amber-800',
-  COMPLETED: 'bg-[var(--viridian-950)]/8 text-[var(--viridian-950)]',
-  ARCHIVED: 'bg-black/5 text-[var(--muted)]',
+  IN_DISCUSSION: 'bg-amber-50 text-amber-800',
+  CONVERTED: 'bg-[var(--viridian-950)]/8 text-[var(--viridian-950)]',
+  CLOSED: 'bg-black/5 text-[var(--muted)]',
 };
 
 function formatDate(value: string) {

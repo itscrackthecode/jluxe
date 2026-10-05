@@ -24,7 +24,7 @@ export default function HeroCarousel() {
 
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % heroSlides.length);
-    }, 2000);
+    }, 6000);
 
     return () => window.clearInterval(timer);
   }, [isPaused, index]);
@@ -77,14 +77,16 @@ export default function HeroCarousel() {
 
       <div className="hero-viewport-inner container-xl relative z-10 flex min-h-[640px] flex-col justify-end py-16 sm:min-h-[720px]">
         <div className="flex max-w-3xl items-start gap-4 pb-8">
-          <div key={slide.title} className="hero-copy flex-1">
+          <div key={slide.title} className="hero-copy hero-slide-copy flex-1">
             <div className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.28em] text-[var(--gold)]">
             {displayNumber ? (
               <>
               <span>{displayNumber}</span>
               <span className="h-px w-16 bg-[var(--gold)]/70" />
               </>
-            ) : null}
+            ) : (
+              <span className="h-px w-10 bg-[var(--gold)]/70" />
+            )}
               <span>{slide.eyebrow}</span>
             </div>
             <h1 key={slide.title} className="mt-6 max-w-2xl font-display text-4xl leading-[0.96] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">

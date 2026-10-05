@@ -117,6 +117,8 @@ export default function PropertyListing() {
   const [location, setLocation] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [status, setStatus] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
   const [sort, setSort] = useState<'latest' | 'price_asc' | 'price_desc'>('latest');
   const [page, setPage] = useState(1);
   const [properties, setProperties] = useState<ApiProperty[]>([]);
@@ -132,6 +134,8 @@ export default function PropertyListing() {
     if (location.trim()) params.set('location', location.trim());
     if (propertyType) params.set('propertyType', propertyType);
     if (status) params.set('status', status);
+    if (/^\d+(\.\d+)?$/.test(priceMin.trim())) params.set('priceMin', priceMin.trim());
+    if (/^\d+(\.\d+)?$/.test(priceMax.trim())) params.set('priceMax', priceMax.trim());
 
     setLoading(true);
     setError(null);
@@ -164,24 +168,33 @@ export default function PropertyListing() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [location, page, propertyType, requestVersion, sort, status]);
+  }, [location, page, priceMax, priceMin, propertyType, requestVersion, sort, status]);
 
   const resetFilters = () => {
     setLocation('');
     setPropertyType('');
     setStatus('');
+    setPriceMin('');
+    setPriceMax('');
     setSort('latest');
     setPage(1);
   };
 
-  const hasActiveFilters = Boolean(location || propertyType || status);
+  const hasActiveFilters = Boolean(location.trim() || propertyType || status || priceMin.trim() || priceMax.trim());
 
   return (
     <section className="bg-[var(--cream)] py-12 sm:py-16" data-reveal>
       <div className="container-xl">
-        <div className="mb-5 flex items-end justify-between gap-4">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
           <h2 className="font-display text-3xl text-[var(--viridian-950)] sm:text-4xl">Browse opportunities</h2>
-          <span className="text-xs text-[var(--muted)]">{total} listed</span>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-[var(--muted)]">{total} listed</span>
+            {hasActiveFilters && !loading && !error && (
+              <button type="button" onClick={resetFilters} className="touch-press inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
+                <RotateCcw className="h-4 w-4" /> Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-3 border-y border-[var(--viridian-950)]/15 py-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -211,6 +224,31 @@ export default function PropertyListing() {
               <option value="price_desc">Price: high to low</option>
             </select>
           </label>
+          <div className="min-w-0 text-xs font-medium text-[var(--muted)] sm:col-span-2">
+            <span className="mb-1.5 block">Budget</span>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                value={priceMin}
+                onChange={(event) => { setPriceMin(event.target.value); setPage(1); }}
+                className={fieldClassName}
+                placeholder="Min"
+                aria-label="Minimum budget"
+              />
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                value={priceMax}
+                onChange={(event) => { setPriceMax(event.target.value); setPage(1); }}
+                className={fieldClassName}
+                placeholder="Max"
+                aria-label="Maximum budget"
+              />
+            </div>
+          </div>
         </div>
 
         {loading ? (

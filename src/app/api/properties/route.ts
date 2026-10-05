@@ -4,10 +4,14 @@ import { propertyStatuses, propertyTypes } from '@/lib/db/types';
 import { formatNumericValue } from '@/lib/db/numeric';
 import { listPublicProperties } from '@/lib/db/queries/properties';
 
+const pricePattern = /^\d+(\.\d+)?$/;
+
 const propertyQuerySchema = z.object({
   location: z.string().trim().min(1).max(255).optional(),
   propertyType: z.enum(propertyTypes).optional(),
   status: z.enum(propertyStatuses).optional(),
+  priceMin: z.string().regex(pricePattern).optional(),
+  priceMax: z.string().regex(pricePattern).optional(),
   sort: z.enum(['latest', 'price_asc', 'price_desc']).default('latest'),
   page: z.string().regex(/^[1-9]\d*$/).default('1'),
   limit: z.string().regex(/^[1-9]\d*$/).default('12'),
@@ -21,6 +25,8 @@ export async function GET(request: Request) {
     location: searchParams.get('location') ?? undefined,
     propertyType: searchParams.get('propertyType') ?? undefined,
     status: searchParams.get('status') ?? undefined,
+    priceMin: searchParams.get('priceMin') ?? undefined,
+    priceMax: searchParams.get('priceMax') ?? undefined,
     sort: searchParams.get('sort') ?? undefined,
     page: searchParams.get('page') ?? undefined,
     limit: searchParams.get('limit') ?? undefined,
@@ -32,16 +38,20 @@ export async function GET(request: Request) {
       ? 'Invalid property type.'
       : field === 'status'
         ? 'Invalid property status.'
-        : field === 'sort'
-          ? 'Invalid sort order.'
-          : field === 'page' || field === 'limit'
-            ? 'Invalid pagination values.'
-            : 'Invalid location filter.';
+        : field === 'priceMin' || field === 'priceMax'
+          ? 'Invalid price filter.'
+          : field === 'sort'
+            ? 'Invalid sort order.'
+            : field === 'page' || field === 'limit'
+              ? 'Invalid pagination values.'
+              : 'Invalid location filter.';
 
     return NextResponse.json({ success: false, error }, { status: 400 });
   }
 
   const { location, propertyType, status, sort } = parsed.data;
+  const priceMin = parsed.data.priceMin !== undefined ? Number(parsed.data.priceMin) : undefined;
+  const priceMax = parsed.data.priceMax !== undefined ? Number(parsed.data.priceMax) : undefined;
   const page = Number(parsed.data.page);
   const limit = Number(parsed.data.limit);
   const skip = (page - 1) * limit;
@@ -58,6 +68,8 @@ export async function GET(request: Request) {
       location,
       propertyType,
       status,
+      priceMin,
+      priceMax,
       sort,
       limit,
       offset: skip,

@@ -8,7 +8,7 @@ export const propertyStatuses = ['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'LEASED', '
 export const representationTypes = ['CHANNEL_PARTNER', 'AUTHORIZED_REPRESENTATIVE', 'OTHER'] as const;
 export const priceModes = ['EXACT', 'STARTING_FROM', 'ON_REQUEST'] as const;
 export const plotSizeUnits = ['SQFT', 'SQM', 'ACRE', 'HECTARE'] as const;
-export const enquiryStatuses = ['NEW', 'CONTACTED', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED'] as const;
+export const enquiryStatuses = ['NEW', 'CONTACTED', 'IN_DISCUSSION', 'CONVERTED', 'CLOSED'] as const;
 
 export type AdminRole = typeof adminRoles[number];
 export type PublicationStatus = typeof publicationStatuses[number];

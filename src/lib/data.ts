@@ -41,7 +41,7 @@ export const heroSlides = [
   { eyebrow:'REAL ESTATE', title:'Find the right space. Make the right move.', body:'Property opportunities for buyers, sellers and partners, supported by JLUXE’s real estate network.', cta:'Explore Real Estate', href:'/services/real-estate', theme:'land', backgroundImage:'/assets/images/real-estate.png' },
   { eyebrow:'BUSINESS SOLUTIONS', title:'Ideas that move business forward.', body:'Marketing, branding, lead generation, sales and business development solutions built around real requirements.', cta:'Explore Business Solutions', href:'/services/business-solutions', theme:'business', backgroundImage:'/assets/images/business-solutions.png' },
   { eyebrow:'RECRUITMENT & TRAINING', title:'Connecting talent with opportunity.', body:'Recruitment, staffing, corporate training, college training and career counselling.', cta:'Explore Recruitment & Training', href:'/services/talent-training', theme:'training', backgroundImage:'/assets/images/talent-training.png' },
-  { eyebrow:'INTERIORS & DESIGN', title:'Spaces designed around you.', body:'Interior designing focused on creating functional, thoughtful and distinctive spaces.', cta:'Explore Interiors & Designs', href:'/contact', theme:'interior', backgroundImage:'/assets/images/interiors-designs.png' },
+  { eyebrow:'INTERIORS & DESIGN', title:'Spaces designed around you.', body:'Interior designing focused on creating functional, thoughtful and distinctive spaces.', cta:'Explore Interiors & Design', href:'/services/interiors-design', theme:'interior', backgroundImage:'/assets/images/interiors-designs.png' },
 ];
 
 export const realEstateCapabilities = [

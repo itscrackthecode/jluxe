@@ -37,6 +37,8 @@ export async function listPublicProperties(filters: {
   location?: string;
   propertyType?: PropertyType;
   status?: PropertyStatus;
+  priceMin?: number;
+  priceMax?: number;
   sort: PropertySort;
   limit: number;
   offset: number;
@@ -45,12 +47,16 @@ export async function listPublicProperties(filters: {
     filters.location ? escapeLikeValue(filters.location) : null,
     filters.propertyType ?? null,
     filters.status ?? null,
+    filters.priceMin ?? null,
+    filters.priceMax ?? null,
   ];
   const conditions = `
     "publicationStatus" = 'PUBLISHED'
     AND ($1::text IS NULL OR "location" ILIKE '%' || $1 || '%' ESCAPE E'\\\\')
     AND ($2::"PropertyType" IS NULL OR "propertyType" = $2::"PropertyType")
-    AND ($3::"PropertyStatus" IS NULL OR "status" = $3::"PropertyStatus")`;
+    AND ($3::"PropertyStatus" IS NULL OR "status" = $3::"PropertyStatus")
+    AND ($4::numeric IS NULL OR "priceAmount" >= $4)
+    AND ($5::numeric IS NULL OR "priceAmount" <= $5)`;
   const orderBy: Record<PropertySort, string> = {
     latest: '"createdAt" DESC, "id" DESC',
     price_asc: '"priceAmount" ASC NULLS LAST, "id" ASC',
@@ -66,7 +72,7 @@ export async function listPublicProperties(filters: {
               TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'),
                 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
        FROM "Property" WHERE ${conditions}
-       ORDER BY ${orderBy[filters.sort]} LIMIT $4 OFFSET $5`,
+       ORDER BY ${orderBy[filters.sort]} LIMIT $6 OFFSET $7`,
       [...values, filters.limit, filters.offset],
     ),
   ]);
