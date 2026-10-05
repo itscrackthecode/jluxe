@@ -17,7 +17,8 @@ export default function HeroCarousel() {
   const [isPaused, setIsPaused] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const slide = heroSlides[index];
-
+  const displayIndex = index === 0 ? null : index;
+  const displayNumber = displayIndex === null ? null : String(displayIndex).padStart(2, '0');
   useEffect(() => {
     if (isPaused) return undefined;
 
@@ -78,8 +79,12 @@ export default function HeroCarousel() {
         <div className="flex max-w-3xl items-start gap-4 pb-8">
           <div key={slide.title} className="hero-copy flex-1">
             <div className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.28em] text-[var(--gold)]">
-              <span>{String(index + 1).padStart(2, '0')}</span>
+            {displayNumber ? (
+              <>
+              <span>{displayNumber}</span>
               <span className="h-px w-16 bg-[var(--gold)]/70" />
+              </>
+            ) : null}
               <span>{slide.eyebrow}</span>
             </div>
             <h1 key={slide.title} className="mt-6 max-w-2xl font-display text-4xl leading-[0.96] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
@@ -97,9 +102,6 @@ export default function HeroCarousel() {
 
         <div className="mt-8 flex items-center justify-between gap-4 border-t border-white/15 pt-6">
           <div className="flex w-full items-center gap-3">
-            <span className="text-[11px] font-semibold tracking-[0.26em] text-[var(--gold)]">
-              {String(index + 1).padStart(2, '0')}
-            </span>
             <div className="relative flex w-full max-w-[220px] items-center gap-1 overflow-hidden rounded-full">
               <div className="h-px w-full bg-white/20" />
               <div
@@ -107,9 +109,6 @@ export default function HeroCarousel() {
                 style={{ width: `${((index + 1) / heroSlides.length) * 100}%` }}
               />
             </div>
-            <span className="text-[11px] font-semibold tracking-[0.26em] text-white/70">
-              {String(heroSlides.length).padStart(2, '0')}
-            </span>
           </div>
 
           <div className="flex items-center gap-2">
