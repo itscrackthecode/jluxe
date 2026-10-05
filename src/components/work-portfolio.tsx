@@ -85,10 +85,10 @@ export default function WorkPortfolio() {
 
   if (!loading && error) {
     return (
-      <section className="py-16 sm:py-20 lg:py-24">
+      <section className="py-16 sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl border-y border-[var(--viridian-950)]/15 py-12 sm:py-16">
           <p role="alert" className="text-sm text-[var(--muted)]">We couldn’t load selected work right now. Please try again.</p>
-          <button type="button" onClick={() => setRequestVersion((version) => version + 1)} className="mt-6 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
+          <button type="button" onClick={() => setRequestVersion((version) => version + 1)} className="touch-press mt-6 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
             <RotateCcw className="h-4 w-4" /> Try again
           </button>
         </div>
@@ -98,7 +98,7 @@ export default function WorkPortfolio() {
 
   if (!loading && items.length === 0 && !activeService) {
     return (
-      <section className="py-16 sm:py-20 lg:py-24">
+      <section className="py-16 sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl">
           <div className="relative overflow-hidden border-y border-[var(--viridian-950)]/15 py-12 sm:py-16">
             <div aria-hidden="true" className="absolute bottom-0 right-0 top-0 hidden w-1/3 border-l border-[var(--viridian-950)]/10 md:block" />
@@ -107,7 +107,7 @@ export default function WorkPortfolio() {
               <h2 className="mt-5 font-display text-3xl leading-tight text-[var(--viridian-950)] sm:text-4xl">
                 Selected work will appear here as JLUXE projects and engagements are added.
               </h2>
-              <Link href={siteConfig.nav.contact} className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
+              <Link href={siteConfig.nav.contact} className="touch-press mt-7 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
                 Let&apos;s Talk <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -118,7 +118,7 @@ export default function WorkPortfolio() {
   }
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24">
+    <section className="py-16 sm:py-20 lg:py-24" data-reveal>
       <div className="container-xl">
         <div className="flex flex-col gap-5 border-b border-[var(--viridian-950)]/15 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -136,7 +136,7 @@ export default function WorkPortfolio() {
                   type="button"
                   aria-pressed={activeService === service.slug}
                   onClick={() => { setActiveService(service.slug); setPage(1); }}
-                  className={`min-h-10 border px-3 py-2 text-xs font-medium transition-colors ${activeService === service.slug ? 'border-[var(--viridian-900)] bg-[var(--viridian-900)] text-white' : 'border-[var(--viridian-950)]/15 text-[var(--viridian-950)] hover:border-[var(--gold)]'}`}
+                  className={`touch-press min-h-11 border px-3 py-2 text-xs font-medium transition-colors ${activeService === service.slug ? 'border-[var(--viridian-900)] bg-[var(--viridian-900)] text-white' : 'border-[var(--viridian-950)]/15 text-[var(--viridian-950)] hover:border-[var(--gold)]'}`}
                 >
                   {service.title}
                 </button>
@@ -148,9 +148,9 @@ export default function WorkPortfolio() {
         {loading ? (
           <p role="status" className="mt-8 border-y border-[var(--viridian-950)]/15 py-8 text-sm text-[var(--muted)]">Loading selected work...</p>
         ) : items.length > 0 ? (
-          <div className="mt-8 grid gap-8 md:grid-cols-2">
+          <div className="mt-8 grid gap-8 md:grid-cols-2" data-reveal-stagger>
             {items.map((item) => (
-              <article key={item.id} className={`premium-card min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
+              <article key={item.id} data-reveal className={`premium-card min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
                 <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
                   <img src={getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
                 </div>
@@ -168,7 +168,7 @@ export default function WorkPortfolio() {
         ) : (
           <div className="mt-8 border-b border-[var(--viridian-950)]/15 py-10">
             <p className="text-sm text-[var(--muted)]">No published work is available for this service.</p>
-            <button type="button" onClick={resetService} className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
+            <button type="button" onClick={resetService} className="touch-press mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
               View all work <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -176,9 +176,9 @@ export default function WorkPortfolio() {
 
         {!loading && !error && totalPages > 1 && (
           <nav aria-label="Portfolio pages" className="mt-8 flex items-center justify-between border-b border-[var(--viridian-950)]/15 pb-5">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="min-h-10 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="touch-press min-h-10 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
             <span className="text-xs text-[var(--muted)]">Page {page} of {totalPages}</span>
-            <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="min-h-10 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+            <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="touch-press min-h-10 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">Next</button>
           </nav>
         )}
       </div>

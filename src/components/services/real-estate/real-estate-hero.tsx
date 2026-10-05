@@ -2,14 +2,16 @@ import JluxeCtaLink from '@/components/jluxe-cta-link';
 
 export default function RealEstateHero() {
   return (
-    <section
-      className="relative isolate min-h-[620px] overflow-hidden bg-[var(--viridian-950)] text-white sm:min-h-[680px]"
-      style={{ backgroundImage: "url('/assets/images/real-estate.png')", backgroundPosition: 'center', backgroundSize: 'cover' }}
-    >
+    <section className="hero-viewport relative isolate min-h-[620px] overflow-hidden bg-[var(--viridian-950)] text-white sm:min-h-[680px]">
+      <div
+        aria-hidden="true"
+        className="hero-media"
+        style={{ backgroundImage: "url('/assets/images/real-estate.png')" }}
+      />
       <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(6,47,41,0.96)_0%,rgba(6,47,41,0.82)_42%,rgba(6,47,41,0.52)_74%,rgba(6,47,41,0.34)_100%)]" />
       <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_28%,rgba(3,25,21,0.42)_100%)]" />
-      <div className="container-xl relative z-10 flex min-h-[620px] items-center py-20 sm:min-h-[680px] lg:py-24">
-        <div className="relative z-10 max-w-2xl">
+      <div className="hero-viewport-inner container-xl relative z-10 flex min-h-[620px] items-center py-20 sm:min-h-[680px] lg:py-24">
+        <div className="hero-copy relative z-10 max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.24em] text-[var(--gold)]">REAL ESTATE</p>
           <h1 className="mt-6 font-display text-5xl leading-[1.04] sm:text-6xl lg:text-7xl">
             Find the right space.<br />Make the right move.

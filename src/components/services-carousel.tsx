@@ -6,7 +6,7 @@ const icons = [House, BriefcaseBusiness, GraduationCap, Building2, ShoppingBag];
 
 export default function ServicesCarousel() {
   return (
-    <section id="services" className="bg-[var(--cream)] py-24">
+    <section id="services" className="bg-[var(--cream)] py-24" data-reveal>
       <div className="container-xl">
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
           <div>
@@ -20,7 +20,7 @@ export default function ServicesCarousel() {
           </p>
         </div>
 
-        <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4" data-reveal-stagger>
           {services.slice(0, 4).map((s, i) => {
             const Icon = icons[i];
 
@@ -28,6 +28,7 @@ export default function ServicesCarousel() {
               <a
                 key={s.title}
                 href={s.href}
+                data-reveal
                 className="premium-card group relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,58,51,0.94),rgba(6,47,41,0.96))] p-7 text-white shadow-[0_20px_40px_rgba(6,47,41,0.12)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(197,164,109,0.18),transparent_28%),radial-gradient(circle_at_15%_90%,rgba(255,255,255,0.05),transparent_35%)]" />

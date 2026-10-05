@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { services, siteConfig } from '@/lib/data';
+import MobileReveal from '@/components/mobile-reveal';
 
 const isPlaceholderContact = (value: string) => /your-|000000|\.example/.test(value);
 
@@ -68,11 +69,30 @@ export default function SiteHeader() {
     };
   }, [mobileOpen, openDropdown]);
 
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => {
+      if (media.matches) setMobileOpen(false);
+    };
+    media.addEventListener('change', closeOnDesktop);
+    return () => media.removeEventListener('change', closeOnDesktop);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-black/5 bg-[var(--cream)]/90 backdrop-blur-sm">
+    <header className="site-header sticky top-0 z-50 border-b border-black/5 bg-[var(--cream)]/90 backdrop-blur-sm">
+      <MobileReveal />
       <div className="container-xl relative" ref={ref}>
         <div className="flex h-20 items-center justify-between gap-4">
-          <Link href="/" className="font-display text-3xl tracking-tight text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">
+          <Link href="/" className="touch-press font-display text-3xl tracking-tight text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">
             {siteConfig.brand}
           </Link>
 
@@ -164,46 +184,54 @@ export default function SiteHeader() {
             aria-label="Toggle navigation"
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)] md:hidden"
+            className="touch-press relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)] md:hidden"
             onClick={() => setMobileOpen((current) => !current)}
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <span className="relative h-5 w-5">
+              <Menu className={`absolute inset-0 h-5 w-5 transition-transform duration-300 ease-out ${mobileOpen ? 'rotate-90 opacity-0' : 'opacity-100'}`} />
+              <X className={`absolute inset-0 h-5 w-5 transition-transform duration-300 ease-out ${mobileOpen ? 'opacity-100' : '-rotate-90 opacity-0'}`} />
+            </span>
           </button>
         </div>
 
-        {mobileOpen && (
-          <nav id="mobile-navigation" className="border-t border-black/5 bg-[var(--cream)] py-4 md:hidden">
-            <div className="flex flex-col gap-3 text-sm font-medium text-[var(--viridian-950)]">
-              <Link href={siteConfig.nav.about} className="flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>About</Link>
+        <div className={`grid md:hidden ${mobileOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'} transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none`}>
+          <nav
+            id="mobile-navigation"
+            className={`overflow-hidden border-t bg-[var(--cream)] ${mobileOpen ? 'border-black/5' : 'border-transparent'}`}
+            aria-hidden={!mobileOpen}
+            inert={!mobileOpen}
+          >
+            <div className={`flex max-h-[calc(100dvh-5.5rem-env(safe-area-inset-top,0px))] flex-col gap-3 overflow-y-auto py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-sm font-medium text-[var(--viridian-950)] transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0'}`}>
+              <Link href={siteConfig.nav.about} className="mobile-nav-link touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>About</Link>
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
                 <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Our Services</p>
                 <div className="grid gap-2">
                   {services.map((service) => (
-                    <Link key={service.title} href={service.href} className="flex min-h-11 items-center text-sm text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+                    <Link key={service.title} href={service.href} className="mobile-nav-link touch-press flex min-h-11 items-center text-sm text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
                       {service.title}
                     </Link>
                   ))}
                 </div>
               </div>
-              <Link href={siteConfig.nav.work} className="flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>Our Work</Link>
+              <Link href={siteConfig.nav.work} className="mobile-nav-link touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>Our Work</Link>
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
                 <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Contact</p>
                 <div className="grid gap-2 text-sm">
                   {contactItems.map(({ label, href, icon: Icon }) => (
-                    <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} className="flex min-h-11 items-center gap-2 text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+                    <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} className="mobile-nav-link touch-press flex min-h-11 items-center gap-2 text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
                       <Icon className="h-4 w-4 text-[var(--gold)]" />
                       <span>{label}</span>
                     </a>
                   ))}
                 </div>
               </div>
-              <Link href={siteConfig.nav.contact} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+              <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
                 Let&apos;s Talk
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>
           </nav>
-        )}
+        </div>
       </div>
     </header>
   );

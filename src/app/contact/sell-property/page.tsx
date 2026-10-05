@@ -13,7 +13,7 @@ export default function SellPropertyPage() {
     <main className="bg-[var(--cream)] text-[var(--viridian-950)]">
       <SiteHeader />
       <section className="bg-[var(--viridian-950)] py-16 text-white sm:py-20 lg:py-24">
-        <div className="container-xl">
+        <div className="hero-copy container-xl">
           <p className="text-xs font-semibold tracking-[0.24em] text-[var(--gold)]">LOOKING TO SELL?</p>
           <h1 className="mt-5 max-w-3xl font-display text-4xl leading-tight sm:text-5xl lg:text-6xl">Share a property opportunity with JLUXE.</h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-white/70 sm:text-lg sm:leading-8">
@@ -21,7 +21,7 @@ export default function SellPropertyPage() {
           </p>
         </div>
       </section>
-      <section className="py-14 sm:py-18 lg:py-20">
+      <section className="py-14 sm:py-18 lg:py-20" data-reveal>
         <div className="container-xl grid gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:items-start lg:gap-16">
           <aside className="max-w-md">
             <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY SUBMISSION</p>

@@ -58,7 +58,7 @@ export default function HeroCarousel() {
     <section
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="relative min-h-[640px] overflow-hidden text-white sm:min-h-[720px]"
+      className="hero-viewport relative min-h-[640px] overflow-hidden text-white sm:min-h-[720px]"
       style={{ background: themes[slide.theme] }}
     >
       <div
@@ -74,9 +74,9 @@ export default function HeroCarousel() {
       <div className="absolute -right-24 top-20 h-[420px] w-[420px] rounded-full border border-white/10" />
       <div className="absolute right-[8%] top-[22%] hidden h-48 w-48 rounded-full border border-[var(--gold)]/30 lg:block" />
 
-      <div className="container-xl relative z-10 flex min-h-[640px] flex-col justify-end py-16 sm:min-h-[720px]">
+      <div className="hero-viewport-inner container-xl relative z-10 flex min-h-[640px] flex-col justify-end py-16 sm:min-h-[720px]">
         <div className="flex max-w-3xl items-start gap-4 pb-8">
-          <div className="flex-1">
+          <div key={slide.title} className="hero-copy flex-1">
             <div className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.28em] text-[var(--gold)]">
               <span>{String(index + 1).padStart(2, '0')}</span>
               <span className="h-px w-16 bg-[var(--gold)]/70" />
@@ -117,14 +117,14 @@ export default function HeroCarousel() {
               type="button"
               onClick={() => setIsPaused((current) => !current)}
               aria-label={isPaused ? 'Resume carousel' : 'Pause carousel'}
-              className="rounded-full border border-white/20 bg-white/5 p-3 text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+              className="touch-press rounded-full border border-white/20 bg-white/5 p-3 text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
             >
               {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </button>
-            <button type="button" onClick={() => move(-1)} aria-label="Previous slide" className="rounded-full border border-white/20 p-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
+            <button type="button" onClick={() => move(-1)} aria-label="Previous slide" className="touch-press rounded-full border border-white/20 p-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <button type="button" onClick={() => move(1)} aria-label="Next slide" className="rounded-full border border-white/20 p-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
+            <button type="button" onClick={() => move(1)} aria-label="Next slide" className="touch-press rounded-full border border-white/20 p-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

@@ -156,8 +156,8 @@ export default function PropertyDetail({ slug }: { slug: string }) {
   return (
     <>
       <section className="bg-[var(--viridian-950)] py-14 text-white sm:py-18">
-        <div className="container-xl">
-          <Link href="/properties" className="inline-flex min-h-11 items-center gap-2 text-sm text-white/70 transition-colors hover:text-white">
+        <div className="hero-copy container-xl">
+          <Link href="/properties" className="touch-press inline-flex min-h-11 items-center gap-2 text-sm text-white/70 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Property opportunities
           </Link>
           <div className="mt-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -170,7 +170,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
         </div>
       </section>
 
-      <section aria-label="Property images" className="bg-[var(--cream)] py-6 sm:py-8">
+      <section aria-label="Property images" className="bg-[var(--cream)] py-6 sm:py-8" data-reveal>
         <div className="container-xl grid gap-3 sm:grid-cols-2">
           {property.images.length > 0 ? property.images.map((image) => (
             <div key={image.id} className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)]">
@@ -184,7 +184,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
         </div>
       </section>
 
-      <section className="py-12 sm:py-16">
+      <section className="py-12 sm:py-16" data-reveal>
         <div className="container-xl grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
           <div>
             {property.description && (
@@ -207,11 +207,11 @@ export default function PropertyDetail({ slug }: { slug: string }) {
           <aside className="h-fit border-t border-[var(--viridian-950)]/15 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
             <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">ENQUIRY</p>
             <h2 className="mt-3 font-display text-3xl">Interested in this property?</h2>
-            <Link href={contactHref} className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+            <Link href={contactHref} className="touch-press mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
               Contact JLUXE <ArrowRight className="h-4 w-4" />
             </Link>
             {hasWhatsApp && (
-              <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
+              <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
                 <MessageCircle className="h-4 w-4" /> WhatsApp
               </a>
             )}

@@ -85,7 +85,7 @@ export default function SellPropertyForm() {
     }
   };
 
-  const inputClass = 'w-full rounded-2xl border border-black/10 bg-[var(--cream)] px-4 py-3 text-[15px] text-[var(--viridian-950)] outline-none transition focus:border-[var(--gold)]';
+  const inputClass = 'min-h-11 w-full rounded-2xl border border-black/10 bg-[var(--cream)] px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px]';
 
   return (
     <div className="rounded-[28px] bg-white p-6 shadow-[0_18px_55px_rgba(6,47,41,0.08)] sm:p-8">
@@ -148,11 +148,11 @@ export default function SellPropertyForm() {
         <p className="text-sm leading-6 text-[var(--muted)]">Property media is optional and can be shared later if required.</p>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <button type="submit" disabled={status === 'submitting'} className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-70">
+          <button type="submit" disabled={status === 'submitting'} className="touch-press inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-70">
             {status === 'submitting' ? <><Loader2 className="h-4 w-4 animate-spin" />Submitting...</> : <>Submit Property Details<ArrowRight className="h-4 w-4" /></>}
           </button>
-          {status === 'success' && <div role="status" aria-live="polite" className="flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]"><CheckCircle2 className="h-4 w-4" />Your property enquiry has been received.</div>}
-          {status === 'error' && <p role="alert" className="border-l-2 border-red-600 bg-[var(--cream)] px-3 py-2 text-sm text-red-700">{error}</p>}
+          {status === 'success' && <div role="status" aria-live="polite" className="form-status flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]"><CheckCircle2 className="h-4 w-4" />Your property enquiry has been received.</div>}
+          {status === 'error' && <p role="alert" className="form-status border-l-2 border-red-600 bg-[var(--cream)] px-3 py-2 text-sm text-red-700">{error}</p>}
         </div>
       </form>
     </div>

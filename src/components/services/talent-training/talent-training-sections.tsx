@@ -26,7 +26,7 @@ const pillars = [
 
 export function TalentTrainingServices() {
   return (
-    <section className="bg-[var(--viridian-950)] py-20 text-white sm:py-24">
+    <section className="bg-[var(--viridian-950)] py-20 text-white sm:py-24" data-reveal>
       <div className="container-xl">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
@@ -34,12 +34,12 @@ export function TalentTrainingServices() {
             <h2 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">What We Offer</h2>
           </div>
         </div>
-        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+        <div className="mt-10 grid gap-4 lg:grid-cols-3" data-reveal-stagger>
           {pillars.map((pillar) => {
             const Icon = pillar.icon;
 
             return (
-              <article key={pillar.number} className="premium-card min-w-0 bg-[var(--viridian-950)] p-6 sm:p-7">
+              <article key={pillar.number} data-reveal className="premium-card min-w-0 bg-[var(--viridian-950)] p-6 sm:p-7">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{pillar.number}</span>
                   <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />

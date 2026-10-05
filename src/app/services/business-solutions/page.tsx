@@ -30,7 +30,7 @@ export default function BusinessSolutionsPage() {
       <BusinessSolutionsHero />
       <BusinessSolutionsServices />
       <FaqSection eyebrow="BUSINESS SOLUTIONS FAQ" title="Questions, answered clearly." items={businessSolutionsFaq} />
-      <section className="bg-[var(--sand)]/35 py-14 sm:py-16">
+      <section className="bg-[var(--sand)]/35 py-14 sm:py-16" data-reveal>
         <div className="container-xl flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-semibold tracking-[0.22em] text-[var(--gold)]">DIRECT CONTACT</p>
@@ -38,10 +38,10 @@ export default function BusinessSolutionsPage() {
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Talk to us directly through the configured JLUXE channels.</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm font-semibold text-[var(--viridian-950)]">
-            <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
+            <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
               <MessageCircle className="h-4 w-4 text-[var(--gold)]" /> WhatsApp
             </a>
-            <a href={siteConfig.contact.instagram} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
+            <a href={siteConfig.contact.instagram} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
               <Instagram className="h-4 w-4 text-[var(--gold)]" /> Instagram
             </a>
           </div>

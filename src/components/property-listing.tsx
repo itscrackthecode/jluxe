@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
 import { getFallbackImage } from '@/lib/media';
 
-const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)]';
+const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-base text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)] md:text-sm';
 const pageSize = 12;
 const propertyTypes = ['PLOT', 'VILLA', 'APARTMENT', 'COMMERCIAL', 'LAND', 'OTHER'];
 const statusOptions = ['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'LEASED', 'WITHDRAWN'];
@@ -79,7 +79,7 @@ function PropertyCard({ property }: { property: ApiProperty }) {
   const plotSize = formatPlotSize(property);
 
   return (
-    <article className="premium-card min-w-0 border-b border-[var(--viridian-950)]/15 pb-6">
+    <article data-reveal className="premium-card min-w-0 border-b border-[var(--viridian-950)]/15 pb-6">
       <div className="premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
         <img src={getFallbackImage('property')} alt="JLUXE property placeholder" className="h-full w-full object-cover" />
       </div>
@@ -106,7 +106,7 @@ function PropertyCard({ property }: { property: ApiProperty }) {
           )}
         </dl>
       )}
-      <Link href={`/properties/${property.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
+      <Link href={`/properties/${property.slug}`} className="touch-press mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
         View Property <ArrowRight className="h-4 w-4" />
       </Link>
     </article>
@@ -177,7 +177,7 @@ export default function PropertyListing() {
   const hasActiveFilters = Boolean(location || propertyType || status);
 
   return (
-    <section className="bg-[var(--cream)] py-12 sm:py-16">
+    <section className="bg-[var(--cream)] py-12 sm:py-16" data-reveal>
       <div className="container-xl">
         <div className="mb-5 flex items-end justify-between gap-4">
           <h2 className="font-display text-3xl text-[var(--viridian-950)] sm:text-4xl">Browse opportunities</h2>
@@ -218,18 +218,18 @@ export default function PropertyListing() {
         ) : error ? (
           <div role="alert" className="mt-8 border-y border-[var(--viridian-950)]/15 py-8">
             <p className="text-sm text-[var(--muted)]">{error}</p>
-            <button type="button" onClick={() => setRequestVersion((version) => version + 1)} className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
+            <button type="button" onClick={() => setRequestVersion((version) => version + 1)} className="touch-press mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
               <RotateCcw className="h-4 w-4" /> Try again
             </button>
           </div>
         ) : properties.length > 0 ? (
-          <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3" data-reveal-stagger>
             {properties.map((property) => <PropertyCard key={property.id} property={property} />)}
           </div>
         ) : hasActiveFilters ? (
           <div className="mt-8 flex flex-col items-start gap-4 border-b border-[var(--viridian-950)]/15 py-10 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-[var(--muted)]">No property opportunities match these filters.</p>
-            <button type="button" onClick={resetFilters} className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
+            <button type="button" onClick={resetFilters} className="touch-press inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
               <RotateCcw className="h-4 w-4" /> Clear filters
             </button>
           </div>
@@ -239,18 +239,18 @@ export default function PropertyListing() {
               <p className="font-display text-2xl text-[var(--viridian-950)] sm:text-3xl">No properties currently available.</p>
               <p className="mt-3 text-sm leading-6 text-[var(--muted)]">We&apos;re currently updating our available property opportunities. Looking for something specific? Talk to JLUXE.</p>
             </div>
-            <Link href={siteConfig.nav.contact} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+            <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
               Talk to JLUXE <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         )}
         {!loading && !error && totalPages > 1 && (
           <nav aria-label="Property pages" className="mt-8 flex items-center justify-between border-b border-[var(--viridian-950)]/15 pb-5">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="touch-press inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">
               <ArrowRight className="h-4 w-4 rotate-180" /> Previous
             </button>
             <span className="text-xs text-[var(--muted)]">Page {page} of {totalPages}</span>
-            <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="touch-press inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40">
               Next <ArrowRight className="h-4 w-4" />
             </button>
           </nav>

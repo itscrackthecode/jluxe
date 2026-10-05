@@ -6,17 +6,17 @@ const capabilityIcons = [Building2, Megaphone, Handshake, Landmark];
 
 export function RealEstateCapabilities() {
   return (
-    <section className="bg-[var(--viridian-950)] py-20 text-white sm:py-24">
+    <section className="bg-[var(--viridian-950)] py-20 text-white sm:py-24" data-reveal>
       <div className="container-xl">
         <div className="max-w-2xl">
           <h2 className="font-display text-4xl leading-tight sm:text-5xl">What We Offer</h2>
         </div>
-        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-reveal-stagger>
           {realEstateCapabilities.map((capability, index) => {
             const Icon = capabilityIcons[index];
 
             return (
-              <article key={capability.number} className="premium-card relative min-w-0 border border-white/15 bg-white/[0.035] p-6 sm:p-7">
+              <article key={capability.number} data-reveal className="premium-card relative min-w-0 border border-white/15 bg-white/[0.035] p-6 sm:p-7">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{capability.number}</span>
                   <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
@@ -34,7 +34,7 @@ export function RealEstateCapabilities() {
 
 export function PropertyOpportunities() {
   return (
-    <section id="opportunities" className="scroll-mt-24 bg-[var(--cream)] py-20 sm:py-24">
+    <section id="opportunities" className="scroll-mt-24 bg-[var(--cream)] py-20 sm:py-24" data-reveal>
       <div className="container-xl">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
@@ -49,7 +49,7 @@ export function PropertyOpportunities() {
         {realEstateOpportunities.length > 0 ? (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {realEstateOpportunities.map((opportunity) => (
-              <article key={opportunity.id} className="premium-card border border-black/10 bg-white p-6">
+              <article key={opportunity.id} data-reveal className="premium-card border border-black/10 bg-white p-6">
                 <h3 className="font-display text-2xl text-[var(--viridian-950)]">{opportunity.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{opportunity.summary}</p>
                 <JluxeCtaLink href={opportunity.href} className="mt-6">
@@ -75,7 +75,7 @@ export function PropertyOpportunities() {
 
 export function RealEstateFinalCta() {
   return (
-    <section className="bg-[var(--viridian-900)] py-16 text-white sm:py-20">
+    <section className="bg-[var(--viridian-900)] py-16 text-white sm:py-20" data-reveal>
       <div className="container-xl flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.22em] text-[var(--gold)]">LET&apos;S TALK REAL ESTATE</p>

@@ -98,11 +98,11 @@ export default function EnquiryForm() {
             <input
               {...register('name')}
               aria-invalid={Boolean(errors.name)}
-              className={`w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[15px] text-[var(--viridian-950)] outline-none transition focus:border-[var(--gold)] ${errors.name ? 'border-red-500' : 'border-black/10'}`}
+              className={`min-h-11 w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px] ${errors.name ? 'border-red-500' : 'border-black/10'}`}
               required
               placeholder="Your name"
             />
-            {errors.name && <span className="mt-2 block text-sm text-red-600">{errors.name.message}</span>}
+            {errors.name && <span className="form-status mt-2 block text-sm text-red-600">{errors.name.message}</span>}
           </label>
 
           <label className="block">
@@ -111,11 +111,11 @@ export default function EnquiryForm() {
               type="email"
               {...register('email')}
               aria-invalid={Boolean(errors.email)}
-              className={`w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[15px] text-[var(--viridian-950)] outline-none transition focus:border-[var(--gold)] ${errors.email ? 'border-red-500' : 'border-black/10'}`}
+              className={`min-h-11 w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px] ${errors.email ? 'border-red-500' : 'border-black/10'}`}
               required
               placeholder="you@example.com"
             />
-            {errors.email && <span className="mt-2 block text-sm text-red-600">{errors.email.message}</span>}
+            {errors.email && <span className="form-status mt-2 block text-sm text-red-600">{errors.email.message}</span>}
           </label>
         </div>
 
@@ -125,11 +125,11 @@ export default function EnquiryForm() {
             <input
               {...register('phone')}
               aria-invalid={Boolean(errors.phone)}
-              className={`w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[15px] text-[var(--viridian-950)] outline-none transition focus:border-[var(--gold)] ${errors.phone ? 'border-red-500' : 'border-black/10'}`}
+              className={`min-h-11 w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px] ${errors.phone ? 'border-red-500' : 'border-black/10'}`}
               required
               placeholder="+00 00000 00000"
             />
-            {errors.phone && <span className="mt-2 block text-sm text-red-600">{errors.phone.message}</span>}
+            {errors.phone && <span className="form-status mt-2 block text-sm text-red-600">{errors.phone.message}</span>}
           </label>
 
           <label className="block">
@@ -137,14 +137,14 @@ export default function EnquiryForm() {
             <select
               {...register('interest')}
               aria-invalid={Boolean(errors.interest)}
-              className={`w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[15px] text-[var(--viridian-950)] outline-none transition focus:border-[var(--gold)] ${errors.interest ? 'border-red-500' : 'border-black/10'}`}
+              className={`min-h-11 w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px] ${errors.interest ? 'border-red-500' : 'border-black/10'}`}
               required
             >
               {interestOptions.map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
-            {errors.interest && <span className="mt-2 block text-sm text-red-600">{errors.interest.message}</span>}
+            {errors.interest && <span className="form-status mt-2 block text-sm text-red-600">{errors.interest.message}</span>}
           </label>
         </div>
 
@@ -154,18 +154,18 @@ export default function EnquiryForm() {
             {...register('message')}
             aria-invalid={Boolean(errors.message)}
             rows={6}
-            className={`w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[15px] text-[var(--viridian-950)] outline-none transition focus:border-[var(--gold)] ${errors.message ? 'border-red-500' : 'border-black/10'}`}
+            className={`w-full rounded-2xl border bg-[var(--cream)] px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px] ${errors.message ? 'border-red-500' : 'border-black/10'}`}
             required
             placeholder="Tell us a little about what you have in mind..."
           />
-          {errors.message && <span className="mt-2 block text-sm text-red-600">{errors.message.message}</span>}
+          {errors.message && <span className="form-status mt-2 block text-sm text-red-600">{errors.message.message}</span>}
         </label>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-70"
+            className="touch-press inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? (
               <>
@@ -181,13 +181,13 @@ export default function EnquiryForm() {
           </button>
 
           {submissionState === 'success' && (
-            <div role="status" aria-live="polite" className="flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]">
+            <div role="status" aria-live="polite" className="form-status flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]">
               <CheckCircle2 className="h-4 w-4" />
               Your enquiry has been submitted successfully.
             </div>
           )}
           {submissionState === 'error' && (
-            <p role="alert" className="border-l-2 border-red-600 bg-[var(--cream)] px-3 py-2 text-sm text-red-700">{submissionError}</p>
+            <p role="alert" className="form-status border-l-2 border-red-600 bg-[var(--cream)] px-3 py-2 text-sm text-red-700">{submissionError}</p>
           )}
         </div>
       </form>
