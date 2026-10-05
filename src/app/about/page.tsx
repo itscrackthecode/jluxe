@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, MessageCircle } from 'lucide-react';
-import JluxeCtaLink from '@/components/jluxe-cta-link';
+import ManagingDirectorSlider from '@/components/managing-director-slider';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
 import { siteConfig } from '@/lib/data';
@@ -69,56 +69,7 @@ export default function AboutPage() {
     </div>
 
     {/* Leadership content */}
-    <div className="max-w-3xl">
-
-      <p className="text-xs font-semibold tracking-[0.22em] text-[var(--gold)]">
-        MEET OUR MANAGING DIRECTOR
-      </p>
-
-      <h2 className="mt-4 font-display text-4xl leading-tight text-[var(--viridian-950)] sm:text-5xl">
-        Sarvesh Karthik N
-      </h2>
-
-      <p className="mt-3 text-sm font-medium tracking-[0.08em] text-[var(--muted)]">
-        Managing Director — JLUXE
-      </p>
-
-      <p className="mt-7 max-w-2xl font-display text-2xl leading-tight text-[var(--viridian-900)] sm:text-3xl">
-        Building Businesses.
-        <br />
-        Developing People.
-        <br />
-        Creating Opportunities.
-      </p>
-
-      <div className="mt-7 max-w-2xl space-y-4 text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
-        <p>
-          Sarvesh Karthik N is a business professional and entrepreneur
-          with experience across Real Estate, Sales & Marketing, Business
-          Consulting, Recruitment, Training, Corporate Services and
-          Education-focused initiatives.
-        </p>
-
-        <p>
-          As the Managing Director of JLUXE, Sarvesh brings together his
-          experience in business development, customer engagement, sales,
-          people management and professional training to create an
-          integrated platform that connects properties, businesses,
-          professionals, institutions and opportunities.
-        </p>
-
-        <p>
-          His approach combines entrepreneurial thinking with hands-on
-          execution, with a focus on professionalism, transparency,
-          trusted relationships and sustainable growth.
-        </p>
-      </div>
-      <div className="mt-8">
-        <JluxeCtaLink href="/about/leadership">
-          Read His Story
-        </JluxeCtaLink>
-      </div>
-    </div>
+    <ManagingDirectorSlider />
   </div>
 </section>
       <section className="border-y border-[var(--viridian-950)]/10 bg-[var(--sand)]/35 py-16 sm:py-20" data-reveal>
