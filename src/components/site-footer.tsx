@@ -3,7 +3,7 @@ import { services, siteConfig } from '@/lib/data';
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-[var(--viridian-950)] py-12 text-white">
+    <footer className="bg-[var(--viridian-950)] pt-12 pb-[calc(3rem+env(safe-area-inset-bottom,0px))] text-white" data-reveal>
       <div className="container-xl grid gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
         <div>
           <div className="font-display text-3xl">{siteConfig.brand}</div>
@@ -14,17 +14,17 @@ export default function SiteFooter() {
         <div>
           <p className="text-sm font-semibold">Explore</p>
           <div className="mt-4 grid gap-3 text-sm text-white/55">
-            <Link href={siteConfig.nav.about} className="transition hover:text-white">About</Link>
-            <Link href="/#services" className="transition hover:text-white">Our Services</Link>
-            <Link href={siteConfig.nav.work} className="transition hover:text-white">Our Work</Link>
-            <Link href={siteConfig.nav.contact} className="transition hover:text-white">Contact</Link>
+            <Link href={siteConfig.nav.about} className="touch-press transition hover:text-white">About</Link>
+            <Link href="/#services" className="touch-press transition hover:text-white">Our Services</Link>
+            <Link href={siteConfig.nav.work} className="touch-press transition hover:text-white">Our Work</Link>
+            <Link href={siteConfig.nav.contact} className="touch-press transition hover:text-white">Contact</Link>
           </div>
         </div>
         <div>
           <p className="text-sm font-semibold">Our Services</p>
           <div className="mt-4 grid gap-3 text-sm text-white/55">
             {services.map((service) => (
-              <Link key={service.title} href={service.href} className="transition hover:text-white">
+              <Link key={service.title} href={service.href} className="touch-press transition hover:text-white">
                 {service.title}
               </Link>
             ))}
