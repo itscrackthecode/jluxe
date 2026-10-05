@@ -150,19 +150,24 @@ export default function WorkPortfolio() {
         ) : items.length > 0 ? (
           <div className="mt-8 grid gap-8 md:grid-cols-2" data-reveal-stagger>
             {items.map((item) => (
-              <article key={item.id} data-reveal className={`premium-card min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
-                <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
-                  <img src={getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)]">
-                  <span className="text-[var(--gold)]">{item.service.title}</span>
-                  {item.location && <span>{item.location}</span>}
-                  {item.year !== null && <span>{item.year}</span>}
-                  {item.featured && <span className="border-l border-[var(--viridian-950)]/20 pl-3">Featured</span>}
-                </div>
-                <h3 className="mt-3 font-display text-2xl text-[var(--viridian-950)] sm:text-3xl">{item.title}</h3>
-                {item.description && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{item.description}</p>}
-              </article>
+              <Link key={item.id} href={`/our-work/${item.slug}`} data-reveal className={`block min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
+                <article className="premium-card">
+                  <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
+                    <img src={getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)]">
+                    <span className="text-[var(--gold)]">{item.service.title}</span>
+                    {item.location && <span>{item.location}</span>}
+                    {item.year !== null && <span>{item.year}</span>}
+                    {item.featured && <span className="border-l border-[var(--viridian-950)]/20 pl-3">Featured</span>}
+                  </div>
+                  <h3 className="mt-3 font-display text-2xl text-[var(--viridian-950)] sm:text-3xl">{item.title}</h3>
+                  {item.description && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{item.description}</p>}
+                  <span className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)]">
+                    View work <ArrowRight className="h-4 w-4" />
+                  </span>
+                </article>
+              </Link>
             ))}
           </div>
         ) : (

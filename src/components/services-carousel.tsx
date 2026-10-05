@@ -5,12 +5,17 @@ import { services } from '@/lib/data';
 const icons = [House, BriefcaseBusiness, GraduationCap, Building2, ShoppingBag];
 
 export default function ServicesCarousel() {
+  const boutique = services[4];
+
   return (
     <section id="services" className="bg-[var(--cream)] py-24" data-reveal>
       <div className="container-xl">
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
           <div>
-            <p className="text-xs font-bold tracking-[.25em] text-[var(--gold)]">OUR SERVICES</p>
+            <div className="flex items-center gap-3">
+              <span aria-hidden="true" className="h-px w-10 bg-[var(--gold)]/60" />
+              <p className="text-xs font-bold tracking-[.25em] text-[var(--gold)]">OUR SERVICES</p>
+            </div>
             <h2 className="mt-3 max-w-2xl font-display text-4xl leading-tight text-[var(--viridian-950)] sm:text-5xl">
               Different capabilities.<br />One JLUXE.
             </h2>
@@ -54,6 +59,27 @@ export default function ServicesCarousel() {
             );
           })}
         </div>
+
+        <a
+          href={boutique.href}
+          data-reveal
+          className="group mt-5 flex flex-col gap-4 rounded-[28px] border border-dashed border-[var(--viridian-950)]/30 bg-white/40 px-7 py-6 transition-colors duration-300 hover:border-[var(--viridian-950)]/50 hover:bg-white sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-baseline gap-5 sm:items-center sm:gap-6">
+            <span className="font-display text-2xl leading-none text-[var(--viridian-950)]/35">{boutique.kicker}</span>
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-display text-2xl text-[var(--viridian-950)]">{boutique.title}</h3>
+                <span className="rounded-full border border-[var(--gold)]/50 px-3 py-1 text-[10px] font-semibold tracking-[0.18em] text-[var(--gold)]">COMING SOON</span>
+              </div>
+              <p className="mt-1.5 max-w-xl text-sm leading-6 text-[var(--muted)]">{boutique.description}</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--viridian-950)]">
+            Enquire
+            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
+        </a>
       </div>
     </section>
   );

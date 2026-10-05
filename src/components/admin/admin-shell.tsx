@@ -10,7 +10,6 @@ const sections = [
   { label: 'Our Work', href: '/admin/our-work' },
   { label: 'Enquiries', href: '/admin/enquiries' },
   { label: 'Media', href: '/admin/media' },
-  { label: 'Services', href: '/admin/services' },
 ] as const;
 
 export default function AdminShell({
@@ -19,7 +18,7 @@ export default function AdminShell({
   children,
 }: {
   admin: AdminUser;
-  active: 'Dashboard' | 'Enquiries' | 'Properties' | 'Services' | 'Our Work' | 'Media';
+  active: 'Dashboard' | 'Enquiries' | 'Properties' | 'Our Work' | 'Media';
   children: React.ReactNode;
 }) {
   return (

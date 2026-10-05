@@ -40,10 +40,9 @@ export default async function AdminDashboardPage() {
               <span className="text-sm font-medium">Open listings <span aria-hidden="true">&rarr;</span></span>
             </span>
           </Link>
-          <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-4">
+          <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
             {[
               ['Properties', counts.properties, '/admin/properties'],
-              ['Services', counts.services, '/admin/services'],
               ['Our Work', counts.portfolio, '/admin/our-work'],
               ['Enquiries', counts.enquiries, '/admin/enquiries'],
             ].map(([label, count, href]) => <Link key={label} href={href as string} className="border border-[var(--viridian-950)]/10 bg-white p-4 transition-colors hover:border-[var(--gold)]"><span className="text-[10px] font-semibold tracking-[0.16em] text-[var(--muted)]">{label}</span><span className="mt-2 block font-display text-3xl">{count}</span></Link>)}

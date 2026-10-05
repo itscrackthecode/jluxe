@@ -117,7 +117,7 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
         return;
       }
 
-      router.push(`/admin/properties/${result.data.id}`);
+      router.push('/admin/properties?saved=1');
       router.refresh();
     } catch {
       setError('Unable to save property right now. Please try again.');

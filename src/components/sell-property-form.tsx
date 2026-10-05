@@ -44,29 +44,20 @@ export default function SellPropertyForm() {
     setStatus('submitting');
     setError('');
 
-    const message = [
-      'Seller property submission',
-      '',
-      `Property type: ${formatLabel(values.propertyType)}`,
-      `Location: ${values.location.trim()}`,
-      `Starting price: ${values.startingPrice.trim()}`,
-      `Plot / land area: ${values.plotSize.trim() || 'Not provided'}`,
-      `Area unit: ${values.plotSizeUnit ? formatLabel(values.plotSizeUnit) : 'Not provided'}`,
-      '',
-      'Additional description:',
-      values.description.trim() || 'Not provided',
-    ].join('\n');
-
     try {
-      const response = await fetch('/api/enquiries', {
+      const response = await fetch('/api/properties/sell', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: values.name.trim(),
           email: values.email.trim(),
           phone: values.phone.trim(),
-          interestedServiceLabel: 'Real Estate - Seller Property Submission',
-          message,
+          propertyType: values.propertyType,
+          location: values.location.trim(),
+          startingPrice: values.startingPrice.trim(),
+          plotSize: values.plotSize.trim(),
+          plotSizeUnit: values.plotSizeUnit,
+          description: values.description.trim(),
         }),
       });
       const result = await response.json().catch(() => null) as { success?: boolean } | null;
@@ -151,7 +142,7 @@ export default function SellPropertyForm() {
           <button type="submit" disabled={status === 'submitting'} className="touch-press inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-70">
             {status === 'submitting' ? <><Loader2 className="h-4 w-4 animate-spin" />Submitting...</> : <>Submit Property Details<ArrowRight className="h-4 w-4" /></>}
           </button>
-          {status === 'success' && <div role="status" aria-live="polite" className="form-status flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]"><CheckCircle2 className="h-4 w-4" />Your property enquiry has been received.</div>}
+          {status === 'success' && <div role="status" aria-live="polite" className="form-status flex items-start gap-2 border-l-2 border-[var(--gold)] bg-[var(--cream)] px-3 py-2 text-sm text-[var(--viridian-950)]"><CheckCircle2 className="h-4 w-4" />Your property details have been received. Our team will review your listing and contact you.</div>}
           {status === 'error' && <p role="alert" className="form-status border-l-2 border-red-600 bg-[var(--cream)] px-3 py-2 text-sm text-red-700">{error}</p>}
         </div>
       </form>
