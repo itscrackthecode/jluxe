@@ -7,7 +7,7 @@ import WorkPortfolio from '@/components/work-portfolio';
 import { siteConfig } from '@/lib/data';
 
 export const metadata: Metadata = {
-  title: 'Our Work | JLUXE',
+  title: 'Our Work',
   description: 'Selected work, projects and capabilities across the JLUXE ecosystem.',
 };
 

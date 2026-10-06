@@ -7,7 +7,7 @@ import SiteHeader from '@/components/site-header';
 import { siteConfig } from '@/lib/data';
 
 export const metadata: Metadata = {
-  title: 'Let\'s Talk | JLUXE',
+  title: 'Let\'s Talk',
   description: 'Contact JLUXE about a property, business, training, interiors or other requirement.',
 };
 

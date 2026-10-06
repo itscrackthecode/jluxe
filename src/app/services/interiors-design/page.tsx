@@ -14,7 +14,7 @@ const interiorsFaq: FaqItem[] = [
 ];
 
 export const metadata: Metadata = {
-  title: 'Interiors & Design | JLUXE',
+  title: 'Interiors & Design',
   description: 'Interior designing focused on functional, thoughtful and refined spaces from JLUXE.',
 };
 

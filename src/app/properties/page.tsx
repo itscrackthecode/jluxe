@@ -7,7 +7,7 @@ import SiteHeader from '@/components/site-header';
 import { siteConfig } from '@/lib/data';
 
 export const metadata: Metadata = {
-  title: 'Property Opportunities | JLUXE',
+  title: 'Property Opportunities',
   description: 'Explore property opportunities represented by JLUXE and its partners.',
 };
 

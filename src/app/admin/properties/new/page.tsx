@@ -4,7 +4,7 @@ import PropertyForm from '@/components/admin/property-form';
 import { getAdminSession } from '@/lib/admin-session';
 
 export const metadata = {
-  title: 'Add Property | JLUXE Admin',
+  title: { absolute: 'Add Property | JLUXE Admin' },
   robots: { index: false, follow: false },
 };
 

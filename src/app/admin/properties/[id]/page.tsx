@@ -5,7 +5,7 @@ import { getAdminSession } from '@/lib/admin-session';
 import { findPropertyById } from '@/lib/db/queries/properties';
 
 export const metadata = {
-  title: 'Edit Property | JLUXE Admin',
+  title: { absolute: 'Edit Property | JLUXE Admin' },
   robots: { index: false, follow: false },
 };
 

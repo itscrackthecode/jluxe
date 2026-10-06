@@ -8,7 +8,7 @@ import { Instagram, MessageCircle } from 'lucide-react';
 import { siteConfig } from '@/lib/data';
 
 export const metadata: Metadata = {
-  title: 'Recruitment & Training | JLUXE',
+  title: 'Recruitment & Training',
   description: 'Recruitment, staffing, training and career-focused services from JLUXE.',
 };
 

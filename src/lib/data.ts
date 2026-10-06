@@ -8,6 +8,7 @@ export const services = [
 
 export const siteConfig = {
   brand: 'JLUXE',
+  url: 'https://jluxe-seven.vercel.app',
   contact: {
     email: 'your-email@jluxe.example',
     instagram: 'https://www.instagram.com/your-handle',

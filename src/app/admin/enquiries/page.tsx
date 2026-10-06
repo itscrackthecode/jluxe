@@ -4,7 +4,7 @@ import EnquiryList from '@/components/admin/enquiry-list';
 import { getAdminSession } from '@/lib/admin-session';
 
 export const metadata = {
-  title: 'Enquiries | JLUXE Admin',
+  title: { absolute: 'Enquiries | JLUXE Admin' },
   robots: { index: false, follow: false },
 };
 

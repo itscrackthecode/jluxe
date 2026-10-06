@@ -4,7 +4,7 @@ import PropertyList from '@/components/admin/property-list';
 import { getAdminSession } from '@/lib/admin-session';
 
 export const metadata = {
-  title: 'Properties | JLUXE Admin',
+  title: { absolute: 'Properties | JLUXE Admin' },
   robots: { index: false, follow: false },
 };
 
