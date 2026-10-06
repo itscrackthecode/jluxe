@@ -4,7 +4,7 @@ import AdminLoginForm from './login-form';
 import { getAdminSession } from '@/lib/admin-session';
 
 export const metadata = {
-  title: 'Admin Sign In | JLUXE',
+  title: { absolute: 'Admin Sign In | JLUXE' },
   robots: { index: false, follow: false },
 };
 

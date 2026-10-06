@@ -3,7 +3,7 @@ import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
 
 export const metadata: Metadata = {
-  title: 'Leadership | JLUXE',
+  title: 'Leadership',
   description:
     'Meet the leadership behind JLUXE and learn about the vision, experience and philosophy shaping the business.',
 };

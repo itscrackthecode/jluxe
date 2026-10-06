@@ -19,7 +19,7 @@ const businessSolutionsFaq: FaqItem[] = [
 ];
 
 export const metadata: Metadata = {
-  title: 'Business Solutions | JLUXE',
+  title: 'Business Solutions',
   description: 'Marketing, branding, lead generation, sales and business development support from JLUXE.',
 };
 

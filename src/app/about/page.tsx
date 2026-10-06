@@ -7,7 +7,7 @@ import SiteHeader from '@/components/site-header';
 import { siteConfig } from '@/lib/data';
 
 export const metadata: Metadata = {
-  title: 'About | JLUXE',
+  title: 'About',
   description: 'Learn about JLUXE, a business ecosystem connecting people, properties, businesses, talent and opportunities.',
 };
 

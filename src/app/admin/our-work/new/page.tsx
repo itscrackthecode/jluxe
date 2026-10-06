@@ -5,7 +5,7 @@ import { getAdminSession } from '@/lib/admin-session';
 import { listPortfolioServiceOptions } from '@/lib/db/queries/portfolio';
 
 export const metadata = {
-  title: 'Add Work | JLUXE Admin',
+  title: { absolute: 'Add Work | JLUXE Admin' },
   robots: { index: false, follow: false },
 };
 

@@ -6,7 +6,7 @@ import { countNewEnquiries } from '@/lib/db/queries/enquiries';
 import { getAdminDashboardCounts } from '@/lib/db/queries/dashboard';
 
 export const metadata = {
-  title: 'Admin Dashboard | JLUXE',
+  title: { absolute: 'Admin Dashboard | JLUXE' },
   robots: { index: false, follow: false },
 };
 

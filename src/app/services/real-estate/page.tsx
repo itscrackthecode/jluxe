@@ -9,7 +9,7 @@ import {
 } from '@/components/services/real-estate/real-estate-sections';
 
 export const metadata: Metadata = {
-  title: 'Real Estate | JLUXE',
+  title: 'Real Estate',
   description: 'Explore real estate sales, property marketing and channel partnership support with JLUXE.',
 };
 
