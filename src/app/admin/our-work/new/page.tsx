@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import AdminShell from '@/components/admin/admin-shell';
 import PortfolioForm from '@/components/admin/portfolio-form';
 import { getAdminSession } from '@/lib/admin-session';
-import { listPortfolioServiceOptions } from '@/lib/db/queries/portfolio';
+import { listPortfolioServiceOptions, listServiceCategories } from '@/lib/db/queries/portfolio';
 
 export const metadata = {
   title: { absolute: 'Add Work | JLUXE Admin' },
@@ -12,11 +12,11 @@ export const metadata = {
 export default async function NewAdminPortfolioPage() {
   const admin = await getAdminSession();
   if (!admin) redirect('/admin/login');
-  const services = await listPortfolioServiceOptions();
+  const [services, categories] = await Promise.all([listPortfolioServiceOptions(), listServiceCategories()]);
 
   return (
     <AdminShell admin={admin} active="Our Work">
-      <PortfolioForm services={services} />
+      <PortfolioForm services={services} categories={categories} />
     </AdminShell>
   );
 }

@@ -30,6 +30,13 @@ export interface Admin {
   updatedAt: Date;
 }
 
+export interface ServiceCategory {
+  id: UUID;
+  name: string;
+  slug: string;
+  sortOrder: number;
+}
+
 export interface Service {
   id: UUID;
   slug: string;

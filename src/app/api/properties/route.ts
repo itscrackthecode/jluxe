@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { propertyStatuses, propertyTypes } from '@/lib/db/types';
 import { formatNumericValue } from '@/lib/db/numeric';
-import { listPublicProperties } from '@/lib/db/queries/properties';
+import { listPropertiesMedia, listPublicProperties } from '@/lib/db/queries/properties';
 
 const pricePattern = /^\d+(\.\d+)?$/;
 
@@ -75,13 +75,44 @@ export async function GET(request: Request) {
       offset: skip,
     });
 
+    const media = await listPropertiesMedia(properties.map((property) => property.id));
+    const mediaByProperty = new Map<string, Array<{
+      id: string;
+      storageKey: string;
+      mimeType: string;
+      width: number | null;
+      height: number | null;
+      position: number;
+      altText: string | null;
+    }>>();
+
+    for (const image of media) {
+      const propertyImages = mediaByProperty.get(image.propertyId) ?? [];
+      propertyImages.push({
+        id: image.id,
+        storageKey: image.storageKey,
+        mimeType: image.mimeType,
+        width: image.width,
+        height: image.height,
+        position: image.position,
+        altText: image.altText,
+      });
+      mediaByProperty.set(image.propertyId, propertyImages);
+    }
+
     return NextResponse.json({
       success: true,
-      data: properties.map((property) => ({
-        ...property,
-        priceAmount: formatNumericValue(property.priceAmount),
-        plotSize: formatNumericValue(property.plotSize),
-      })),
+      data: properties.map((property) => {
+        const propMedia = mediaByProperty.get(property.id) ?? [];
+        const coverMedia = propMedia.find((m) => m.position === 0) ?? propMedia[0] ?? null;
+        return {
+          ...property,
+          priceAmount: formatNumericValue(property.priceAmount),
+          plotSize: formatNumericValue(property.plotSize),
+          coverImage: coverMedia ? { storageKey: coverMedia.storageKey, altText: coverMedia.altText } : null,
+          media: propMedia,
+        };
+      }),
       pagination: {
         page,
         limit,

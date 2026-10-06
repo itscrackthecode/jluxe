@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
-import { getFallbackImage } from '@/lib/media';
+import { getFallbackImage, getMediaImageUrl } from '@/lib/media';
 
 const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-base text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)] md:text-sm';
 const pageSize = 12;
@@ -26,6 +26,8 @@ type ApiProperty = {
   status: string;
   representationType: 'CHANNEL_PARTNER' | 'AUTHORIZED_REPRESENTATIVE' | 'OTHER';
   createdAt: string;
+  coverImage?: { storageKey: string; altText: string | null } | null;
+  media?: Array<{ storageKey: string; altText: string | null; position: number }>;
 };
 
 type PropertyApiResponse = {
@@ -77,11 +79,21 @@ function formatPlotSize(property: ApiProperty) {
 function PropertyCard({ property }: { property: ApiProperty }) {
   const price = formatPropertyPrice(property);
   const plotSize = formatPlotSize(property);
+  const coverKey = property.coverImage?.storageKey ?? property.media?.find((m) => m.position === 0)?.storageKey ?? null;
+  const coverAlt = property.coverImage?.altText ?? property.media?.find((m) => m.position === 0)?.altText ?? property.title;
 
   return (
     <article data-reveal className="premium-card min-w-0 border-b border-[var(--viridian-950)]/15 pb-6">
       <div className="premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
-        <img src={getFallbackImage('property')} alt="JLUXE property placeholder" className="h-full w-full object-cover" />
+        <img
+          src={getMediaImageUrl(coverKey, 'property')}
+          alt={coverAlt}
+          className="h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = getFallbackImage('property');
+          }}
+        />
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--muted)]">
         <span>{formatPropertyType(property.propertyType)}</span>

@@ -149,6 +149,93 @@ export async function listPropertyMedia(propertyId: UUID): Promise<PropertyMedia
   return result.rows;
 }
 
+export async function listPropertiesMedia(propertyIds: UUID[]): Promise<PropertyMediaItem[]> {
+  if (propertyIds.length === 0) return [];
+
+  const result = await pool.query<PropertyMediaItem>(
+    `SELECT pm."propertyId", pm."mediaId", pm."position", pm."altText",
+            m."id", m."storageKey", m."mimeType", m."width", m."height"
+     FROM "PropertyMedia" pm
+     JOIN "Media" m ON m."id" = pm."mediaId"
+     WHERE pm."propertyId" = ANY($1::uuid[])
+     ORDER BY pm."propertyId", pm."position" ASC`,
+    [propertyIds],
+  );
+  return result.rows;
+}
+
+export async function updatePropertyMedia(
+  propertyId: UUID,
+  mediaItems: Array<{ mediaId: UUID; altText?: string | null }>,
+): Promise<'updated' | 'property-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const property = await client.query('SELECT "id" FROM "Property" WHERE "id" = $1 LIMIT 1', [propertyId]);
+    if (property.rowCount === 0) return 'property-missing';
+
+    if (mediaItems.length > 0) {
+      const mediaIds = mediaItems.map((item) => item.mediaId);
+      const mediaCheck = await client.query(
+        'SELECT "id" FROM "Media" WHERE "id" = ANY($1::uuid[])',
+        [mediaIds],
+      );
+      if (mediaCheck.rowCount !== mediaIds.length) return 'media-missing';
+    }
+
+    await client.query('DELETE FROM "PropertyMedia" WHERE "propertyId" = $1', [propertyId]);
+
+    for (const [index, item] of mediaItems.entries()) {
+      await client.query(
+        'INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [propertyId, item.mediaId, index, item.altText ?? null],
+      );
+    }
+
+    return 'updated';
+  });
+}
+
+export async function setPropertyCover(
+  propertyId: UUID,
+  mediaId: UUID | null,
+): Promise<'updated' | 'property-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const property = await client.query('SELECT "id" FROM "Property" WHERE "id" = $1 LIMIT 1', [propertyId]);
+    if (property.rowCount === 0) return 'property-missing';
+
+    if (mediaId === null) {
+      await client.query(
+        'DELETE FROM "PropertyMedia" WHERE "propertyId" = $1 AND "position" = 0',
+        [propertyId],
+      );
+      return 'updated';
+    }
+
+    const media = await client.query('SELECT "id" FROM "Media" WHERE "id" = $1 LIMIT 1', [mediaId]);
+    if (media.rowCount === 0) return 'media-missing';
+
+    const existing = await client.query<{ mediaId: UUID; altText: string | null }>(
+      `SELECT "mediaId", "altText" FROM "PropertyMedia"
+       WHERE "propertyId" = $1
+       ORDER BY "position" ASC`,
+      [propertyId],
+    );
+    const coverAltText = existing.rows.find((row) => row.mediaId === mediaId)?.altText ?? null;
+    const others = existing.rows.filter((row) => row.mediaId !== mediaId);
+    await client.query('DELETE FROM "PropertyMedia" WHERE "propertyId" = $1', [propertyId]);
+    await client.query(
+      'INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, 0, $3)',
+      [propertyId, mediaId, coverAltText],
+    );
+    for (const [index, item] of others.entries()) {
+      await client.query(
+        'INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [propertyId, item.mediaId, index + 1, item.altText],
+      );
+    }
+    return 'updated';
+  });
+}
+
 export type PropertyWrite = Pick<
   Property,
   | 'slug' | 'title' | 'description' | 'location' | 'propertyType' | 'priceAmount'

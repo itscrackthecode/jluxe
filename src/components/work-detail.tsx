@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
 import { getMediaImageUrl } from '@/lib/media';
+import MediaGallerySlider from '@/components/media-gallery-slider';
 
 type WorkMedia = {
   id: string;
@@ -116,16 +117,12 @@ export default function WorkDetail({ slug }: { slug: string }) {
       </section>
 
       <section aria-label="Work images" className="bg-[var(--cream)] py-6 sm:py-8" data-reveal>
-        <div className="container-xl grid gap-3 sm:grid-cols-2">
-          {work.media.length > 0 ? work.media.map((image) => (
-            <div key={image.id} className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)]">
-              <img src={getMediaImageUrl(image.storageKey, 'portfolio')} alt={image.altText ?? 'JLUXE work'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
-            </div>
-          )) : (
-            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] text-sm text-[var(--muted)]">
-              <img src={getMediaImageUrl(null, 'portfolio')} alt="JLUXE work placeholder" className="h-full w-full object-cover" />
-            </div>
-          )}
+        <div className="container-xl">
+          <MediaGallerySlider
+            images={work.media}
+            fallbackType="portfolio"
+            aspectRatioClassName="aspect-[4/3] sm:aspect-[16/10] md:aspect-[16/9]"
+          />
         </div>
       </section>
 
