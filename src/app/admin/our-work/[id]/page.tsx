@@ -3,7 +3,7 @@ import { z } from 'zod';
 import AdminShell from '@/components/admin/admin-shell';
 import PortfolioForm from '@/components/admin/portfolio-form';
 import { getAdminSession } from '@/lib/admin-session';
-import { findAdminPortfolioById, listPortfolioServiceOptions } from '@/lib/db/queries/portfolio';
+import { findAdminPortfolioById, listPortfolioServiceOptions, listPortfolioWorkMedia } from '@/lib/db/queries/portfolio';
 
 export const metadata = {
   title: 'Edit Work | JLUXE Admin',
@@ -16,15 +16,22 @@ export default async function EditAdminPortfolioPage({ params }: { params: Promi
 
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
-  const [work, services] = await Promise.all([
+  const [work, services, media] = await Promise.all([
     findAdminPortfolioById(id),
     listPortfolioServiceOptions(),
+    listPortfolioWorkMedia([id]),
   ]);
   if (!work) notFound();
 
+  const coverMedia = media.find((item) => item.position === 0) ?? null;
+
   return (
     <AdminShell admin={admin} active="Our Work">
-      <PortfolioForm work={work} services={services} />
+      <PortfolioForm
+        work={work}
+        services={services}
+        cover={coverMedia ? { storageKey: coverMedia.storageKey, altText: coverMedia.altText } : null}
+      />
     </AdminShell>
   );
 }

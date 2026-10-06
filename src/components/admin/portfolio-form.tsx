@@ -3,11 +3,14 @@
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortfolioSlug } from '@/lib/admin-portfolio';
 import { publicationStatuses, type PublicationStatus } from '@/lib/db/types';
+import { getMediaImageUrl } from '@/lib/media';
 
 type ServiceOption = { id: string; slug: string; title: string };
+type WorkCover = { storageKey: string; altText: string | null };
+type MediaOption = { id: string; storageKey: string; mimeType: string };
 type PortfolioWorkData = {
   id: string;
   title: string;
@@ -54,15 +57,68 @@ function label(value: string) {
 export default function PortfolioForm({
   work,
   services,
+  cover: initialCover,
 }: {
   work?: PortfolioWorkData;
   services: ServiceOption[];
+  cover?: WorkCover | null;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<FormValues>(() => toFormValues(work, services[0]?.id));
   const [slugEdited, setSlugEdited] = useState(Boolean(work));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [cover, setCover] = useState<WorkCover | null>(initialCover ?? null);
+  const [mediaOptions, setMediaOptions] = useState<MediaOption[]>([]);
+  const [mediaState, setMediaState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [selectedMediaId, setSelectedMediaId] = useState('');
+  const [coverSaving, setCoverSaving] = useState(false);
+  const [coverError, setCoverError] = useState('');
+
+  useEffect(() => {
+    if (!work) return;
+    const controller = new AbortController();
+
+    async function loadMedia() {
+      try {
+        const response = await fetch('/admin/api/media?limit=50', { signal: controller.signal });
+        const result = await response.json() as { success: boolean; data?: MediaOption[] };
+        if (!response.ok || result.success !== true || !Array.isArray(result.data)) throw new Error();
+        setMediaOptions(result.data.filter((item) => item.mimeType.startsWith('image/')));
+        setMediaState('ready');
+      } catch {
+        if (!controller.signal.aborted) setMediaState('error');
+      }
+    }
+
+    void loadMedia();
+    return () => controller.abort();
+  }, [work]);
+
+  async function updateCover(mediaId: string | null) {
+    if (!work || coverSaving) return;
+    setCoverSaving(true);
+    setCoverError('');
+
+    try {
+      const response = await fetch(`/admin/api/portfolio/${work.id}/cover`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaId }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success !== true) throw new Error(result.error ?? 'Unable to update the cover image.');
+
+      const chosen = mediaId ? mediaOptions.find((item) => item.id === mediaId) ?? null : null;
+      setCover(chosen ? { storageKey: chosen.storageKey, altText: null } : null);
+      setSelectedMediaId('');
+      router.refresh();
+    } catch (requestError) {
+      setCoverError(requestError instanceof Error ? requestError.message : 'Unable to update the cover image.');
+    } finally {
+      setCoverSaving(false);
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,6 +230,56 @@ export default function PortfolioForm({
             </select>
           </label>
         </section>
+
+        {work && (
+          <section className="border-t border-[var(--viridian-950)]/15 pt-6">
+            <h2 className="font-display text-2xl">Cover image</h2>
+            <div className="mt-4 grid gap-5 sm:grid-cols-[220px_1fr]">
+              <img
+                src={getMediaImageUrl(cover?.storageKey ?? null, 'portfolio')}
+                alt={cover?.altText ?? 'Work cover'}
+                onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }}
+                className="aspect-[4/3] w-full border border-[var(--viridian-950)]/15 bg-[var(--sand)] object-cover"
+              />
+              <div>
+                {cover ? (
+                  <p className="text-xs text-[var(--muted)]">A cover image is set. It is shown as the first image on the public Our Work pages.</p>
+                ) : (
+                  <p className="text-xs text-[var(--muted)]">No cover image set. The public Our Work pages show the standard JLUXE fallback image.</p>
+                )}
+                {mediaState === 'loading' ? (
+                  <p role="status" className="mt-3 text-xs text-[var(--muted)]">Loading media library...</p>
+                ) : mediaState === 'error' ? (
+                  <p role="alert" className="mt-3 text-xs text-red-700">Unable to load the media library right now.</p>
+                ) : (
+                  <>
+                    <label className="mt-3 block text-xs font-medium text-[var(--muted)]">
+                      <span className="mb-1.5 block">Select a cover image from the media library</span>
+                      <select value={selectedMediaId} onChange={(event) => setSelectedMediaId(event.target.value)} disabled={mediaOptions.length === 0} className={inputClass}>
+                        <option value="">{mediaOptions.length === 0 ? 'No uploaded media available yet' : 'Choose an image'}</option>
+                        {mediaOptions.map((item) => <option key={item.id} value={item.id}>{item.storageKey}</option>)}
+                      </select>
+                    </label>
+                    {mediaOptions.length === 0 && (
+                      <p className="mt-2 text-xs text-[var(--muted)]">Image uploads are pending storage provider configuration. Once media is uploaded it can be selected here as the cover.</p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <button type="button" onClick={() => void updateCover(selectedMediaId)} disabled={coverSaving || !selectedMediaId} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--viridian-900)] px-6 text-sm font-semibold text-white hover:bg-[var(--viridian-800)] disabled:opacity-60">
+                        {coverSaving ? 'Updating...' : 'Set as cover'}
+                      </button>
+                      {cover && (
+                        <button type="button" onClick={() => void updateCover(null)} disabled={coverSaving} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--viridian-950)]/15 px-6 text-sm font-medium disabled:opacity-60">
+                          Remove cover
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+                {coverError && <p role="alert" className="mt-3 border-l-2 border-red-600 bg-white px-3 py-2 text-sm text-red-700">{coverError}</p>}
+              </div>
+            </div>
+          </section>
+        )}
 
         {error && <p role="alert" className="border-l-2 border-red-600 bg-white px-3 py-2 text-sm text-red-700">{error}</p>}
         <div className="flex flex-wrap gap-3 border-t border-[var(--viridian-950)]/15 pt-5">

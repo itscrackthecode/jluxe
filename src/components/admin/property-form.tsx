@@ -28,7 +28,6 @@ type PropertyData = {
   location: string | null;
   propertyType: PropertyType;
   priceAmount: string | null;
-  priceCurrency: string | null;
   priceMode: PriceMode;
   plotSize: string | null;
   plotSizeUnit: PlotSizeUnit | null;
@@ -44,7 +43,6 @@ type FormValues = {
   location: string;
   propertyType: string;
   priceAmount: string;
-  priceCurrency: string;
   priceMode: PriceMode;
   plotSize: string;
   plotSizeUnit: string;
@@ -63,7 +61,6 @@ function toFormValues(property?: PropertyData): FormValues {
     location: property?.location ?? '',
     propertyType: property?.propertyType ?? '',
     priceAmount: property?.priceAmount ?? '',
-    priceCurrency: property?.priceCurrency?.trim() ?? '',
     priceMode: property?.priceMode ?? 'EXACT',
     plotSize: property?.plotSize ?? '',
     plotSizeUnit: property?.plotSizeUnit ?? '',
@@ -100,7 +97,7 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
       description: values.description || null,
       location: values.location || null,
       priceAmount: values.priceAmount || null,
-      priceCurrency: values.priceCurrency || null,
+      priceCurrency: values.priceAmount ? 'INR' : null,
       plotSize: values.plotSize || null,
       plotSizeUnit: values.plotSizeUnit || null,
     };
@@ -176,12 +173,8 @@ export default function PropertyForm({ property }: { property?: PropertyData }) 
           <h2 className="font-display text-2xl">Price and size</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[var(--muted)]">
-              <span className="mb-1.5 block">Price amount</span>
+              <span className="mb-1.5 block">Price amount (INR)</span>
               <input type="number" min="0" step="0.01" value={values.priceAmount} onChange={(event) => update('priceAmount', event.target.value)} className={inputClass} />
-            </label>
-            <label className="block text-xs font-medium text-[var(--muted)]">
-              <span className="mb-1.5 block">Price currency (ISO 4217)</span>
-              <input maxLength={3} value={values.priceCurrency} onChange={(event) => update('priceCurrency', event.target.value.toUpperCase())} className={inputClass} />
             </label>
             <label className="block text-xs font-medium text-[var(--muted)]">
               <span className="mb-1.5 block">Price mode *</span>

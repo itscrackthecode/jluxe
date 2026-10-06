@@ -92,8 +92,15 @@ export default function SiteHeader() {
       <MobileReveal />
       <div className="container-xl relative" ref={ref}>
         <div className="flex h-20 items-center justify-between gap-4">
-          <Link href="/" className="touch-press font-display text-3xl tracking-tight text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">
-            {siteConfig.brand}
+          <Link href="/" className="touch-press flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">
+            <img
+              src="/assets/images/jluxe-monogram.png"
+              alt=""
+              width={1312}
+              height={1199}
+              className="h-7 w-auto md:h-8"
+            />
+            <span className="font-display text-3xl tracking-tight text-[var(--viridian-950)]">{siteConfig.brand}</span>
           </Link>
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-[var(--viridian-950)] md:flex">
