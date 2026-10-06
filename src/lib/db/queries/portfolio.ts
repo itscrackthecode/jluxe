@@ -131,6 +131,49 @@ export async function listPortfolioWorkMedia(portfolioWorkIds: UUID[]): Promise<
   return result.rows;
 }
 
+export async function setPortfolioWorkCover(
+  portfolioWorkId: UUID,
+  mediaId: UUID | null,
+): Promise<'updated' | 'work-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const work = await client.query('SELECT "id" FROM "PortfolioWork" WHERE "id" = $1 LIMIT 1', [portfolioWorkId]);
+    if (work.rowCount === 0) return 'work-missing';
+
+    if (mediaId === null) {
+      await client.query(
+        'DELETE FROM "PortfolioWorkMedia" WHERE "portfolioWorkId" = $1 AND "position" = 0',
+        [portfolioWorkId],
+      );
+      return 'updated';
+    }
+
+    const media = await client.query('SELECT "id" FROM "Media" WHERE "id" = $1 LIMIT 1', [mediaId]);
+    if (media.rowCount === 0) return 'media-missing';
+
+    // The cover is the image at position 0; other associated images keep their order after it.
+    const existing = await client.query<{ mediaId: UUID; altText: string | null }>(
+      `SELECT "mediaId", "altText" FROM "PortfolioWorkMedia"
+       WHERE "portfolioWorkId" = $1
+       ORDER BY "position" ASC`,
+      [portfolioWorkId],
+    );
+    const coverAltText = existing.rows.find((row) => row.mediaId === mediaId)?.altText ?? null;
+    const others = existing.rows.filter((row) => row.mediaId !== mediaId);
+    await client.query('DELETE FROM "PortfolioWorkMedia" WHERE "portfolioWorkId" = $1', [portfolioWorkId]);
+    await client.query(
+      'INSERT INTO "PortfolioWorkMedia" ("portfolioWorkId", "mediaId", "position", "altText") VALUES ($1, $2, 0, $3)',
+      [portfolioWorkId, mediaId, coverAltText],
+    );
+    for (const [index, item] of others.entries()) {
+      await client.query(
+        'INSERT INTO "PortfolioWorkMedia" ("portfolioWorkId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [portfolioWorkId, item.mediaId, index + 1, item.altText],
+      );
+    }
+    return 'updated';
+  });
+}
+
 type AdminPortfolioRow = Omit<PortfolioWork, 'createdAt' | 'updatedAt'> & {
   createdAt: string;
   updatedAt: string;

@@ -6,7 +6,13 @@ export default function SiteFooter() {
     <footer className="bg-[var(--viridian-950)] pt-12 pb-[calc(3rem+env(safe-area-inset-bottom,0px))] text-white" data-reveal>
       <div className="container-xl grid gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
         <div>
-          <div className="font-display text-3xl">{siteConfig.brand}</div>
+          <img
+            src="/assets/images/jluxe-logo.png"
+            alt="JLUXE"
+            width={1536}
+            height={1024}
+            className="h-20 w-auto rounded-lg object-contain"
+          />
           <p className="mt-4 max-w-sm text-sm leading-6 text-white/50">
             Building relationships, creating opportunities and delivering results across our services.
           </p>
