@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { findServiceBySlug, listPortfolioWorkMedia, listPublicPortfolio } from '@/lib/db/queries/portfolio';
+import { findServiceBySlug, listPortfolioWorkMedia, listPublicPortfolio, listServiceCategories } from '@/lib/db/queries/portfolio';
 
 const portfolioQuerySchema = z.object({
   service: z.string().trim().min(1).max(120).optional(),
+  category: z.string().trim().min(1).max(100).optional(),
   location: z.string().trim().min(1).max(255).optional(),
   featured: z.enum(['true', 'false']).optional(),
   sort: z.enum(['latest', 'oldest', 'featured']).default('latest'),
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
   const parsed = portfolioQuerySchema.safeParse({
     service: searchParams.get('service') ?? undefined,
+    category: searchParams.get('category') ?? undefined,
     location: searchParams.get('location') ?? undefined,
     featured: searchParams.get('featured') ?? undefined,
     sort: searchParams.get('sort') ?? undefined,
@@ -34,12 +36,14 @@ export async function GET(request: Request) {
           ? 'Invalid pagination values.'
           : field === 'service'
             ? 'Invalid service filter.'
+            : field === 'category'
+              ? 'Invalid category filter.'
             : 'Invalid location filter.';
 
     return NextResponse.json({ success: false, error }, { status: 400 });
   }
 
-  const { service: serviceSlug, location, featured: featuredValue, sort } = parsed.data;
+  const { service: serviceSlug, category, location, featured: featuredValue, sort } = parsed.data;
   const page = Number(parsed.data.page);
   const limit = Number(parsed.data.limit);
   const skip = (page - 1) * limit;
@@ -65,12 +69,14 @@ export async function GET(request: Request) {
 
     const { data: works, total } = await listPublicPortfolio({
       serviceSlug,
+      category,
       location,
       featured: featuredValue === undefined ? undefined : featuredValue === 'true',
       sort,
       limit,
       offset: skip,
     });
+    const categories = await listServiceCategories();
     const media = await listPortfolioWorkMedia(works.map((work) => work.id));
     const mediaByWork = new Map<string, Array<{
       id: string;
@@ -98,6 +104,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
+      categories: categories.map(({ name }) => name),
       data: works.map((work) => ({
         ...work,
         media: mediaByWork.get(work.id) ?? [],

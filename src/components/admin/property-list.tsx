@@ -3,7 +3,14 @@
 import Link from 'next/link';
 import { RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { propertyStatuses, propertyTypes, publicationStatuses, type PropertyStatus, type PropertyType, type PublicationStatus } from '@/lib/db/types';
+import {
+  propertyStatuses,
+  propertyTypes,
+  publicationStatuses,
+  type PropertyStatus,
+  type PropertyType,
+  type PublicationStatus,
+} from '@/lib/db/types';
 
 type PropertyRow = {
   id: string;
@@ -36,7 +43,11 @@ function priceLabel(property: PropertyRow) {
   let formatted = new Intl.NumberFormat().format(amount);
   if (property.priceCurrency) {
     try {
-      formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency, maximumFractionDigits: 2 }).format(amount);
+      formatted = new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: property.priceCurrency,
+        maximumFractionDigits: 2,
+      }).format(amount);
     } catch {
       formatted = `${formatted} ${property.priceCurrency}`;
     }
@@ -45,9 +56,9 @@ function priceLabel(property: PropertyRow) {
 }
 
 const publicationBadge: Record<PropertyRow['publicationStatus'], string> = {
-  DRAFT: 'bg-amber-50 text-amber-800',
-  PUBLISHED: 'bg-emerald-50 text-emerald-800',
-  ARCHIVED: 'bg-black/5 text-[var(--muted)]',
+  DRAFT: 'bg-amber-950/80 border border-amber-500/40 text-amber-300',
+  PUBLISHED: 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-300',
+  ARCHIVED: 'bg-white/10 border border-white/20 text-[#9caaa4]',
 };
 
 export default function PropertyList() {
@@ -74,8 +85,11 @@ export default function PropertyList() {
   async function removeProperty(property: PropertyRow) {
     if (!window.confirm(`Delete “${property.title}”? Related enquiries will be preserved.`)) return;
     const response = await fetch(`/admin/api/properties/${property.id}`, { method: 'DELETE' });
-    const result = await response.json() as { success?: boolean; error?: string };
-    if (!response.ok || !result.success) { window.alert(result.error ?? 'Unable to delete property.'); return; }
+    const result = (await response.json()) as { success?: boolean; error?: string };
+    if (!response.ok || !result.success) {
+      window.alert(result.error ?? 'Unable to delete property.');
+      return;
+    }
     setRetry((value) => value + 1);
   }
 
@@ -91,7 +105,7 @@ export default function PropertyList() {
 
       try {
         const response = await fetch(`/admin/api/properties?${params.toString()}`, { signal: controller.signal });
-        const result = await response.json() as ListResponse | { success: false };
+        const result = (await response.json()) as ListResponse | { success: false };
         if (!response.ok || !result.success) throw new Error('Property list request failed.');
         setItems(result.data);
         setTotal(result.pagination.total);
@@ -115,79 +129,175 @@ export default function PropertyList() {
   }, [page, publicationStatus, retry, search, status]);
 
   return (
-    <div>
-      <div className="flex flex-col justify-between gap-4 border-b border-[var(--viridian-950)]/15 pb-6 sm:flex-row sm:items-end">
+    <div className="text-[#f5f1e8]">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/15 pb-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">LISTINGS</p>
-          <h1 className="mt-2 font-display text-4xl">Properties</h1>
+          <h1 className="mt-2 font-display text-4xl text-white">Properties</h1>
         </div>
-        <Link href="/admin/properties/new" className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[var(--viridian-900)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">Add property</Link>
+        <Link
+          href="/admin/properties/new"
+          className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[var(--gold)] px-5 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-[var(--gold)]/90"
+        >
+          Add property
+        </Link>
       </div>
 
       {savedNotice && (
-        <div role="status" className="mt-4 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <div role="status" className="mt-4 border-l-2 border-emerald-500 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-200">
           Property saved successfully.
         </div>
       )}
 
-      <div className="grid gap-3 border-b border-[var(--viridian-950)]/15 py-4 sm:grid-cols-[minmax(0,1fr)_200px_200px]">
-        <label className="block text-xs font-medium text-[var(--muted)]">
+      <div className="grid gap-3 border-b border-white/15 py-4 sm:grid-cols-[minmax(0,1fr)_200px_200px]">
+        <label className="block text-xs font-medium text-[#9caaa4]">
           <span className="mb-1.5 block">Search</span>
-          <input type="search" value={search} maxLength={200} placeholder="Title or location" onChange={(event) => { setSearch(event.target.value); setPage(1); }} className="min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]" />
+          <input
+            type="search"
+            value={search}
+            maxLength={200}
+            placeholder="Title or location"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] placeholder:text-white/30 outline-none focus:border-[var(--gold)]"
+          />
         </label>
-        <label className="block text-xs font-medium text-[var(--muted)]">
+        <label className="block text-xs font-medium text-[#9caaa4]">
           <span className="mb-1.5 block">Publication</span>
-          <select value={publicationStatus} onChange={(event) => { setPublicationStatus(event.target.value); setPage(1); }} className="min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]">
+          <select
+            value={publicationStatus}
+            onChange={(event) => {
+              setPublicationStatus(event.target.value);
+              setPage(1);
+            }}
+            className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] outline-none focus:border-[var(--gold)]"
+          >
             <option value="">All publication states</option>
-            {publicationStatuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            {publicationStatuses.map((value) => (
+              <option key={value} value={value}>
+                {label(value)}
+              </option>
+            ))}
           </select>
         </label>
-        <label className="block text-xs font-medium text-[var(--muted)]">
+        <label className="block text-xs font-medium text-[#9caaa4]">
           <span className="mb-1.5 block">Property status</span>
-          <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)] outline-none focus:border-[var(--gold)]">
+          <select
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setPage(1);
+            }}
+            className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] outline-none focus:border-[var(--gold)]"
+          >
             <option value="">All property statuses</option>
-            {propertyStatuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            {propertyStatuses.map((value) => (
+              <option key={value} value={value}>
+                {label(value)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
 
-      <p className="py-3 text-xs text-[var(--muted)]">{total} properties</p>
+      <p className="py-3 text-xs text-[#9caaa4]">{total} properties</p>
       {loading ? (
-        <p role="status" className="border-y border-[var(--viridian-950)]/15 py-10 text-sm text-[var(--muted)]">Loading properties...</p>
+        <p role="status" className="border-y border-white/15 py-10 text-sm text-[#9caaa4]">
+          Loading properties...
+        </p>
       ) : error ? (
-        <div role="alert" className="border-y border-[var(--viridian-950)]/15 py-10">
-          <p className="text-sm text-[var(--muted)]">We couldn’t load properties right now.</p>
-          <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold"><RotateCcw className="h-4 w-4" /> Try again</button>
+        <div role="alert" className="border-y border-white/15 py-10">
+          <p className="text-sm text-[#9caaa4]">We couldn’t load properties right now.</p>
+          <button
+            type="button"
+            onClick={() => setRetry((value) => value + 1)}
+            className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--gold)] hover:underline"
+          >
+            <RotateCcw className="h-4 w-4" /> Try again
+          </button>
         </div>
       ) : items.length === 0 ? (
-        <p className="border-y border-[var(--viridian-950)]/15 py-10 text-sm text-[var(--muted)]">{search || publicationStatus || status ? 'No properties match these filters.' : 'No properties have been added yet.'}</p>
+        <p className="border-y border-white/15 py-10 text-sm text-[#9caaa4]">
+          {search || publicationStatus || status
+            ? 'No properties match these filters.'
+            : 'No properties have been added yet.'}
+        </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-lg border border-white/10 bg-[#08201b]">
           <table className="w-full min-w-[850px] border-collapse text-left text-sm">
-            <thead><tr className="border-b border-[var(--viridian-950)]/15 text-xs font-medium text-[var(--muted)]">
-              <th scope="col" className="px-3 py-3">Title</th><th scope="col" className="px-3 py-3">Location</th><th scope="col" className="px-3 py-3">Property type</th><th scope="col" className="px-3 py-3">Price</th><th scope="col" className="px-3 py-3">Status</th><th scope="col" className="px-3 py-3">Publication</th><th scope="col" className="px-3 py-3">Updated</th><th scope="col" className="px-3 py-3">Actions</th>
-            </tr></thead>
-            <tbody>{items.map((property) => (
-              <tr key={property.id} className="border-b border-[var(--viridian-950)]/10 align-top hover:bg-white/60">
-                <td className="px-3 py-4 font-medium"><Link href={`/admin/properties/${property.id}`} className="hover:text-[var(--gold)]">{property.title}</Link></td>
-                <td className="px-3 py-4 text-[var(--muted)]">{property.location ?? '—'}</td>
-                <td className="px-3 py-4">{label(property.propertyType)}</td>
-                <td className="px-3 py-4 whitespace-nowrap">{priceLabel(property)}</td>
-                <td className="px-3 py-4">{label(property.status)}</td>
-                <td className="px-3 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${publicationBadge[property.publicationStatus]}`}>{label(property.publicationStatus)}</span></td>
-                <td className="px-3 py-4 whitespace-nowrap text-xs text-[var(--muted)]">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(property.updatedAt))}</td>
-                <td className="px-3 py-4"><button type="button" onClick={() => void removeProperty(property)} className="text-xs font-medium text-red-700 hover:text-red-900">Delete</button></td>
+            <thead>
+              <tr className="border-b border-white/15 bg-[#051714] text-xs font-medium text-[#9caaa4]">
+                <th scope="col" className="px-3 py-3">Title</th>
+                <th scope="col" className="px-3 py-3">Location</th>
+                <th scope="col" className="px-3 py-3">Property type</th>
+                <th scope="col" className="px-3 py-3">Price</th>
+                <th scope="col" className="px-3 py-3">Status</th>
+                <th scope="col" className="px-3 py-3">Publication</th>
+                <th scope="col" className="px-3 py-3">Updated</th>
+                <th scope="col" className="px-3 py-3">Actions</th>
               </tr>
-            ))}</tbody>
+            </thead>
+            <tbody>
+              {items.map((property) => (
+                <tr key={property.id} className="border-b border-white/10 align-top transition-colors hover:bg-[#0c2b25]">
+                  <td className="px-3 py-4 font-medium text-white">
+                    <Link href={`/admin/properties/${property.id}`} className="hover:text-[var(--gold)]">
+                      {property.title}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-4 text-[#9caaa4]">{property.location ?? '—'}</td>
+                  <td className="px-3 py-4 text-[#f5f1e8]">{label(property.propertyType)}</td>
+                  <td className="whitespace-nowrap px-3 py-4 text-[#f5f1e8]">{priceLabel(property)}</td>
+                  <td className="px-3 py-4 text-[#f5f1e8]">{label(property.status)}</td>
+                  <td className="px-3 py-4">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${publicationBadge[property.publicationStatus]}`}>
+                      {label(property.publicationStatus)}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-xs text-[#9caaa4]">
+                    {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+                      new Date(property.updatedAt),
+                    )}
+                  </td>
+                  <td className="px-3 py-4">
+                    <button
+                      type="button"
+                      onClick={() => void removeProperty(property)}
+                      className="text-xs font-medium text-red-400 hover:text-red-300 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       )}
 
       {!loading && !error && totalPages > 1 && (
-        <nav aria-label="Property pages" className="mt-5 flex items-center justify-between border-b border-[var(--viridian-950)]/15 pb-5">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="min-h-10 text-sm font-medium disabled:opacity-40">Previous</button>
-          <span className="text-xs text-[var(--muted)]">Page {page} of {totalPages}</span>
-          <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="min-h-10 text-sm font-medium disabled:opacity-40">Next</button>
+        <nav aria-label="Property pages" className="mt-5 flex items-center justify-between border-b border-white/15 pb-5">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => current - 1)}
+            className="min-h-10 text-sm font-medium text-[#f5f1e8] disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-[#9caaa4]">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((current) => current + 1)}
+            className="min-h-10 text-sm font-medium text-[#f5f1e8] disabled:opacity-40"
+          >
+            Next
+          </button>
         </nav>
       )}
     </div>

@@ -17,36 +17,63 @@ export default async function AdminDashboardPage() {
 
   return (
     <AdminShell admin={admin} active="Dashboard">
-          <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">DASHBOARD</p>
-          <h1 className="mt-3 font-display text-4xl">Welcome, {admin.displayName}</h1>
-          <p className="mt-3 text-sm text-[var(--muted)]">Signed in as {admin.role.toLowerCase()}.</p>
-          <div className="mt-8 border-y border-[var(--viridian-950)]/15 py-8">
-            <h2 className="font-display text-2xl">Your workspace is ready</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Dashboard access is active. Management tools will appear here as each admin section is introduced.
-            </p>
-          </div>
-          <Link href="/admin/enquiries" className="mt-6 block max-w-xl border-b border-[var(--viridian-950)]/15 py-5 transition-colors hover:border-[var(--gold)]">
-            <span className="text-xs font-semibold tracking-[0.16em] text-[var(--muted)]">NEW ENQUIRIES</span>
+      <div className="max-w-4xl text-[#f5f1e8]">
+        <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">DASHBOARD</p>
+        <h1 className="mt-3 font-display text-4xl text-white">Welcome, {admin.displayName}</h1>
+        <p className="mt-2 text-sm text-[#9caaa4]">Signed in as {admin.role.toLowerCase()}.</p>
+
+        <div className="mt-8 border-y border-white/15 py-8">
+          <h2 className="font-display text-2xl text-white">Your workspace is ready</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#9caaa4]">
+            Dashboard access is active. Review enquiries, manage property listings, work portfolio, and system media.
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <Link
+            href="/admin/enquiries"
+            className="block max-w-xl rounded-lg border border-white/10 bg-[#08201b] p-5 transition-colors hover:border-[var(--gold)]/60 hover:bg-[#0c2a23]"
+          >
+            <span className="text-xs font-semibold tracking-[0.16em] text-[var(--gold)]">NEW ENQUIRIES</span>
             <span className="mt-2 flex items-baseline justify-between gap-4">
-              <span className="font-display text-3xl">{newEnquiries}</span>
-              <span className="text-sm font-medium">Open enquiries <span aria-hidden="true">&rarr;</span></span>
+              <span className="font-display text-3xl text-white">{newEnquiries}</span>
+              <span className="text-sm font-medium text-[#f5f1e8]">
+                Open enquiries <span aria-hidden="true">&rarr;</span>
+              </span>
             </span>
           </Link>
-          <Link href="/admin/properties" className="block max-w-xl border-b border-[var(--viridian-950)]/15 py-5 transition-colors hover:border-[var(--gold)]">
-            <span className="text-xs font-semibold tracking-[0.16em] text-[var(--muted)]">PROPERTY LISTINGS</span>
+
+          <Link
+            href="/admin/properties"
+            className="block max-w-xl rounded-lg border border-white/10 bg-[#08201b] p-5 transition-colors hover:border-[var(--gold)]/60 hover:bg-[#0c2a23]"
+          >
+            <span className="text-xs font-semibold tracking-[0.16em] text-[var(--gold)]">PROPERTY LISTINGS</span>
             <span className="mt-2 flex items-baseline justify-between gap-4">
-              <span className="font-display text-2xl">Manage properties</span>
-              <span className="text-sm font-medium">Open listings <span aria-hidden="true">&rarr;</span></span>
+              <span className="font-display text-2xl text-white">Manage properties</span>
+              <span className="text-sm font-medium text-[#f5f1e8]">
+                Open listings <span aria-hidden="true">&rarr;</span>
+              </span>
             </span>
           </Link>
-          <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
-            {[
-              ['Properties', counts.properties, '/admin/properties'],
-              ['Our Work', counts.portfolio, '/admin/our-work'],
-              ['Enquiries', counts.enquiries, '/admin/enquiries'],
-            ].map(([label, count, href]) => <Link key={label} href={href as string} className="border border-[var(--viridian-950)]/10 bg-white p-4 transition-colors hover:border-[var(--gold)]"><span className="text-[10px] font-semibold tracking-[0.16em] text-[var(--muted)]">{label}</span><span className="mt-2 block font-display text-3xl">{count}</span></Link>)}
-          </div>
+        </div>
+
+        <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+          {[
+            ['Properties', counts.properties, '/admin/properties'],
+            ['Our Work', counts.portfolio, '/admin/our-work'],
+            ['Enquiries', counts.enquiries, '/admin/enquiries'],
+          ].map(([label, count, href]) => (
+            <Link
+              key={label}
+              href={href as string}
+              className="rounded-lg border border-white/10 bg-[#08201b] p-4 transition-colors hover:border-[var(--gold)]/60 hover:bg-[#0c2a23]"
+            >
+              <span className="text-[10px] font-semibold tracking-[0.16em] text-[#9caaa4]">{label}</span>
+              <span className="mt-2 block font-display text-3xl text-white">{count}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
     </AdminShell>
   );
 }
