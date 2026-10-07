@@ -16,6 +16,15 @@ function config() {
   return { cloudName: name, apiKey, apiSecret, uploadPreset };
 }
 
+export function isCloudinaryConfigured() {
+  try {
+    config();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function digest(value: string) {
   return createHash('sha1').update(value).digest('hex');
 }

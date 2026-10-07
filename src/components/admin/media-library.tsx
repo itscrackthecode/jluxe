@@ -21,6 +21,7 @@ type MediaRow = {
 type MediaResponse = {
   success: true;
   data: MediaRow[];
+  cloudinaryConfigured: boolean;
   pagination: { page: number; total: number; totalPages: number };
 };
 
@@ -51,6 +52,7 @@ export default function MediaLibrary() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
+  const [cloudinaryConfigured, setCloudinaryConfigured] = useState<boolean | null>(null);
 
   const upload = async (file?: File) => {
     if (!file) return;
@@ -96,11 +98,12 @@ export default function MediaLibrary() {
     if (search.trim()) params.set('search', search.trim());
     if (mimeType) params.set('mimeType', mimeType);
 
-    fetch(`/admin/api/media?${params}`, { signal: controller.signal })
+    fetch(`/admin/api/media?${params}`, { signal: controller.signal, cache: 'no-store' })
       .then(async (response) => {
         const result = (await response.json()) as MediaResponse | { success: false; error?: string };
         if (!response.ok || !result.success) throw new Error('error' in result ? result.error : 'Unable to load media.');
         setItems(result.data);
+        if ('cloudinaryConfigured' in result) setCloudinaryConfigured(result.cloudinaryConfigured);
         setTotal(result.pagination.total);
         setTotalPages(result.pagination.totalPages);
         setError('');
@@ -131,11 +134,13 @@ export default function MediaLibrary() {
           <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">LIBRARY</p>
           <h1 className="mt-2 font-display text-4xl text-white">Media</h1>
         </div>
-        <label className="inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-full bg-[var(--viridian-800)] px-5 text-sm font-semibold text-white hover:bg-[var(--viridian-700)]">
-          <Upload className="h-4 w-4" /> {uploading ? 'Uploading…' : 'Upload image'}
-          <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} className="sr-only" onChange={(event) => { void upload(event.target.files?.[0]); event.currentTarget.value = ''; }} />
+        <label className={`inline-flex min-h-11 w-fit items-center gap-2 rounded-full px-5 text-sm font-semibold text-white ${cloudinaryConfigured !== false && !uploading ? 'cursor-pointer bg-[var(--viridian-800)] hover:bg-[var(--viridian-700)]' : 'cursor-not-allowed bg-[var(--viridian-800)]/50'}`}>
+          <Upload className="h-4 w-4" /> {uploading ? 'Uploading…' : cloudinaryConfigured === false ? 'Upload pending storage' : 'Upload image'}
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading || cloudinaryConfigured !== true} className="sr-only" onChange={(event) => { void upload(event.target.files?.[0]); event.currentTarget.value = ''; }} />
         </label>
       </div>
+
+      {cloudinaryConfigured === false && <p role="status" className="mt-4 text-sm text-[#9caaa4]">No external storage provider is configured.</p>}
 
       {uploadError && <p role="alert" className="mt-4 border-l-2 border-red-400 bg-[#08201b] px-4 py-3 text-sm text-red-200">{uploadError}</p>}
       {actionNotice && <p role="status" className="mt-4 border-l-2 border-[var(--gold)] bg-[#08201b] px-4 py-3 text-sm text-[#f5f1e8]">{actionNotice}</p>}

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getAdminSession } from '@/lib/admin-session';
 import { listAdminMedia } from '@/lib/db/queries/media';
 import { createCloudinaryMedia } from '@/lib/db/queries/media';
-import { createCloudinaryUploadSignature, destroyCloudinaryImage, getCloudinaryImageDetails, verifyCloudinaryUpload } from '@/lib/cloudinary';
+import { createCloudinaryUploadSignature, destroyCloudinaryImage, getCloudinaryImageDetails, isCloudinaryConfigured, verifyCloudinaryUpload } from '@/lib/cloudinary';
 
 const mediaQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await listAdminMedia({ search: parsed.data.search, mimeType: parsed.data.mimeType, limit, offset: (page - 1) * limit });
-    return NextResponse.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) } });
+    return NextResponse.json({ success: true, data: result.data, cloudinaryConfigured: isCloudinaryConfigured(), pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) } }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
   } catch {
     return NextResponse.json({ success: false, error: 'Unable to retrieve media right now.' }, { status: 500 });
   }

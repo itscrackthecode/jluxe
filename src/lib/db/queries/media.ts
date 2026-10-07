@@ -36,7 +36,7 @@ export async function listAdminMedia(filters: {
       [...values, filters.limit, filters.offset],
     ),
   ]);
-  return { data: rows.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null })), total: Number(count.rows[0]?.total ?? 0) };
+  return { data: rows.rows.map((item) => ({ ...item, deliveryUrl: item.provider.toLowerCase() === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null })), total: Number(count.rows[0]?.total ?? 0) };
 }
 
 export async function createCloudinaryMedia(input: { storageKey: string; mimeType: string; byteSize: number; width: number; height: number; adminId: UUID | null }) {
