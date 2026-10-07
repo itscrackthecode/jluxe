@@ -13,13 +13,13 @@ export default function SiteFooter() {
             height={1024}
             className="h-20 w-auto rounded-lg object-contain"
           />
-          <p className="mt-4 max-w-sm text-sm leading-6 text-white/50">
+          <p className="mt-4 max-w-sm text-sm leading-6 text-white/65">
             Building relationships, creating opportunities and delivering results across our services.
           </p>
         </div>
         <div>
           <p className="text-sm font-semibold">Explore</p>
-          <div className="mt-4 grid gap-3 text-sm text-white/55">
+          <div className="mt-4 grid gap-3 text-sm text-white/65">
             <Link href={siteConfig.nav.about} className="touch-press transition hover:text-white">About</Link>
             <Link href="/#services" className="touch-press transition hover:text-white">Our Services</Link>
             <Link href={siteConfig.nav.work} className="touch-press transition hover:text-white">Our Work</Link>
@@ -28,7 +28,7 @@ export default function SiteFooter() {
         </div>
         <div>
           <p className="text-sm font-semibold">Our Services</p>
-          <div className="mt-4 grid gap-3 text-sm text-white/55">
+          <div className="mt-4 grid gap-3 text-sm text-white/65">
             {services.map((service) => (
               <Link key={service.title} href={service.href} className="touch-press transition hover:text-white">
                 {service.title}
@@ -37,7 +37,7 @@ export default function SiteFooter() {
           </div>
         </div>
       </div>
-      <div className="container-xl mt-10 border-t border-white/10 pt-6 text-xs text-white/35">
+      <div className="container-xl mt-10 border-t border-white/10 pt-6 text-xs text-white/65">
         © {new Date().getFullYear()} {siteConfig.brand}. All rights reserved.
       </div>
     </footer>

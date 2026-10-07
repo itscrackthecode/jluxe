@@ -5,7 +5,7 @@ import SiteHeader from '@/components/site-header';
 import BusinessSolutionsHero from '@/components/services/business-solutions/business-solutions-hero';
 import { BusinessSolutionsServices } from '@/components/services/business-solutions/business-solutions-sections';
 import FaqSection, { type FaqItem } from '@/components/faq-section';
-import { siteConfig } from '@/lib/data';
+import { isConfiguredContact, siteConfig } from '@/lib/data';
 
 const businessSolutionsFaq: FaqItem[] = [
   { question: 'What business solutions does JLUXE provide?', answer: 'JLUXE provides marketing, branding, lead generation, sales and business development, banking services, and event management support.' },
@@ -38,12 +38,12 @@ export default function BusinessSolutionsPage() {
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Talk to us directly through the configured JLUXE channels.</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm font-semibold text-[var(--viridian-950)]">
-            <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
+            {isConfiguredContact(siteConfig.contact.whatsapp) ? <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
               <MessageCircle className="h-4 w-4 text-[var(--gold)]" /> WhatsApp
-            </a>
-            <a href={siteConfig.contact.instagram} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
+            </a> : <a href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">Enquiry form</a>}
+            {isConfiguredContact(siteConfig.contact.instagram) && <a href={siteConfig.contact.instagram} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">
               <Instagram className="h-4 w-4 text-[var(--gold)]" /> Instagram
-            </a>
+            </a>}
           </div>
         </div>
       </section>

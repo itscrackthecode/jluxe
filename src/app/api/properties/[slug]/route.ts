@@ -35,9 +35,10 @@ export async function GET(
         ...property,
         priceAmount: formatNumericValue(property.priceAmount),
         plotSize: formatNumericValue(property.plotSize),
-        images: media.map(({ id, storageKey, mimeType, width, height, position, altText }) => ({
+        images: media.map(({ id, storageKey, deliveryUrl, mimeType, width, height, position, altText }) => ({
           id,
           storageKey,
+          deliveryUrl,
           mimeType,
           width,
           height,

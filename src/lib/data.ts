@@ -3,8 +3,9 @@ export const services = [
   { title:'Business Solutions', kicker:'02', description:'Marketing, branding, lead generation and business development support.', href:'/services/business-solutions', tone:'business' },
   { title:'Recruitment & Training', kicker:'03', description:'Recruitment, staffing and practical training for people and organisations.', href:'/services/talent-training', tone:'training' },
   { title:'Interiors & Design', kicker:'04', description:'Interior design solutions that turn spaces into purposeful environments.', href:'/services/interiors-design', tone:'interior' },
-  { title:'Boutique', kicker:'05', description:'A new JLUXE venture currently in development.', href:'/contact', tone:'boutique' },
 ];
+
+export const isConfiguredContact = (value: string) => Boolean(value.trim()) && !/(your-|000000|\.example)/i.test(value);
 
 export const siteConfig = {
   brand: 'JLUXE',

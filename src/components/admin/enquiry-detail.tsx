@@ -171,6 +171,7 @@ export default function EnquiryDetail({ id }: { id: string }) {
             <dt className="text-xs font-medium text-[#9caaa4]">Property</dt>
             <dd className="mt-1 text-sm font-medium text-white">{enquiry.property?.title ?? 'Property reference'}</dd>
             {enquiry.property?.location && <dd className="mt-1 text-xs text-[#9caaa4]">{enquiry.property.location}</dd>}
+            <dd className="mt-2"><Link href={`/admin/properties/${enquiry.propertyId}`} className="text-xs font-semibold text-[var(--gold)] hover:underline">Review property and photos</Link></dd>
           </div>
         )}
         <div>

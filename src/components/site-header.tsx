@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -12,30 +13,35 @@ import {
   PhoneCall,
   X,
 } from 'lucide-react';
-import { services, siteConfig } from '@/lib/data';
+import { isConfiguredContact, services, siteConfig } from '@/lib/data';
 import MobileReveal from '@/components/mobile-reveal';
 
-const isPlaceholderContact = (value: string) => /your-|000000|\.example/.test(value);
-
-const contactItems = [
+const configuredContactItems = [
   {
     label: 'Email',
-    href: isPlaceholderContact(siteConfig.contact.email) ? siteConfig.nav.contact : `mailto:${siteConfig.contact.email}`,
+    href: `mailto:${siteConfig.contact.email}`,
     icon: Mail,
+    configured: isConfiguredContact(siteConfig.contact.email),
   },
   {
     label: 'Instagram',
-    href: isPlaceholderContact(siteConfig.contact.instagram) ? siteConfig.nav.contact : siteConfig.contact.instagram,
+    href: siteConfig.contact.instagram,
     icon: Instagram,
+    configured: isConfiguredContact(siteConfig.contact.instagram),
   },
   {
     label: 'WhatsApp',
-    href: isPlaceholderContact(siteConfig.contact.whatsapp) ? siteConfig.nav.contact : siteConfig.contact.whatsapp,
+    href: siteConfig.contact.whatsapp,
     icon: MessageCircle,
+    configured: isConfiguredContact(siteConfig.contact.whatsapp),
   },
-];
+].filter(({ configured }) => configured);
+const contactItems = configuredContactItems.length
+  ? configuredContactItems
+  : [{ label: 'Enquiry Form', href: siteConfig.nav.contact, icon: Mail }];
 
 export default function SiteHeader() {
+  const pathname = usePathname();
   const [openDropdown, setOpenDropdown] = useState<'services' | 'contact' | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -104,7 +110,7 @@ export default function SiteHeader() {
           </Link>
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-[var(--viridian-950)] md:flex">
-            <Link href={siteConfig.nav.about} className="transition hover:text-[var(--gold)]">About</Link>
+            <Link href="/about" aria-current={pathname.startsWith('/about') ? 'page' : undefined} className={`transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)] ${pathname.startsWith('/about') ? 'text-[var(--viridian-700)]' : ''}`}>About</Link>
             <div className="relative">
               <button
                 ref={servicesButtonRef}
@@ -209,7 +215,7 @@ export default function SiteHeader() {
             inert={!mobileOpen}
           >
             <div className={`flex max-h-[calc(100dvh-5.5rem-env(safe-area-inset-top,0px))] flex-col gap-3 overflow-y-auto py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-sm font-medium text-[var(--viridian-950)] transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0'}`}>
-              <Link href={siteConfig.nav.about} className="mobile-nav-link touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>About</Link>
+              <Link href="/about" aria-current={pathname.startsWith('/about') ? 'page' : undefined} className={`mobile-nav-link touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] ${pathname.startsWith('/about') ? 'text-[var(--viridian-700)]' : 'text-[var(--viridian-950)]'}`} onClick={() => setMobileOpen(false)}>About</Link>
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
                 <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Our Services</p>
                 <div className="grid gap-2">
@@ -232,7 +238,7 @@ export default function SiteHeader() {
                   ))}
                 </div>
               </div>
-              <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+              <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-950)] px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
                 Let&apos;s Talk
                 <ArrowUpRight className="h-4 w-4" />
               </Link>

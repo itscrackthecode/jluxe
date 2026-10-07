@@ -15,6 +15,7 @@ type MediaRow = {
   createdAt: string;
   propertyReferences: number;
   portfolioReferences: number;
+  deliveryUrl?: string | null;
 };
 
 type MediaResponse = {
@@ -47,6 +48,47 @@ export default function MediaLibrary() {
   const [totalPages, setTotalPages] = useState(0);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
+
+  const upload = async (file?: File) => {
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+    if (!allowed.includes(file.type) || file.size > 10 * 1024 * 1024) {
+      setUploadError('Choose a JPG, PNG, WebP, or AVIF image up to 10 MB.');
+      return;
+    }
+    setUploading(true);
+    setUploadError('');
+    try {
+      const signingResponse = await fetch('/admin/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intent: 'sign' }) });
+      const signing = await signingResponse.json();
+      if (!signingResponse.ok || !signing.success) throw new Error(signing.error ?? 'Unable to prepare upload.');
+      const form = new FormData();
+      form.set('file', file);
+      form.set('api_key', signing.apiKey);
+      form.set('timestamp', String(signing.timestamp));
+      form.set('upload_preset', signing.uploadPreset);
+      form.set('signature', signing.signature);
+      if (signing.assetFolder) form.set('asset_folder', signing.assetFolder);
+      const uploadedResponse = await fetch(signing.uploadUrl ?? `https://api.cloudinary.com/v1_1/${signing.cloudName}/image/upload`, { method: 'POST', body: form });
+      const uploaded = await uploadedResponse.json();
+      if (!uploadedResponse.ok) throw new Error('Cloudinary rejected this image upload.');
+      const saved = await fetch('/admin/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        intent: 'complete', publicId: uploaded.public_id, version: uploaded.version, signature: uploaded.signature,
+        secureUrl: uploaded.secure_url, format: uploaded.format, bytes: uploaded.bytes, width: uploaded.width,
+        height: uploaded.height, resourceType: uploaded.resource_type,
+      }) });
+      const result = await saved.json();
+      if (!saved.ok || !result.success) throw new Error(result.error ?? 'Unable to save uploaded media.');
+      setReload((value) => value + 1);
+    } catch (reason) {
+      setUploadError(reason instanceof Error ? reason.message : 'Unable to upload this image.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,9 +117,10 @@ export default function MediaLibrary() {
     const response = await fetch(`/admin/api/media/${id}`, { method: 'DELETE' });
     const result = (await response.json()) as { success?: boolean; error?: string };
     if (!response.ok || !result.success) {
-      window.alert(result.error ?? 'Unable to delete media.');
+      setActionNotice(result.error ?? 'Unable to delete media.');
       return;
     }
+    setActionNotice('Media deleted successfully.');
     setReload((value) => value + 1);
   };
 
@@ -88,18 +131,14 @@ export default function MediaLibrary() {
           <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">LIBRARY</p>
           <h1 className="mt-2 font-display text-4xl text-white">Media</h1>
         </div>
-        <button
-          type="button"
-          disabled
-          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full bg-[var(--viridian-800)] px-5 text-sm font-semibold text-white/60 opacity-60"
-        >
-          <Upload className="h-4 w-4" /> Upload pending storage
-        </button>
+        <label className="inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-full bg-[var(--viridian-800)] px-5 text-sm font-semibold text-white hover:bg-[var(--viridian-700)]">
+          <Upload className="h-4 w-4" /> {uploading ? 'Uploading…' : 'Upload image'}
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} className="sr-only" onChange={(event) => { void upload(event.target.files?.[0]); event.currentTarget.value = ''; }} />
+        </label>
       </div>
 
-      <p className="mt-4 border-l-2 border-[var(--gold)] bg-[#08201b] px-4 py-3 text-sm text-[#9caaa4]">
-        No external storage provider is configured. Media metadata and default assets are available now; uploads will be enabled after storage is configured.
-      </p>
+      {uploadError && <p role="alert" className="mt-4 border-l-2 border-red-400 bg-[#08201b] px-4 py-3 text-sm text-red-200">{uploadError}</p>}
+      {actionNotice && <p role="status" className="mt-4 border-l-2 border-[var(--gold)] bg-[#08201b] px-4 py-3 text-sm text-[#f5f1e8]">{actionNotice}</p>}
 
       <section className="mt-8">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row">
@@ -149,7 +188,7 @@ export default function MediaLibrary() {
             {items.map((item) => (
               <article key={item.id} className="rounded-lg border border-white/10 bg-[#08201b] p-4 text-[#f5f1e8]">
                 <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded bg-[var(--sand)]">
-                  <span className="px-4 text-center text-xs text-[var(--viridian-950)]">{item.storageKey}</span>
+                  {item.deliveryUrl ? <img src={item.deliveryUrl} alt="" className="h-full w-full object-cover" /> : <span className="px-4 text-center text-xs text-[var(--viridian-950)]">{item.storageKey}</span>}
                 </div>
                 <p className="mt-4 break-all text-sm font-semibold text-white">{item.storageKey}</p>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#9caaa4]">

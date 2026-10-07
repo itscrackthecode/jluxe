@@ -1,4 +1,5 @@
-import { pool } from '../pool';
+import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type { Media, UUID } from '../types';
 
 export type AdminMedia = Omit<Media, 'byteSize' | 'createdAt'> & {
@@ -35,16 +36,35 @@ export async function listAdminMedia(filters: {
       [...values, filters.limit, filters.offset],
     ),
   ]);
-  return { data: rows.rows, total: Number(count.rows[0]?.total ?? 0) };
+  return { data: rows.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null })), total: Number(count.rows[0]?.total ?? 0) };
 }
 
-export async function deleteMediaIfUnused(id: UUID): Promise<'deleted' | 'missing' | 'in-use'> {
-  const usage = await pool.query<{ references: string }>(
-    `SELECT (SELECT COUNT(*) FROM "PropertyMedia" WHERE "mediaId" = $1) +
-            (SELECT COUNT(*) FROM "PortfolioWorkMedia" WHERE "mediaId" = $1) AS "references"`,
-    [id],
+export async function createCloudinaryMedia(input: { storageKey: string; mimeType: string; byteSize: number; width: number; height: number; adminId: UUID | null }) {
+  const result = await pool.query<Media>(
+    `INSERT INTO "Media" ("storageKey", "provider", "mimeType", "byteSize", "width", "height", "uploadedByAdminId")
+     VALUES ($1, 'cloudinary', $2, $3, $4, $5, $6)
+     RETURNING "id", "storageKey", "provider", "mimeType", "byteSize", "width", "height", "uploadedByAdminId", "createdAt"`,
+    [input.storageKey, input.mimeType, input.byteSize, input.width, input.height, input.adminId],
   );
-  if (Number(usage.rows[0]?.references ?? 0) > 0) return 'in-use';
-  const result = await pool.query('DELETE FROM "Media" WHERE "id" = $1', [id]);
-  return result.rowCount ? 'deleted' : 'missing';
+  return result.rows[0];
+}
+
+export async function deleteMediaIfUnused(id: UUID, deleteCloudAsset?: (storageKey: string) => Promise<void>): Promise<'deleted' | 'missing' | 'in-use'> {
+  return withTransaction(async (client) => {
+    const media = await client.query<{ storageKey: string; provider: string }>(
+      'SELECT "storageKey", "provider" FROM "Media" WHERE "id" = $1 FOR UPDATE', [id],
+    );
+    if (!media.rows[0]) return 'missing';
+    const usage = await client.query<{ references: string }>(
+      `SELECT (SELECT COUNT(*) FROM "PropertyMedia" WHERE "mediaId" = $1) +
+              (SELECT COUNT(*) FROM "PortfolioWorkMedia" WHERE "mediaId" = $1) AS "references"`, [id],
+    );
+    if (Number(usage.rows[0]?.references ?? 0) > 0) return 'in-use';
+    if (media.rows[0].provider === 'cloudinary') {
+      if (!deleteCloudAsset) throw new Error('Cloudinary deletion is unavailable.');
+      await deleteCloudAsset(media.rows[0].storageKey);
+    }
+    await client.query('DELETE FROM "Media" WHERE "id" = $1', [id]);
+    return 'deleted';
+  });
 }

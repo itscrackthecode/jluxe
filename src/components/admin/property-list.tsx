@@ -72,13 +72,14 @@ export default function PropertyList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
-  const [savedNotice, setSavedNotice] = useState(false);
+  const [savedNotice, setSavedNotice] = useState('');
 
   useEffect(() => {
-    if (!new URLSearchParams(window.location.search).get('saved')) return;
-    setSavedNotice(true);
+    const notice = new URLSearchParams(window.location.search).get('notice');
+    if (!notice || notice.length > 120) return;
+    setSavedNotice(notice);
     window.history.replaceState(null, '', window.location.pathname);
-    const timer = window.setTimeout(() => setSavedNotice(false), 6000);
+    const timer = window.setTimeout(() => setSavedNotice(''), 6000);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -87,9 +88,25 @@ export default function PropertyList() {
     const response = await fetch(`/admin/api/properties/${property.id}`, { method: 'DELETE' });
     const result = (await response.json()) as { success?: boolean; error?: string };
     if (!response.ok || !result.success) {
-      window.alert(result.error ?? 'Unable to delete property.');
+      setSavedNotice(result.error ?? 'Unable to delete property.');
       return;
     }
+    setSavedNotice('Property deleted successfully.');
+    setRetry((value) => value + 1);
+  }
+
+  async function changePublication(property: PropertyRow, action: 'archive' | 'restore' | 'publish') {
+    const labels = { archive: 'archive', restore: 'restore and publish', publish: 'publish' };
+    if (action === 'archive' && !window.confirm(`Archive “${property.title}”? It will leave the public website, but its images and enquiries will remain.`)) return;
+    const response = await fetch(`/admin/api/properties/${property.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+    });
+    const result = await response.json() as { success?: boolean; error?: string };
+    if (!response.ok || !result.success) {
+      setSavedNotice(result.error ?? `Unable to ${labels[action]} this property.`);
+      return;
+    }
+    setSavedNotice(action === 'archive' ? 'Property archived successfully.' : action === 'restore' ? 'Property restored successfully.' : 'Property published successfully.');
     setRetry((value) => value + 1);
   }
 
@@ -145,7 +162,7 @@ export default function PropertyList() {
 
       {savedNotice && (
         <div role="status" className="mt-4 border-l-2 border-emerald-500 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-200">
-          Property saved successfully.
+          {savedNotice}
         </div>
       )}
 
@@ -174,10 +191,10 @@ export default function PropertyList() {
             }}
             className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] outline-none focus:border-[var(--gold)]"
           >
-            <option value="">All publication states</option>
+            <option value="">All</option>
             {publicationStatuses.map((value) => (
               <option key={value} value={value}>
-                {label(value)}
+                {value === 'PUBLISHED' ? 'Active / Published' : label(value)}
               </option>
             ))}
           </select>
@@ -262,13 +279,13 @@ export default function PropertyList() {
                     )}
                   </td>
                   <td className="px-3 py-4">
-                    <button
-                      type="button"
-                      onClick={() => void removeProperty(property)}
-                      className="text-xs font-medium text-red-400 hover:text-red-300 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex flex-wrap gap-x-3 gap-y-2">
+                      <Link href={`/admin/properties/${property.id}`} className="text-xs font-medium text-[var(--gold)] hover:underline">Edit</Link>
+                      {property.publicationStatus === 'PUBLISHED' && <button type="button" onClick={() => void changePublication(property, 'archive')} className="text-xs font-medium text-amber-300 hover:underline">Archive</button>}
+                      {property.publicationStatus === 'ARCHIVED' && <button type="button" onClick={() => void changePublication(property, 'restore')} className="text-xs font-medium text-emerald-300 hover:underline">Restore / Publish</button>}
+                      {property.publicationStatus === 'DRAFT' && <button type="button" onClick={() => void changePublication(property, 'publish')} className="text-xs font-medium text-emerald-300 hover:underline">Publish</button>}
+                      <button type="button" onClick={() => void removeProperty(property)} className="text-xs font-medium text-red-400 hover:text-red-300 hover:underline">Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}

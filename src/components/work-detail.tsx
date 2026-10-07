@@ -146,7 +146,7 @@ export default function WorkDetail({ slug }: { slug: string }) {
           <aside className="h-fit border-t border-[var(--viridian-950)]/15 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
             <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">ENQUIRY</p>
             <h2 className="mt-3 font-display text-3xl">Interested in similar work?</h2>
-            <Link href={siteConfig.nav.contact} className="touch-press mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+            <Link href={siteConfig.nav.contact} className="touch-press mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--viridian-950)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
               Contact JLUXE <ArrowRight className="h-4 w-4" />
             </Link>
           </aside>

@@ -10,7 +10,7 @@ const url = (path: string) => `${siteConfig.url}${path}`;
 const staticPages: MetadataRoute.Sitemap = [
   { url: url('/'), changeFrequency: 'weekly', priority: 1 },
   { url: url('/about'), changeFrequency: 'monthly', priority: 0.8 },
-  { url: url('/about/leadership'), changeFrequency: 'monthly', priority: 0.6 },
+  { url: url('/about/managing-director'), changeFrequency: 'monthly', priority: 0.6 },
   { url: url('/contact'), changeFrequency: 'monthly', priority: 0.7 },
   { url: url('/contact/sell-property'), changeFrequency: 'monthly', priority: 0.5 },
   { url: url('/properties'), changeFrequency: 'daily', priority: 0.9 },

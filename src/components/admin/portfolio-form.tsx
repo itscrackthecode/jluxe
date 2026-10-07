@@ -8,9 +8,10 @@ import { createPortfolioSlug } from '@/lib/admin-portfolio';
 import { publicationStatuses, type PublicationStatus, type PortfolioWorkMediaItem, type ServiceCategory } from '@/lib/db/types';
 import type { PortfolioServiceOption } from '@/lib/db/queries/portfolio';
 import { getMediaImageUrl } from '@/lib/media';
+import { uploadAdminImage } from '@/lib/cloudinary-client';
 
 type ServiceOption = PortfolioServiceOption;
-type MediaOption = { id: string; storageKey: string; mimeType: string };
+type MediaOption = { id: string; storageKey: string; mimeType: string; deliveryUrl?: string | null; byteSize?: string; width?: number | null; height?: number | null };
 
 type PortfolioWorkData = {
   id: string;
@@ -39,6 +40,7 @@ type FormValues = {
 type AttachedMediaItem = {
   mediaId: string;
   storageKey: string;
+  deliveryUrl?: string | null;
   position: number;
   altText: string | null;
 };
@@ -89,36 +91,43 @@ export default function PortfolioForm({
   const [slugEdited, setSlugEdited] = useState(Boolean(work));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [createdWorkId, setCreatedWorkId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Media gallery state
   const [mediaList, setMediaList] = useState<AttachedMediaItem[]>(() =>
     initialMedia.map((item) => ({
       mediaId: item.mediaId,
-      storageKey: item.storageKey,
+        storageKey: item.storageKey,
+        deliveryUrl: item.deliveryUrl,
       position: item.position,
       altText: item.altText,
     })),
   );
   const [mediaOptions, setMediaOptions] = useState<MediaOption[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
-  const [selectedMediaIdToAdd, setSelectedMediaIdToAdd] = useState('');
+  const [selectedMediaIdsToAdd, setSelectedMediaIdsToAdd] = useState<string[]>([]);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaActionPending, setMediaActionPending] = useState(false);
   const [mediaNotice, setMediaNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
-    if (!work) return;
     const controller = new AbortController();
     setMediaLoading(true);
 
-    fetch('/admin/api/media?limit=100', { signal: controller.signal })
+    fetch('/admin/api/media?limit=50', { signal: controller.signal })
       .then(async (response) => {
         const result = await response.json();
         if (response.ok && result.success) {
           setMediaOptions(
-            result.data.map((item: { id: string; storageKey: string; mimeType: string }) => ({
+            result.data.map((item: { id: string; storageKey: string; mimeType: string; deliveryUrl?: string | null; byteSize?: string; width?: number | null; height?: number | null }) => ({
               id: item.id,
               storageKey: item.storageKey,
               mimeType: item.mimeType,
+              deliveryUrl: item.deliveryUrl,
+              byteSize: item.byteSize,
+              width: item.width,
+              height: item.height,
             })),
           );
         }
@@ -129,15 +138,19 @@ export default function PortfolioForm({
       });
 
     return () => controller.abort();
-  }, [work]);
+  }, [work?.id]);
 
   async function persistMediaList(newList: AttachedMediaItem[]) {
-    if (!work) return;
+    const entityId = work?.id ?? createdWorkId;
+    if (!entityId) {
+      setMediaList(newList);
+      return;
+    }
     setMediaActionPending(true);
     setMediaNotice(null);
 
     try {
-      const response = await fetch(`/admin/api/portfolio/${work.id}/media`, {
+      const response = await fetch(`/admin/api/portfolio/${entityId}/media`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -156,6 +169,7 @@ export default function PortfolioForm({
         result.data.map((item: PortfolioWorkMediaItem) => ({
           mediaId: item.mediaId,
           storageKey: item.storageKey,
+          deliveryUrl: item.deliveryUrl,
           position: item.position,
           altText: item.altText,
         })),
@@ -169,6 +183,30 @@ export default function PortfolioForm({
       });
     } finally {
       setMediaActionPending(false);
+    }
+  }
+
+  async function uploadFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const chosen = Array.from(files);
+    if (mediaList.length + chosen.length > 12) {
+      setMediaNotice({ type: 'error', text: 'A work item can have up to 12 images.' });
+      return;
+    }
+    setUploading(true);
+    setMediaNotice(null);
+    try {
+      for (const file of chosen) {
+        const uploaded = await uploadAdminImage(file, 'portfolio');
+        const next = [...mediaList, { mediaId: uploaded.id, storageKey: uploaded.storageKey, deliveryUrl: uploaded.deliveryUrl, position: mediaList.length, altText: null }];
+        await persistMediaList(next);
+        setMediaList(next);
+      }
+      setMediaNotice({ type: 'success', text: 'Image uploaded and added to this work item.' });
+    } catch (reason) {
+      setMediaNotice({ type: 'error', text: reason instanceof Error ? reason.message : 'Unable to upload image.' });
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -207,22 +245,14 @@ export default function PortfolioForm({
   };
 
   const handleAddMedia = () => {
-    if (!selectedMediaIdToAdd || mediaActionPending) return;
-    if (mediaList.some((item) => item.mediaId === selectedMediaIdToAdd)) {
-      setMediaNotice({ type: 'error', text: 'This image is already attached to this work.' });
-      return;
-    }
-    const option = mediaOptions.find((item) => item.id === selectedMediaIdToAdd);
-    if (!option) return;
-
-    const newItem: AttachedMediaItem = {
-      mediaId: option.id,
-      storageKey: option.storageKey,
-      position: mediaList.length,
-      altText: null,
-    };
-    const updated = [...mediaList, newItem];
-    setSelectedMediaIdToAdd('');
+    if (selectedMediaIdsToAdd.length === 0 || mediaActionPending) return;
+    const selected = mediaOptions.filter((option) => selectedMediaIdsToAdd.includes(option.id) && !mediaList.some((item) => item.mediaId === option.id));
+    const updated = [...mediaList, ...selected.map((option, index): AttachedMediaItem => ({
+      mediaId: option.id, storageKey: option.storageKey, deliveryUrl: option.deliveryUrl,
+      position: mediaList.length + index, altText: null,
+    }))];
+    setSelectedMediaIdsToAdd([]);
+    setMediaPickerOpen(false);
     void persistMediaList(updated);
   };
 
@@ -244,8 +274,9 @@ export default function PortfolioForm({
     };
 
     try {
-      const response = await fetch(work ? `/admin/api/portfolio/${work.id}` : '/admin/api/portfolio', {
-        method: work ? 'PATCH' : 'POST',
+      const entityId = work?.id ?? createdWorkId;
+      const response = await fetch(entityId ? `/admin/api/portfolio/${entityId}` : '/admin/api/portfolio', {
+        method: entityId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -255,7 +286,21 @@ export default function PortfolioForm({
         return;
       }
 
-      router.push(`/admin/our-work/${result.data.id}`);
+      const savedId = entityId ?? result.data.id as string;
+      if (!work && !entityId) setCreatedWorkId(savedId);
+      if (!work && mediaList.length > 0) {
+        const linked = await fetch(`/admin/api/portfolio/${savedId}/media`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ media: mediaList.map((item) => ({ mediaId: item.mediaId, altText: item.altText })) }),
+        });
+        const linkedResult = await linked.json();
+        if (!linked.ok || linkedResult.success !== true) throw new Error(linkedResult.error ?? 'Work saved, but its images could not be attached. Save again to retry.');
+      }
+
+      const notice = values.publicationStatus === 'DRAFT' ? 'Work saved as draft.'
+        : values.publicationStatus === 'ARCHIVED' ? 'Work archived successfully.'
+          : work || entityId ? 'Work updated successfully.' : 'Work published successfully.';
+      router.push(`/admin/our-work?notice=${encodeURIComponent(notice)}`);
       router.refresh();
     } catch {
       setError('Unable to save work right now. Please try again.');
@@ -441,7 +486,7 @@ export default function PortfolioForm({
       </form>
 
       {/* Media Management Section for existing work */}
-      {work && (
+      {(
         <section className="mt-12 border-t border-white/15 pt-8">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -466,6 +511,14 @@ export default function PortfolioForm({
             </div>
           )}
 
+          <div className="mt-5 flex flex-wrap gap-2">
+            <label className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded bg-[var(--viridian-800)] px-4 text-sm font-medium text-white ${uploading || mediaActionPending ? 'cursor-not-allowed opacity-50' : ''}`}>
+              {uploading ? 'Uploading…' : '+ Upload Images'}
+              <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading || mediaActionPending || mediaList.length >= 12} className="sr-only" onChange={(event) => { void uploadFiles(event.target.files); event.currentTarget.value = ''; }} />
+            </label>
+            <span className="text-xs self-center text-[#9caaa4]">Or choose an image from the existing Media list below.</span>
+          </div>
+
           {/* Attached images list */}
           <div className="mt-6 space-y-3">
             {mediaList.length === 0 ? (
@@ -487,7 +540,7 @@ export default function PortfolioForm({
                     <div className="flex items-center gap-3">
                       <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded border border-white/10 bg-[var(--sand)]">
                         <img
-                          src={getMediaImageUrl(item.storageKey, 'portfolio')}
+                          src={item.deliveryUrl ?? getMediaImageUrl(item.storageKey, 'portfolio')}
                           alt={item.altText ?? 'Work thumbnail'}
                           className="h-full w-full object-cover"
                           onError={(event) => {
@@ -556,34 +609,26 @@ export default function PortfolioForm({
             )}
           </div>
 
-          {/* Add media dropdown */}
-          <div className="mt-6 rounded-lg border border-white/15 bg-[#08201b] p-4">
-            <p className="text-xs font-semibold text-white">Attach image from media library</p>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-              <select
-                disabled={mediaLoading || mediaActionPending || mediaOptions.length === 0}
-                value={selectedMediaIdToAdd}
-                onChange={(event) => setSelectedMediaIdToAdd(event.target.value)}
-                className="min-h-11 flex-1 border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] outline-none focus:border-[var(--gold)] disabled:opacity-50"
-              >
-                <option value="">
-                  {mediaLoading ? 'Loading media options...' : mediaOptions.length === 0 ? 'No media available in library' : 'Select an image to attach'}
-                </option>
-                {mediaOptions.map((media) => (
-                  <option key={media.id} value={media.id}>
-                    {media.storageKey} ({media.mimeType})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={!selectedMediaIdToAdd || mediaActionPending}
-                onClick={handleAddMedia}
-                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded bg-[var(--viridian-800)] px-5 text-sm font-medium text-white transition-colors hover:bg-[var(--viridian-700)] disabled:opacity-40"
-              >
-                <Plus className="h-4 w-4" /> Attach image
-              </button>
-            </div>
+          <div className="mt-6">
+            <button type="button" onClick={() => setMediaPickerOpen((open) => !open)} className="inline-flex min-h-10 items-center gap-2 rounded border border-white/20 px-4 text-sm font-medium text-white hover:bg-white/5">
+              <Plus className="h-4 w-4" /> Choose from Media
+            </button>
+            {mediaPickerOpen && <div role="dialog" aria-label="Choose existing media" className="mt-3 rounded-lg border border-white/15 bg-[#08201b] p-4">
+              <p className="text-xs text-[#9caaa4]">Choose one or more existing images. Selecting them creates only a PortfolioWorkMedia relationship.</p>
+              {mediaLoading ? <p className="py-5 text-sm text-[#9caaa4]">Loading media…</p> : mediaOptions.length === 0 ? <p className="py-5 text-sm text-[#9caaa4]">No media available in the library.</p> : <div className="mt-3 grid max-h-80 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
+                {mediaOptions.map((media) => {
+                  const attached = mediaList.some((item) => item.mediaId === media.id);
+                  const selected = selectedMediaIdsToAdd.includes(media.id);
+                  return <label key={media.id} className={`cursor-pointer overflow-hidden rounded border ${attached ? 'border-emerald-500/50 opacity-60' : selected ? 'border-[var(--gold)]' : 'border-white/10'}`}>
+                    <img src={media.deliveryUrl ?? getMediaImageUrl(media.storageKey, 'portfolio')} alt="" className="aspect-[4/3] w-full object-cover" />
+                    <div className="flex items-start gap-2 p-2"><input type="checkbox" checked={attached || selected} disabled={attached || mediaActionPending} onChange={() => setSelectedMediaIdsToAdd((current) => selected ? current.filter((id) => id !== media.id) : [...current, media.id])} className="mt-0.5 accent-[var(--gold)]" />
+                      <span className="min-w-0"><span className="block truncate text-xs text-white">{media.storageKey.split('/').pop()}</span><span className="block text-[10px] text-[#9caaa4]">{media.mimeType}{media.byteSize ? ` · ${(Number(media.byteSize) / 1024).toFixed(0)} KB` : ''}{attached ? ' · Attached' : ''}</span></span>
+                    </div>
+                  </label>;
+                })}
+              </div>}
+              <div className="mt-3 flex gap-2"><button type="button" onClick={handleAddMedia} disabled={!selectedMediaIdsToAdd.length || mediaActionPending} className="min-h-10 rounded bg-[var(--viridian-800)] px-4 text-sm text-white disabled:opacity-40">Add selected ({selectedMediaIdsToAdd.length})</button><button type="button" onClick={() => setMediaPickerOpen(false)} className="min-h-10 px-3 text-sm text-[#9caaa4]">Close</button></div>
+            </div>}
           </div>
         </section>
       )}
