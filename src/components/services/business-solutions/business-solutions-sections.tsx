@@ -4,7 +4,9 @@ import { useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 import {
   BriefcaseBusiness,
+  Building2,
   CalendarDays,
+  HandCoins,
   Landmark,
   Megaphone,
   Palette,
@@ -15,7 +17,7 @@ import {
   businessSolutionsServices,
 } from '@/lib/data';
 
-const serviceIcons = [Megaphone, Palette, Target, TrendingUp, Landmark, CalendarDays];
+const serviceIcons = [Megaphone, Palette, Target, TrendingUp, Landmark, CalendarDays, Building2, HandCoins, Landmark];
 
 const serviceItems: Record<string, string[]> = {
   'Marketing Solutions': [
@@ -63,6 +65,30 @@ const serviceItems: Record<string, string[]> = {
     'Promotional Activities',
     'Event-Based Promotions',
     'Corporate Events',
+  ],
+  'Real Estate Solutions': [
+    'Property acquisition and sales support',
+    'Property management',
+    'Real estate investment solutions',
+    'Due diligence and documentation support',
+    'Commercial and residential property services',
+    'Asset valuation and advisory',
+  ],
+  'Collection Solutions': [
+    'Receivables and payment collection',
+    'Loan and debt collection support',
+    'Customer payment follow-up',
+    'Account reconciliation',
+    'Recovery and settlement services',
+    'Collection reporting and monitoring',
+  ],
+  'Banking Solutions': [
+    'Banking and financial service support',
+    'Loan and credit-related services',
+    'Account and payment solutions',
+    'Financial documentation support',
+    'Customer onboarding and verification',
+    'Transaction and payment management',
   ],
 };
 
@@ -118,8 +144,9 @@ function BusinessSolutionCard({
         <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{service.number}</span>
         <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
       </div>
-      <h3 className="mt-9 font-display text-2xl leading-snug">{service.title}</h3>
-      <p className="mt-3 max-w-sm text-sm leading-6 text-white/65">{service.description}</p>
+      <h3 className="mt-9 font-display text-2xl leading-snug text-[var(--cream)]">{service.title}</h3>
+      <p className="mt-3 max-w-sm text-sm leading-6 text-white/80">{service.description}</p>
+      <p className="mt-4 text-[11px] font-medium tracking-wide text-white/80">Hover / Tap for more info</p>
 
       <div
         id={panelId}
@@ -130,7 +157,7 @@ function BusinessSolutionCard({
         <div className="min-h-0 overflow-hidden">
           <ul className="mt-5 flex flex-wrap gap-2 border-t border-white/10 pt-4">
             {serviceItems[service.title].map((item) => (
-              <li key={item} className="border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-xs leading-tight text-white/75">
+            <li key={item} className="border border-white/25 bg-white/[0.06] px-2.5 py-1.5 text-xs leading-tight text-white/90">
                 {item}
               </li>
             ))}
@@ -162,8 +189,8 @@ export function BusinessSolutionsServices() {
             );
           })}
         </div>
+
       </div>
     </section>
   );
 }
-

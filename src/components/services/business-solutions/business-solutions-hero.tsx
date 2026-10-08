@@ -19,7 +19,7 @@ export default function BusinessSolutionsHero() {
             Practical solutions for growing businesses.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8">
-            JLUXE supports businesses with marketing, branding, lead generation, sales and business development solutions built around real requirements.
+            We provide integrated business solutions designed to help individuals, businesses, and financial institutions manage their real estate, collections, and banking requirements efficiently and securely.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--cream)] px-6 py-3 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-white">

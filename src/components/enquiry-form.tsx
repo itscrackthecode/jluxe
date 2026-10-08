@@ -20,7 +20,7 @@ const interestOptions = [
   'Real Estate',
   'Business Solutions',
   'Talent & Training',
-  'Interiors & Design',
+  'Interior Design & Architecture',
   'Other',
 ];
 

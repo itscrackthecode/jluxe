@@ -80,7 +80,7 @@ function ServiceChips({ items }: { items: string[] }) {
     <ul className="flex flex-wrap content-start gap-1.5">
       {items.map((item) => (
         <li key={item} className="max-w-full">
-          <span className="inline-flex max-w-full whitespace-normal break-words rounded-md border border-white/15 bg-white/[0.035] px-2.5 py-1 text-[11px] leading-4 text-white/75">
+          <span className="inline-flex max-w-full whitespace-normal break-words rounded-md border border-white/25 bg-white/[0.06] px-2.5 py-1 text-[11px] leading-4 text-white/90">
             {item}
           </span>
         </li>
@@ -141,10 +141,10 @@ export default function RealEstateCapabilityCard({ capability }: Props) {
             <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{capability.number}</span>
             <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
           </div>
-          <h3 className="mt-8 font-display text-2xl leading-tight">{title}</h3>
-          <p className="mt-3 text-sm leading-6 text-white/65">{capability.description}</p>
-          <p className="mt-auto flex items-center gap-2 pt-5 text-[11px] font-medium tracking-wide text-white/55">
-            <span>Hover or tap to explore</span>
+          <h3 className="mt-8 font-display text-2xl leading-tight text-[var(--cream)]">{title}</h3>
+          <p className="mt-3 text-sm leading-6 text-white/80">{capability.description}</p>
+          <p className="mt-auto flex items-center gap-2 pt-5 text-[11px] font-medium tracking-wide text-white/80">
+            <span>Hover / Tap for more info</span>
             <span aria-hidden="true" className="text-[var(--gold)]">↗</span>
           </p>
         </div>
@@ -170,7 +170,7 @@ export default function RealEstateCapabilityCard({ capability }: Props) {
               <ServiceChips items={serviceItems} />
             )}
           </div>
-          <p className="mt-2 shrink-0 pt-1 text-[10px] text-white/45">Tap or press Enter to return</p>
+          <p className="mt-2 shrink-0 pt-1 text-[10px] text-white/80">Tap or press Enter to return</p>
         </div>
       </div>
     </article>
