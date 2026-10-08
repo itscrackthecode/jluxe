@@ -40,7 +40,7 @@ export default function PropertiesPage() {
               Tell us what you&apos;re looking for and we&apos;ll help you explore the available options.
             </p>
           </div>
-          <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-12 w-fit shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+          <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-12 w-fit shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--viridian-950)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
             Let&apos;s Talk <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

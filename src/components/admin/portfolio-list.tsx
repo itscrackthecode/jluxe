@@ -51,6 +51,16 @@ export default function PortfolioList({ services, categories }: { services: Serv
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    const message = new URLSearchParams(window.location.search).get('notice');
+    if (!message || message.length > 120) return;
+    setNotice(message);
+    window.history.replaceState(null, '', window.location.pathname);
+    const timer = window.setTimeout(() => setNotice(''), 6000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -96,6 +106,7 @@ export default function PortfolioList({ services, categories }: { services: Serv
       setError(result.error ?? 'Unable to delete work.');
       return;
     }
+    setNotice('Work deleted successfully.');
     setRetry((current) => current + 1);
   }
 
@@ -113,6 +124,8 @@ export default function PortfolioList({ services, categories }: { services: Serv
           Add work
         </Link>
       </div>
+
+      {notice && <div role="status" className="mt-4 border-l-2 border-emerald-500 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-200">{notice}</div>}
 
       <div className="grid gap-3 border-b border-white/15 py-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block text-xs font-medium text-[#9caaa4]">

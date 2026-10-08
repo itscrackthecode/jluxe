@@ -1,4 +1,5 @@
 import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type {
   PortfolioWork,
   PortfolioWorkMediaItem,
@@ -136,14 +137,14 @@ export async function listPortfolioWorkMedia(portfolioWorkIds: UUID[]): Promise<
 
   const result = await pool.query<PortfolioWorkMediaItem>(
     `SELECT pwm."portfolioWorkId", pwm."mediaId", pwm."position", pwm."altText",
-            m."id", m."storageKey", m."mimeType", m."width", m."height"
+              m."id", m."storageKey", m."mimeType", m."width", m."height", m."provider"
      FROM "PortfolioWorkMedia" pwm
      JOIN "Media" m ON m."id" = pwm."mediaId"
     WHERE pwm."portfolioWorkId" = ANY($1::uuid[])
     ORDER BY pwm."portfolioWorkId", pwm."position" ASC`,
     [portfolioWorkIds],
   );
-  return result.rows;
+    return result.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null }));
 }
 
 export async function setPortfolioWorkCover(

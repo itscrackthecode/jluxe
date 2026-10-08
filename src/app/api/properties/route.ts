@@ -79,6 +79,7 @@ export async function GET(request: Request) {
     const mediaByProperty = new Map<string, Array<{
       id: string;
       storageKey: string;
+      deliveryUrl?: string | null;
       mimeType: string;
       width: number | null;
       height: number | null;
@@ -91,6 +92,7 @@ export async function GET(request: Request) {
       propertyImages.push({
         id: image.id,
         storageKey: image.storageKey,
+        deliveryUrl: image.deliveryUrl,
         mimeType: image.mimeType,
         width: image.width,
         height: image.height,
@@ -109,7 +111,7 @@ export async function GET(request: Request) {
           ...property,
           priceAmount: formatNumericValue(property.priceAmount),
           plotSize: formatNumericValue(property.plotSize),
-          coverImage: coverMedia ? { storageKey: coverMedia.storageKey, altText: coverMedia.altText } : null,
+          coverImage: coverMedia ? { storageKey: coverMedia.storageKey, deliveryUrl: coverMedia.deliveryUrl, altText: coverMedia.altText } : null,
           media: propMedia,
         };
       }),

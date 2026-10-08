@@ -12,6 +12,7 @@ type PortfolioService = { id: string; slug: string; title: string; categories: s
 type PortfolioMedia = {
   id: string;
   storageKey: string;
+  deliveryUrl?: string | null;
   mimeType: string;
   width: number | null;
   height: number | null;
@@ -131,7 +132,7 @@ export default function WorkPortfolio() {
                 type="button"
                 aria-pressed={activeCategory === cat.value}
                 onClick={() => { setActiveCategory(cat.value); setPage(1); }}
-                className={`touch-press min-h-11 border px-3 py-2 text-xs font-medium transition-colors ${activeCategory === cat.value ? 'border-[var(--viridian-900)] bg-[var(--viridian-900)] text-white' : 'border-[var(--viridian-950)]/15 text-[var(--viridian-950)] hover:border-[var(--gold)]'}`}
+                className={`touch-press min-h-11 border px-3 py-2 text-xs font-medium transition-colors ${activeCategory === cat.value ? 'border-[var(--viridian-900)] bg-[var(--viridian-950)] text-white' : 'border-[var(--viridian-950)]/15 text-[var(--viridian-950)] hover:border-[var(--gold)]'}`}
               >
                 {cat.label}
               </button>
@@ -147,7 +148,7 @@ export default function WorkPortfolio() {
               <Link key={item.id} href={`/our-work/${item.slug}`} data-reveal className={`block min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
                 <article className="premium-card">
                   <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
-                    <img src={getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
+                    <img src={item.media[0]?.deliveryUrl ?? getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)]">
                     {item.service.categories.length > 0 && <span className="text-[var(--muted)]">{item.service.categories.join(', ')}</span>}

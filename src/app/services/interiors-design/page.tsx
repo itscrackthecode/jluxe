@@ -4,7 +4,7 @@ import Link from 'next/link';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
 import FaqSection, { type FaqItem } from '@/components/faq-section';
-import { siteConfig } from '@/lib/data';
+import { isConfiguredContact, siteConfig } from '@/lib/data';
 
 const interiorsFaq: FaqItem[] = [
   { question: 'What interior design services does JLUXE provide?', answer: 'JLUXE provides interior designing focused on functional, thoughtful and refined spaces.' },
@@ -64,8 +64,8 @@ export default function InteriorsDesignPage() {
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Talk to us directly through the configured JLUXE channels.</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm font-semibold text-[var(--viridian-950)]">
-            <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4 text-[var(--gold)]" /> WhatsApp</a>
-            <a href={siteConfig.contact.instagram} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]"><Instagram className="h-4 w-4 text-[var(--gold)]" /> Instagram</a>
+            {isConfiguredContact(siteConfig.contact.whatsapp) ? <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4 text-[var(--gold)]" /> WhatsApp</a> : <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]">Enquiry form</Link>}
+            {isConfiguredContact(siteConfig.contact.instagram) && <a href={siteConfig.contact.instagram} target="_blank" rel="noreferrer" className="touch-press inline-flex min-h-11 items-center gap-2 border-b border-[var(--gold)]/60 pb-1 transition-colors hover:text-[var(--gold)]"><Instagram className="h-4 w-4 text-[var(--gold)]" /> Instagram</a>}
           </div>
         </div>
       </section>

@@ -81,6 +81,7 @@ export async function GET(request: Request) {
     const mediaByWork = new Map<string, Array<{
       id: string;
       storageKey: string;
+      deliveryUrl?: string | null;
       mimeType: string;
       width: number | null;
       height: number | null;
@@ -93,6 +94,7 @@ export async function GET(request: Request) {
       workImages.push({
         id: image.id,
         storageKey: image.storageKey,
+        deliveryUrl: image.deliveryUrl,
         mimeType: image.mimeType,
         width: image.width,
         height: image.height,

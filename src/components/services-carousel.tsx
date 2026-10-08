@@ -1,12 +1,10 @@
 'use client';
-import { ArrowRight, BriefcaseBusiness, Building2, GraduationCap, House, ShoppingBag } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, Building2, GraduationCap, House } from 'lucide-react';
 import { services } from '@/lib/data';
 
-const icons = [House, BriefcaseBusiness, GraduationCap, Building2, ShoppingBag];
+const icons = [House, BriefcaseBusiness, GraduationCap, Building2];
 
 export default function ServicesCarousel() {
-  const boutique = services[4];
-
   return (
     <section id="services" className="bg-[var(--cream)] py-24" data-reveal>
       <div className="container-xl">
@@ -26,7 +24,7 @@ export default function ServicesCarousel() {
         </div>
 
         <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4" data-reveal-stagger>
-          {services.slice(0, 4).map((s, i) => {
+          {services.map((s, i) => {
             const Icon = icons[i];
 
             return (
@@ -34,7 +32,7 @@ export default function ServicesCarousel() {
                 key={s.title}
                 href={s.href}
                 data-reveal
-                className="premium-card group relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,58,51,0.94),rgba(6,47,41,0.96))] p-7 text-white shadow-[0_20px_40px_rgba(6,47,41,0.12)]"
+                className="premium-card group relative overflow-hidden rounded-[28px] border border-white/10 bg-[var(--viridian-950)] p-7 text-white shadow-[0_20px_40px_rgba(6,47,41,0.12)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(197,164,109,0.18),transparent_28%),radial-gradient(circle_at_15%_90%,rgba(255,255,255,0.05),transparent_35%)]" />
                 <div className="absolute -right-12 top-6 h-24 w-24 rounded-full bg-[var(--gold)]/10 blur-2xl" />
@@ -60,26 +58,6 @@ export default function ServicesCarousel() {
           })}
         </div>
 
-        <a
-          href={boutique.href}
-          data-reveal
-          className="group mt-5 flex flex-col gap-4 rounded-[28px] border border-dashed border-[var(--viridian-950)]/30 bg-white/40 px-7 py-6 transition-colors duration-300 hover:border-[var(--viridian-950)]/50 hover:bg-white sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div className="flex items-baseline gap-5 sm:items-center sm:gap-6">
-            <span className="font-display text-2xl leading-none text-[var(--viridian-950)]/35">{boutique.kicker}</span>
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h3 className="font-display text-2xl text-[var(--viridian-950)]">{boutique.title}</h3>
-                <span className="rounded-full border border-[var(--gold)]/50 px-3 py-1 text-[10px] font-semibold tracking-[0.18em] text-[var(--gold)]">COMING SOON</span>
-              </div>
-              <p className="mt-1.5 max-w-xl text-sm leading-6 text-[var(--muted)]">{boutique.description}</p>
-            </div>
-          </div>
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--viridian-950)]">
-            Enquire
-            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </span>
-        </a>
       </div>
     </section>
   );

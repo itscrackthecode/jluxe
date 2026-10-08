@@ -14,7 +14,7 @@ export default function NotFound() {
           <p className="mt-4 max-w-xl text-base leading-7 text-[var(--muted)]">
             The page you&apos;re looking for doesn&apos;t exist or may have moved.
           </p>
-          <Link href="/" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+          <Link href="/" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-950)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
             Back to JLUXE <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

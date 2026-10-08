@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, MessageCircle, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { siteConfig } from '@/lib/data';
-import { getMediaImageUrl } from '@/lib/media';
-import MediaGallerySlider from '@/components/media-gallery-slider';
+import { isConfiguredContact, siteConfig } from '@/lib/data';
+import PropertyImageGallery from '@/components/property-image-gallery';
 
 type PropertyImage = {
   id: string;
   storageKey: string;
+  deliveryUrl?: string | null;
   mimeType: string;
   width: number | null;
   height: number | null;
@@ -152,67 +152,61 @@ export default function PropertyDetail({ slug }: { slug: string }) {
   const plotSize = getPlotSize(property);
   const contactParams = new URLSearchParams({ interest: 'Real Estate', property: property.title });
   const contactHref = `${siteConfig.nav.contact}?${contactParams.toString()}`;
-  const hasWhatsApp = Boolean(siteConfig.contact.whatsapp) && !siteConfig.contact.whatsapp.includes('000000');
+  const hasWhatsApp = isConfiguredContact(siteConfig.contact.whatsapp);
 
   return (
     <>
-      <section className="bg-[var(--viridian-950)] py-14 text-white sm:py-18">
-        <div className="hero-copy container-xl">
-          <Link href="/properties" className="touch-press inline-flex min-h-11 items-center gap-2 text-sm text-white/70 transition-colors hover:text-white">
+      <header className="bg-[var(--viridian-950)] py-6 text-white sm:py-8">
+        <div className="container-xl">
+          <Link href="/properties" className="touch-press inline-flex min-h-10 items-center gap-2 text-sm text-white/70 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Property opportunities
           </Link>
-          <div className="mt-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-semibold tracking-[0.22em] text-[var(--gold)]">PROPERTY OPPORTUNITY</p>
-              <h1 className="mt-4 max-w-4xl font-display text-4xl leading-tight sm:text-5xl lg:text-6xl">{property.title}</h1>
-            </div>
-            <p className="w-fit border border-white/20 px-3 py-2 text-sm text-white/80">{formatLabel(property.status)}</p>
-          </div>
-        </div>
-      </section>
-
-      <section aria-label="Property images" className="bg-[var(--cream)] py-6 sm:py-8" data-reveal>
-        <div className="container-xl">
-          <MediaGallerySlider
-            images={property.images}
-            fallbackType="property"
-            aspectRatioClassName="aspect-[4/3] sm:aspect-[16/10] md:aspect-[16/9]"
-          />
-        </div>
-      </section>
-
-      <section className="py-12 sm:py-16" data-reveal>
-        <div className="container-xl grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
-          <div>
-            {property.description && (
-              <div>
-                <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY DETAILS</p>
-                <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">{property.description}</p>
+          <div className="mt-4 flex flex-col gap-3 sm:mt-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY OPPORTUNITY</p>
+              <h1 className="mt-2 max-w-4xl font-display text-2xl leading-tight sm:text-3xl lg:text-4xl">{property.title}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
+                {property.location && <span>{property.location}</span>}
+                <span>{formatLabel(property.propertyType)}</span>
               </div>
-            )}
-            {(property.location || property.propertyType || price || plotSize) && (
-              <dl className="mt-8 grid gap-5 border-t border-[var(--viridian-950)]/15 pt-6 sm:grid-cols-2">
-                {property.location && <div><dt className="text-xs text-[var(--muted)]">Location</dt><dd className="mt-1 text-sm font-medium">{property.location}</dd></div>}
-                {property.propertyType && <div><dt className="text-xs text-[var(--muted)]">Property type</dt><dd className="mt-1 text-sm font-medium">{formatLabel(property.propertyType)}</dd></div>}
-                {price && <div><dt className="text-xs text-[var(--muted)]">Price</dt><dd className="mt-1 text-sm font-medium">{price}</dd></div>}
-                {plotSize && <div><dt className="text-xs text-[var(--muted)]">Plot size</dt><dd className="mt-1 text-sm font-medium">{plotSize}</dd></div>}
+            </div>
+            <p className="w-fit border border-white/20 px-2.5 py-1.5 text-xs text-white/80">{formatLabel(property.status)}</p>
+          </div>
+        </div>
+      </header>
+
+      <section className="py-5 sm:py-7" data-reveal>
+        <div className="container-xl">
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:gap-8">
+            <section aria-label="Property images" className="min-w-0">
+              <PropertyImageGallery images={property.images} />
+            </section>
+
+            <aside className="min-w-0 border border-[var(--viridian-950)]/12 bg-white p-4 sm:p-5">
+              <h2 className="text-xs font-semibold tracking-[0.16em] text-[var(--viridian-800)]">PROPERTY FACTS</h2>
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+                <div><dt className="text-[11px] text-[var(--muted)]">Property type</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.propertyType)}</dd></div>
+                <div><dt className="text-[11px] text-[var(--muted)]">Status</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.status)}</dd></div>
+                {plotSize && <div><dt className="text-[11px] text-[var(--muted)]">Plot size</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{plotSize}</dd></div>}
+                <div className="col-span-2 border-t border-[var(--viridian-950)]/10 pt-3"><dt className="text-[11px] text-[var(--muted)]">Representation</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.representationType)}</dd></div>
               </dl>
-            )}
-            <p className="mt-6 max-w-2xl text-xs leading-5 text-[var(--muted)]">{representationCopy(property.representationType)}</p>
+
+              <div className="mt-5 border-t border-[var(--viridian-950)]/10 pt-4">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--muted)]">PRICE</p>
+                <p className="mt-1 font-display text-2xl leading-tight text-[var(--viridian-950)]">{price ?? 'Contact for details'}</p>
+                <Link href={contactHref} className="touch-press mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 bg-[var(--viridian-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
+                  Enquire with JLUXE <ArrowRight className="h-4 w-4" />
+                </Link>
+                {hasWhatsApp && <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press mt-2 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
+              </div>
+            </aside>
           </div>
 
-          <aside className="h-fit border-t border-[var(--viridian-950)]/15 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-            <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">ENQUIRY</p>
-            <h2 className="mt-3 font-display text-3xl">Interested in this property?</h2>
-            <Link href={contactHref} className="touch-press mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
-              Contact JLUXE <ArrowRight className="h-4 w-4" />
-            </Link>
-            {hasWhatsApp && (
-              <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </a>
-            )}
-          </aside>
+          {property.description && <section className="mt-7 max-w-4xl border-t border-[var(--viridian-950)]/15 pt-5 sm:mt-9 sm:pt-6">
+            <h2 className="font-display text-2xl text-[var(--viridian-950)]">Property description</h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-base sm:leading-7">{property.description}</p>
+            <p className="mt-4 text-xs leading-5 text-[var(--muted)]">{representationCopy(property.representationType)}</p>
+          </section>}
         </div>
       </section>
     </>

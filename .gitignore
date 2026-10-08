@@ -9,3 +9,5 @@ node_modules/
 .vercel/
 *.dump
 .vercel
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

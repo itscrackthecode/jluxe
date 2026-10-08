@@ -127,6 +127,8 @@ export interface PropertyMediaItem extends PropertyMedia {
   mimeType: string;
   width: number | null;
   height: number | null;
+  provider?: string;
+  deliveryUrl?: string | null;
 }
 
 export interface PortfolioWorkMediaItem extends PortfolioWorkMedia {
@@ -135,6 +137,8 @@ export interface PortfolioWorkMediaItem extends PortfolioWorkMedia {
   mimeType: string;
   width: number | null;
   height: number | null;
+  provider?: string;
+  deliveryUrl?: string | null;
 }
 
 export interface PortfolioWorkWithService extends PortfolioWork {

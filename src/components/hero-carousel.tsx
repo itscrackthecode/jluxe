@@ -5,11 +5,10 @@ import { heroSlides } from '@/lib/data';
 import JluxeCtaLink from '@/components/jluxe-cta-link';
 
 const themes: Record<string, string> = {
-  land: 'linear-gradient(115deg,#042e28 0%,#0b4b40 42%,#496a59 70%,#c4a56e 100%)',
-  business: 'linear-gradient(115deg,#062e29 0%,#123f39 45%,#50675e 70%,#c9ad7c 100%)',
-  training: 'linear-gradient(115deg,#082f2a 0%,#174e45 42%,#6c776b 70%,#d1bc95 100%)',
-  interior: 'linear-gradient(115deg,#062e29 0%,#234c43 45%,#8b7c69 75%,#dfcfb2 100%)',
-  boutique: 'linear-gradient(115deg,#062f29 0%,#0b463d 50%,#174f44 100%)',
+  land: 'var(--viridian-950)',
+  business: 'var(--viridian-950)',
+  training: 'var(--viridian-950)',
+  interior: 'var(--viridian-950)',
 };
 
 export default function HeroCarousel() {

@@ -1,4 +1,5 @@
 import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type {
   Property,
   PropertyMediaItem,
@@ -139,14 +140,14 @@ export async function findPublishedPropertyBySlug(slug: string): Promise<PublicP
 export async function listPropertyMedia(propertyId: UUID): Promise<PropertyMediaItem[]> {
   const result = await pool.query<PropertyMediaItem>(
     `SELECT pm."propertyId", pm."mediaId", pm."position", pm."altText",
-            m."id", m."storageKey", m."mimeType", m."width", m."height"
+              m."id", m."storageKey", m."mimeType", m."width", m."height", m."provider"
      FROM "PropertyMedia" pm
      JOIN "Media" m ON m."id" = pm."mediaId"
      WHERE pm."propertyId" = $1
      ORDER BY pm."position" ASC`,
     [propertyId],
   );
-  return result.rows;
+    return result.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null }));
 }
 
 export async function listPropertiesMedia(propertyIds: UUID[]): Promise<PropertyMediaItem[]> {
@@ -154,14 +155,14 @@ export async function listPropertiesMedia(propertyIds: UUID[]): Promise<Property
 
   const result = await pool.query<PropertyMediaItem>(
     `SELECT pm."propertyId", pm."mediaId", pm."position", pm."altText",
-            m."id", m."storageKey", m."mimeType", m."width", m."height"
+              m."id", m."storageKey", m."mimeType", m."width", m."height", m."provider"
      FROM "PropertyMedia" pm
      JOIN "Media" m ON m."id" = pm."mediaId"
      WHERE pm."propertyId" = ANY($1::uuid[])
      ORDER BY pm."propertyId", pm."position" ASC`,
     [propertyIds],
   );
-  return result.rows;
+    return result.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null }));
 }
 
 export async function updatePropertyMedia(
@@ -281,4 +282,59 @@ export async function updateProperty(id: UUID, input: PropertyWrite): Promise<Ad
 export async function deleteProperty(id: UUID): Promise<boolean> {
   const result = await pool.query('DELETE FROM "Property" WHERE "id" = $1', [id]);
   return Boolean(result.rowCount);
+}
+
+export async function transitionPropertyPublication(id: UUID, action: 'archive' | 'restore' | 'publish'): Promise<'updated' | 'missing' | 'invalid-transition'> {
+  return withTransaction(async (client) => {
+    const current = await client.query<{ publicationStatus: PublicationStatus }>(
+      'SELECT "publicationStatus" FROM "Property" WHERE "id" = $1 FOR UPDATE', [id],
+    );
+    const status = current.rows[0]?.publicationStatus;
+    if (!status) return 'missing';
+    if ((action === 'archive' && status !== 'PUBLISHED')
+      || (action === 'restore' && status !== 'ARCHIVED')
+      || (action === 'publish' && status !== 'DRAFT')) return 'invalid-transition';
+    const target = action === 'archive' ? 'ARCHIVED' : 'PUBLISHED';
+    await client.query('UPDATE "Property" SET "publicationStatus" = $2, "updatedAt" = NOW() WHERE "id" = $1', [id, target]);
+    return 'updated';
+  });
+}
+
+export async function createSellerPropertySubmission(input: {
+  property: PropertyWrite;
+  enquiry: { name: string; email: string; phone: string; message: string };
+  media: Array<{ storageKey: string; mimeType: string; byteSize: number; width: number; height: number }>;
+}): Promise<AdminProperty> {
+  return withTransaction(async (client) => {
+    const created = await client.query<AdminProperty>(
+      `INSERT INTO "Property" (
+         "slug", "title", "description", "location", "propertyType", "priceAmount",
+         "priceCurrency", "priceMode", "plotSize", "plotSizeUnit", "status",
+         "representationType", "publicationStatus", "updatedAt"
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+       RETURNING ${adminPropertyColumns}`,
+      [input.property.slug, input.property.title, input.property.description, input.property.location,
+        input.property.propertyType, input.property.priceAmount, input.property.priceCurrency, input.property.priceMode,
+        input.property.plotSize, input.property.plotSizeUnit, input.property.status, input.property.representationType,
+        input.property.publicationStatus],
+    );
+    const property = created.rows[0];
+    for (const [position, item] of input.media.entries()) {
+      const media = await client.query<{ id: UUID }>(
+        `INSERT INTO "Media" ("storageKey", "provider", "mimeType", "byteSize", "width", "height")
+         VALUES ($1, 'cloudinary', $2, $3, $4, $5) RETURNING "id"`,
+        [item.storageKey, item.mimeType, item.byteSize, item.width, item.height],
+      );
+      await client.query(
+        `INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, $3, NULL)`,
+        [property.id, media.rows[0].id, position],
+      );
+    }
+    await client.query(
+      `INSERT INTO "Enquiry" ("name", "email", "phone", "interestedServiceLabel", "message", "propertyId", "updatedAt")
+       VALUES ($1, $2, $3, 'Real Estate - Seller Property Submission', $4, $5, NOW())`,
+      [input.enquiry.name, input.enquiry.email, input.enquiry.phone, input.enquiry.message, property.id],
+    );
+    return property;
+  });
 }

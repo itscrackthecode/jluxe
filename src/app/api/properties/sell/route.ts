@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createPropertySlug } from '@/lib/admin-property';
-import { createEnquiry } from '@/lib/db/queries/enquiries';
-import { createProperty, deleteProperty, type PropertyWrite } from '@/lib/db/queries/properties';
+import { createSellerPropertySubmission, type PropertyWrite } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 import { plotSizeUnits, propertyTypes, type PlotSizeUnit } from '@/lib/db/types';
+import { getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
+import { consumeSellerRateLimit, sellerClientKey } from '@/lib/seller-rate-limit';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -24,6 +25,12 @@ const sellerPropertySchema = z.object({
     z.enum(plotSizeUnits).nullable().optional().transform((value) => value ?? null),
   ),
   description: optionalText(10_000),
+  images: z.array(z.object({
+    publicId: z.string().min(1).max(500), version: z.number().int().positive(), signature: z.string().regex(/^[a-f0-9]{40}$/i),
+    secureUrl: z.string().url(), format: z.enum(['jpg', 'jpeg', 'png', 'webp', 'avif']),
+    bytes: z.number().int().positive().max(10 * 1024 * 1024), width: z.number().int().positive(), height: z.number().int().positive(),
+    resourceType: z.literal('image'),
+  })).max(8).optional().default([]),
 }).strict();
 
 export const runtime = 'nodejs';
@@ -76,6 +83,9 @@ function buildEnquiryMessage(input: SellerInput) {
 }
 
 export async function POST(request: Request) {
+  if (!consumeSellerRateLimit(`submit:${sellerClientKey(request)}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ success: false, error: 'Please wait before submitting another property.' }, { status: 429 });
+  }
   let body: unknown;
   try {
     body = await request.json();
@@ -105,6 +115,32 @@ export async function POST(request: Request) {
   const description = buildDescription(input, unstructuredText);
   const message = buildEnquiryMessage(input);
 
+  const media = [];
+  for (const image of input.images) {
+    if (!verifySellerCloudinaryUpload(image.publicId, image.version, image.signature, image.secureUrl)) {
+      return NextResponse.json({ success: false, error: 'One or more uploaded photos could not be verified.' }, { status: 400 });
+    }
+    try {
+      const verified = await getCloudinaryImageDetails(image.publicId);
+      if (verified.public_id !== image.publicId || verified.resource_type !== 'image'
+        || verified.asset_folder !== 'jluxe/seller-submissions'
+        || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(verified.format)
+        || !Number.isSafeInteger(verified.bytes) || verified.bytes <= 0 || verified.bytes > 10 * 1024 * 1024
+        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)) {
+        return NextResponse.json({ success: false, error: 'Photos must be supported images no larger than 10 MB.' }, { status: 400 });
+      }
+      media.push({
+        storageKey: verified.public_id,
+        mimeType: verified.format === 'jpg' || verified.format === 'jpeg' ? 'image/jpeg' : `image/${verified.format}`,
+        byteSize: verified.bytes,
+        width: verified.width,
+        height: verified.height,
+      });
+    } catch {
+      return NextResponse.json({ success: false, error: 'One or more uploaded photos could not be verified.' }, { status: 400 });
+    }
+  }
+
   const propertyInput = (slug: string): PropertyWrite => ({
     slug,
     title,
@@ -122,11 +158,15 @@ export async function POST(request: Request) {
   });
 
   try {
-    let property: Awaited<ReturnType<typeof createProperty>> | null = null;
+    let property: Awaited<ReturnType<typeof createSellerPropertySubmission>> | null = null;
     for (let attempt = 0; attempt < 5 && !property; attempt += 1) {
       const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
       try {
-        property = await createProperty(propertyInput(slug));
+        property = await createSellerPropertySubmission({
+          property: propertyInput(slug),
+          enquiry: { name: input.name, email: input.email, phone: input.phone, message },
+          media,
+        });
       } catch (error) {
         if (!hasPostgresErrorCode(error, '23505')) throw error;
       }
@@ -138,28 +178,8 @@ export async function POST(request: Request) {
       );
     }
 
-    try {
-      await createEnquiry({
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        interestedServiceLabel: 'Real Estate - Seller Property Submission',
-        message,
-        propertyId: property.id,
-      });
-    } catch (error) {
-      try {
-        await deleteProperty(property.id);
-      } catch (cleanupError) {
-        console.error('Failed to remove seller property after enquiry failure.', {
-          errorName: cleanupError instanceof Error ? cleanupError.name : 'UnknownError',
-        });
-      }
-      throw error;
-    }
-
     return NextResponse.json(
-      { success: true, message: 'Your property details have been received.' },
+      { success: true, message: 'Property submitted successfully. Our team will review your submission.' },
       { status: 201 },
     );
   } catch (error) {
