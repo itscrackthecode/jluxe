@@ -4,8 +4,9 @@ import { createPropertySlug } from '@/lib/admin-property';
 import { createSellerPropertySubmission, type PropertyWrite } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 import { plotSizeUnits, propertyTypes, type PlotSizeUnit } from '@/lib/db/types';
-import { getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
+import { cloudinaryDeliveryUrl, getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
 import { consumeSellerRateLimit, sellerClientKey } from '@/lib/seller-rate-limit';
+import { sendJluxeNotification } from '@/lib/email-notifications';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
   const message = buildEnquiryMessage(input);
 
   const media = [];
+  const notificationMedia: Array<{ publicId: string; format: string; bytes: number; width: number; height: number }> = [];
   for (const image of input.images) {
     if (!verifySellerCloudinaryUpload(image.publicId, image.version, image.signature, image.secureUrl)) {
       return NextResponse.json({ success: false, error: 'One or more uploaded photos could not be verified.' }, { status: 400 });
@@ -133,6 +135,13 @@ export async function POST(request: Request) {
         storageKey: verified.public_id,
         mimeType: verified.format === 'jpg' || verified.format === 'jpeg' ? 'image/jpeg' : `image/${verified.format}`,
         byteSize: verified.bytes,
+        width: verified.width,
+        height: verified.height,
+      });
+      notificationMedia.push({
+        publicId: verified.public_id,
+        format: verified.format,
+        bytes: verified.bytes,
         width: verified.width,
         height: verified.height,
       });
@@ -176,6 +185,50 @@ export async function POST(request: Request) {
         { success: false, error: 'Unable to submit your property details right now. Please try again.' },
         { status: 500 },
       );
+    }
+
+    try {
+      const submittedAt = property.createdAt;
+      const submittedDate = new Date(submittedAt).toISOString();
+      const imageDetails = notificationMedia.map((image, index) => [
+        `Photo ${index + 1}: ${cloudinaryDeliveryUrl(image.publicId)}`,
+        `  Public ID: ${image.publicId}`,
+        `  Format: ${image.format}; dimensions: ${image.width} × ${image.height}; size: ${image.bytes} bytes`,
+      ].join('\n'));
+
+      await sendJluxeNotification({
+        replyTo: input.email,
+        subject: `New Seller Submission — ${property.id}`,
+        text: [
+          'New JLUXE Seller Property Submission',
+          '',
+          `Submission reference: ${property.id}`,
+          `Property reference: ${property.slug}`,
+          `Submitted: ${submittedDate}`,
+          '',
+          'Seller contact',
+          `Name: ${input.name}`,
+          `Email: ${input.email}`,
+          `Phone / WhatsApp: ${input.phone}`,
+          '',
+          'Property details',
+          `Property type: ${formatLabel(input.propertyType)}`,
+          `Location: ${input.location}`,
+          `Starting price: ${input.startingPrice}`,
+          `Plot / land area: ${input.plotSize ?? 'Not provided'}`,
+          `Area unit: ${input.plotSizeUnit ? formatLabel(input.plotSizeUnit) : 'Not provided'}`,
+          '',
+          'Additional description:',
+          input.description ?? 'Not provided',
+          '',
+          `Photos submitted: ${notificationMedia.length}`,
+          ...(imageDetails.length ? ['', ...imageDetails] : []),
+        ].join('\n'),
+      });
+    } catch (error) {
+      console.error('Failed to send seller property notification email.', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
     }
 
     return NextResponse.json(
