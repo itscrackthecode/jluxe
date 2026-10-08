@@ -5,7 +5,7 @@ import { createSellerPropertySubmission, type PropertyWrite } from '@/lib/db/que
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 import { plotSizeUnits, propertyTypes, type PlotSizeUnit } from '@/lib/db/types';
 import { getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
-import { consumeSellerRateLimit, sellerClientKey } from '@/lib/seller-rate-limit';
+import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -83,9 +83,14 @@ function buildEnquiryMessage(input: SellerInput) {
 }
 
 export async function POST(request: Request) {
-  if (!consumeSellerRateLimit(`submit:${sellerClientKey(request)}`, 5, 60 * 60 * 1000)) {
-    return NextResponse.json({ success: false, error: 'Please wait before submitting another property.' }, { status: 429 });
-  }
+  const rateLimit = await checkPublicApiRateLimit(request, {
+    endpoint: 'POST /api/properties/sell',
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let body: unknown;
   try {
     body = await request.json();

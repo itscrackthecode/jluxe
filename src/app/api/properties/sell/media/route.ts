@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createSellerCloudinaryUploadSignature, destroyCloudinaryImage, getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
-import { consumeSellerRateLimit, sellerClientKey } from '@/lib/seller-rate-limit';
+import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 export const runtime = 'nodejs';
 
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_SIGNATURES_PER_WINDOW = 40;
+const MAX_MEDIA_REQUESTS_PER_WINDOW = 20;
 
 export async function POST(request: Request) {
+  const rateLimit = await checkPublicApiRateLimit(request, {
+    endpoint: 'POST /api/properties/sell/media',
+    limit: MAX_MEDIA_REQUESTS_PER_WINDOW,
+    windowMs: WINDOW_MS,
+  });
+  const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
+  if (rateLimitResponse) return rateLimitResponse;
   const now = Date.now();
-  const key = sellerClientKey(request);
-  if (!consumeSellerRateLimit(`sign:${key}`, MAX_SIGNATURES_PER_WINDOW, WINDOW_MS, now)) {
-    return NextResponse.json({ success: false, error: 'Please wait before adding more photos.' }, { status: 429 });
-  }
 
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: 'Invalid upload request.' }, { status: 400 }); }
