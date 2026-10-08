@@ -9,7 +9,7 @@ export const isConfiguredContact = (value: string) => Boolean(value.trim()) && !
 
 export const siteConfig = {
   brand: 'JLUXE',
-  url: 'https://jluxe-seven.vercel.app',
+  url: 'https://thejluxe.com',
   contact: {
     email: 'your-email@jluxe.example',
     instagram: 'https://www.instagram.com/your-handle',
