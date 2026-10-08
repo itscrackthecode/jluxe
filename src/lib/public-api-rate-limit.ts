@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { isIP } from 'node:net';
 
 type RateLimitRow = { requestCount: number };
@@ -17,6 +17,7 @@ export type PublicApiRateLimitDecision =
 type RateLimitOptions = {
   endpoint: string;
   clientIp: string;
+  hmacSecret: string;
   limit: number;
   windowMs: number;
   now?: number;
@@ -76,9 +77,11 @@ export async function consumeApiRateLimit(
   const now = options.now ?? Date.now();
   const windowStartMs = Math.floor(now / options.windowMs) * options.windowMs;
   const windowEndMs = windowStartMs + options.windowMs;
-  const clientKey = createHash('sha256').update(options.clientIp).digest('hex');
 
   try {
+    const clientKey = createHmac('sha256', options.hmacSecret)
+      .update(options.clientIp, 'utf8')
+      .digest('hex');
     const result = await query(consumeQuery, [
       options.endpoint,
       clientKey,
@@ -103,7 +106,7 @@ export async function consumeApiRateLimit(
 
 export async function checkPublicApiRateLimit(
   request: Request,
-  options: Omit<RateLimitOptions, 'clientIp' | 'now'>,
+  options: Omit<RateLimitOptions, 'clientIp' | 'hmacSecret' | 'now'>,
 ): Promise<PublicApiRateLimitDecision> {
   const clientIp = trustedClientIp(request);
   if (!clientIp) {
@@ -113,11 +116,19 @@ export async function checkPublicApiRateLimit(
     return { status: 'unavailable' };
   }
 
+  const hmacSecret = process.env.ADMIN_SESSION_SECRET;
+  if (!hmacSecret || Buffer.byteLength(hmacSecret, 'utf8') < 32) {
+    console.error('Public API rate-limit storage is unavailable.', {
+      errorName: 'RateLimitSecretUnavailable',
+    });
+    return { status: 'unavailable' };
+  }
+
   try {
     const { pool } = await import('@/lib/db/pool');
     return await consumeApiRateLimit(
       (text, values) => pool.query<RateLimitRow>(text, values),
-      { ...options, clientIp },
+      { ...options, clientIp, hmacSecret },
     );
   } catch (error) {
     console.error('Public API rate-limit storage is unavailable.', {
