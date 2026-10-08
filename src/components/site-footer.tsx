@@ -4,7 +4,7 @@ import { services, siteConfig } from '@/lib/data';
 export default function SiteFooter() {
   return (
     <footer className="bg-[var(--viridian-950)] pt-12 pb-[calc(3rem+env(safe-area-inset-bottom,0px))] text-white" data-reveal>
-      <div className="container-xl grid gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
+      <div className="container-xl grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_auto]">
         <div>
           <img
             src="/assets/images/jluxe-logo.png"
@@ -34,6 +34,13 @@ export default function SiteFooter() {
                 {service.title}
               </Link>
             ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-semibold">Legal</p>
+          <div className="mt-4 grid gap-3 text-sm text-white/65">
+            <Link href="/privacy-policy" className="touch-press transition hover:text-white">Privacy Policy</Link>
+            <Link href="/terms-and-conditions" className="touch-press transition hover:text-white">Terms &amp; Conditions</Link>
           </div>
         </div>
       </div>

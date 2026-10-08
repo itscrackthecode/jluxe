@@ -60,7 +60,7 @@ function Eyebrow({ children, light = false }: { children: React.ReactNode; light
 
 export default function AboutPage() {
   return (
-    <main className="overflow-hidden bg-[var(--cream)] text-[var(--viridian-950)]">
+    <main className="about-page overflow-hidden bg-[var(--cream)] text-[var(--viridian-950)]">
       <SiteHeader />
 
       <section className="hero-glow relative isolate overflow-hidden bg-[var(--viridian-950)] py-20 text-white sm:py-24 lg:py-28">
@@ -81,7 +81,7 @@ export default function AboutPage() {
 
       <section className="py-16 sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl grid gap-8 md:grid-cols-[0.72fr_1.28fr] md:gap-14 lg:gap-20">
-          <div><Eyebrow>THE COMPANY</Eyebrow><h2 className="mt-5 max-w-md font-display text-4xl leading-[1.12] sm:text-5xl">Your partner for business, people and growth.</h2></div>
+          <div className="about-company-heading border-l border-[var(--gold)]/35 bg-[var(--viridian-950)]/[0.035] py-5 pl-5 pr-3 sm:py-6 sm:pl-7"><Eyebrow>THE COMPANY</Eyebrow><h2 className="mt-5 max-w-md font-display text-4xl leading-[1.12] sm:text-5xl">Your partner for business, people and growth.</h2></div>
           <div className="about-profile-copy max-w-3xl border-l pl-6 pr-5 py-5 sm:pl-9 sm:pr-7">
             <p className="text-base leading-7 text-white/80 sm:text-lg sm:leading-8">JLUXE is a Chennai-based business solutions and consulting company focused on helping organizations, businesses, professionals and institutions achieve sustainable growth.</p>
             <p className="mt-5 text-base leading-7 text-white/80 sm:text-lg sm:leading-8">With an understanding of the Real Estate, Banking, Corporate and Education sectors, JLUXE brings together industry experience, professional networks and practical business solutions under one platform.</p>
@@ -91,11 +91,11 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="border-y border-[var(--viridian-950)]/10 bg-white/35 py-16 sm:py-20 lg:py-24" data-reveal>
+      <section className="about-contrast-section border-y border-white/10 bg-[var(--viridian-950)] py-16 text-white sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl">
           <div className="grid gap-5 md:grid-cols-[0.8fr_1.2fr] md:items-end">
-            <div><Eyebrow>WHAT WE DO</Eyebrow><h2 className="mt-4 max-w-lg font-display text-4xl leading-tight sm:text-5xl">Multiple capabilities.<br />One connected platform.</h2></div>
-            <p className="max-w-xl text-sm leading-7 text-[var(--muted)] md:justify-self-end sm:text-base">Practical business and people-focused solutions, shaped around the requirements of organizations, professionals and institutions.</p>
+            <div><Eyebrow light>WHAT WE DO</Eyebrow><h2 className="mt-4 max-w-lg font-display text-4xl leading-tight text-[var(--cream)] sm:text-5xl">Multiple capabilities.<br />One connected platform.</h2></div>
+            <p className="max-w-xl text-sm leading-7 text-white/70 md:justify-self-end sm:text-base">Practical business and people-focused solutions, shaped around the requirements of organizations, professionals and institutions.</p>
           </div>
           <div className="mt-10 grid gap-2 sm:grid-cols-2 xl:grid-cols-5" data-reveal-stagger>
             {capabilities.map((item, index) => {
@@ -124,8 +124,7 @@ export default function AboutPage() {
             <Eyebrow light>MEET OUR MANAGING DIRECTOR</Eyebrow>
             <h2 className="mt-4 font-display text-4xl leading-tight text-[var(--cream)] sm:text-5xl">Sarvesh Karthik N</h2>
             <p className="mt-3 text-sm font-medium tracking-[0.08em] text-white/70">Managing Director — JLUXE</p>
-            <p className="mt-7 font-display text-2xl leading-relaxed text-[var(--viridian-900)] sm:text-3xl">Building Businesses.<br />Developing People.<br />Creating Opportunities.</p>
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8">Sarvesh Karthik N is a business professional and entrepreneur with experience across Real Estate, Sales &amp; Marketing, Business Consulting, Recruitment, Training, Corporate Services and Education-focused initiatives.</p>
+            <p className="mt-7 max-w-xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8">Sarvesh Karthik N is a business professional and entrepreneur with experience across Real Estate, Sales &amp; Marketing, Business Consulting, Recruitment, Training, Corporate Services and Education-focused initiatives.</p>
             <JluxeCtaLink href="/about/managing-director" className="mt-7">Meet the Managing Director</JluxeCtaLink>
           </div>
         </div>
@@ -172,9 +171,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-16 sm:py-20 lg:py-24" data-reveal>
+      <section className="about-contrast-section border-y border-white/10 bg-[var(--viridian-950)] py-16 text-white sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl">
-          <div className="grid gap-4 md:grid-cols-[0.85fr_1.15fr] md:items-end"><div><Eyebrow>WHO WE SERVE</Eyebrow><h2 className="mt-4 max-w-lg font-display text-4xl leading-tight sm:text-5xl">Different requirements. One connected partner.</h2></div><p className="max-w-md text-sm leading-7 text-[var(--muted)] md:justify-self-end">We work with people and organizations across the JLUXE ecosystem.</p></div>
+          <div className="grid gap-4 md:grid-cols-[0.85fr_1.15fr] md:items-end"><div><Eyebrow light>WHO WE SERVE</Eyebrow><h2 className="mt-4 max-w-lg font-display text-4xl leading-tight text-[var(--cream)] sm:text-5xl">Different requirements. One connected partner.</h2></div><p className="max-w-md text-sm leading-7 text-white/70 md:justify-self-end">We work with people and organizations across the JLUXE ecosystem.</p></div>
           <div className="mt-9 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" data-reveal-stagger>
             {audiences.map(([title, description], index) => {
               return <article key={title} data-reveal className="premium-card about-depth-card group p-5 sm:p-6">
@@ -188,14 +187,30 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="bg-[var(--cream)] py-16 text-[var(--viridian-950)] sm:py-20 lg:py-24" data-reveal>
-        <div className="container-xl divide-y divide-[var(--viridian-950)]/15">
-          <article className="grid gap-5 py-7 sm:grid-cols-[0.4fr_1.6fr] sm:gap-10 sm:py-9"><div><Eyebrow>OUR VISION</Eyebrow><span aria-hidden="true" className="mt-4 block h-px w-10 bg-[var(--gold)]" /></div><p className="max-w-4xl font-display text-2xl leading-relaxed sm:text-3xl">To become a trusted business solutions and professional training partner, helping organizations and individuals achieve meaningful and sustainable growth.</p></article>
-          <article className="grid gap-5 py-7 sm:grid-cols-[0.4fr_1.6fr] sm:gap-10 sm:py-9"><div><Eyebrow>OUR MISSION</Eyebrow><span aria-hidden="true" className="mt-4 block h-px w-10 bg-[var(--gold)]" /></div><p className="max-w-4xl font-display text-2xl leading-relaxed sm:text-3xl">To deliver professional, practical and customized solutions across Sales, Marketing, CRM, Banking, Recruitment, Staffing and Training while creating value for businesses, professionals and institutions.</p></article>
+      <section className="about-vision-mission relative isolate overflow-hidden bg-[var(--cream)] py-16 text-[var(--viridian-950)] sm:py-20 lg:py-24" data-reveal>
+        <div aria-hidden="true" className="pointer-events-none absolute -right-8 top-10 h-44 w-44 rounded-full border border-[var(--viridian-950)]/[0.06] sm:right-[8%] sm:h-52 sm:w-52" />
+        <div aria-hidden="true" className="pointer-events-none absolute right-7 top-[4.5rem] h-28 w-28 rounded-full border border-[var(--gold)]/10 sm:right-[calc(8%+2rem)] sm:top-20 sm:h-36 sm:w-36" />
+        <div className="container-xl relative z-10">
+          <div className="divide-y divide-[var(--viridian-950)]/15">
+            <article className="about-vision-mission-row group grid gap-4 py-8 first:pt-0 sm:gap-6 sm:py-10 md:grid-cols-[0.42fr_1.58fr] md:gap-10 lg:grid-cols-[0.38fr_1.62fr] lg:gap-14">
+              <div>
+                <Eyebrow>OUR VISION</Eyebrow>
+                <span aria-hidden="true" className="mt-4 block h-px w-8 bg-[var(--gold)]/55 transition-all duration-[450ms] ease-[cubic-bezier(.22,.8,.24,1)] group-hover:w-14 group-hover:bg-[var(--gold)]" />
+              </div>
+              <p className="max-w-4xl font-display text-2xl leading-relaxed text-[var(--viridian-950)] transition-transform duration-[450ms] ease-[cubic-bezier(.22,.8,.24,1)] group-hover:translate-x-1 sm:text-3xl">To become a trusted business solutions and professional training partner, helping organizations and individuals achieve meaningful and sustainable growth.</p>
+            </article>
+            <article className="about-vision-mission-row group grid gap-4 py-8 last:pb-0 sm:gap-6 sm:py-10 md:grid-cols-[0.42fr_1.58fr] md:gap-10 lg:grid-cols-[0.38fr_1.62fr] lg:gap-14">
+              <div>
+                <Eyebrow>OUR MISSION</Eyebrow>
+                <span aria-hidden="true" className="mt-4 block h-px w-8 bg-[var(--gold)]/55 transition-all duration-[450ms] ease-[cubic-bezier(.22,.8,.24,1)] group-hover:w-14 group-hover:bg-[var(--gold)]" />
+              </div>
+              <p className="max-w-4xl font-display text-2xl leading-relaxed text-[var(--viridian-950)] transition-transform duration-[450ms] ease-[cubic-bezier(.22,.8,.24,1)] group-hover:translate-x-1 sm:text-3xl">To deliver professional, practical and customized solutions across Sales, Marketing, CRM, Banking, Recruitment, Staffing and Training while creating value for businesses, professionals and institutions.</p>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section className="bg-[var(--cream)] py-16 sm:py-20 lg:py-24" data-reveal>
+      <section className="border-y border-[var(--viridian-950)]/10 bg-[var(--viridian-950)]/[0.035] py-16 sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:gap-16">
           <div><Eyebrow>THE JLUXE ECOSYSTEM</Eyebrow><h2 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">One brand.<br />Multiple opportunities.</h2></div>
           <div><p className="max-w-2xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">Distinct capabilities sit under one brand, creating a clear point of entry for people and organisations with different requirements.</p><ul className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3">{ecosystem.map((item, index) => <li key={item} className="premium-card about-depth-card group flex min-h-16 items-center justify-between px-4 sm:min-h-20 sm:px-5"><span className="text-sm font-medium text-[var(--cream)]">{item}</span><span className="text-[10px] font-semibold tracking-[0.14em] text-[var(--gold)]">0{index + 1}</span></li>)}</ul></div>
