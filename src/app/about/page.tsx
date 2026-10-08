@@ -150,7 +150,7 @@ export default function AboutPage() {
         <div className="container-xl">
           <div className="grid gap-4 md:grid-cols-[0.85fr_1.15fr] md:items-end"><div><Eyebrow light>OUR BUSINESS PHILOSOPHY</Eyebrow><h2 className="mt-4 font-display text-4xl text-[var(--cream)] sm:text-5xl">Principles, not promises.</h2></div><p className="max-w-lg text-sm leading-7 text-white/65 md:justify-self-end sm:text-base">The principles that guide the way we work.</p></div>
           <div className="mt-10 grid gap-2 sm:grid-cols-2 xl:grid-cols-4" data-reveal-stagger>
-            {principles.map(([title, description]) => <article key={title} data-reveal className="premium-card about-depth-card-dark group my-2 p-5 sm:mx-2 sm:p-6"><h3 className="font-display text-2xl text-[var(--viridian-950)] transition-transform duration-300 group-hover:translate-x-1">{title}</h3><span aria-hidden="true" className="mt-4 block h-px w-8 bg-[var(--gold)] transition-all group-hover:w-14" /><p className="mt-4 text-sm leading-6 text-[var(--muted)]">{description}</p></article>)}
+            {principles.map(([title, description]) => <article key={title} data-reveal className="premium-card about-depth-card group my-2 p-5 sm:mx-2 sm:p-6"><h3 className="font-display text-2xl text-[var(--cream)] transition-transform duration-300 group-hover:translate-x-1">{title}</h3><span aria-hidden="true" className="mt-4 block h-px w-8 bg-[var(--gold)] transition-all group-hover:w-14" /><p className="mt-4 text-sm leading-6 text-white/75">{description}</p></article>)}
           </div>
         </div>
       </section>
