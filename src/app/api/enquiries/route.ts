@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { z } from 'zod';
 import { createEnquiry, findServiceById } from '@/lib/db/queries/enquiries';
+import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2).max(150),
@@ -82,6 +83,14 @@ async function sendEnquiryNotification(
 }
 
 export async function POST(request: Request) {
+  const rateLimit = await checkPublicApiRateLimit(request, {
+    endpoint: 'POST /api/enquiries',
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let body: unknown;
 
   try {
