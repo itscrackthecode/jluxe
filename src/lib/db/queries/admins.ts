@@ -31,3 +31,12 @@ export async function createAdmin(input: {
   );
   return result.rows[0];
 }
+
+export async function findActiveAdminById(id: string): Promise<Pick<Admin, 'id' | 'displayName' | 'role'> | null> {
+  const result = await pool.query<Pick<Admin, 'id' | 'displayName' | 'role'>>(
+    `SELECT "id", "displayName", "role"
+     FROM "Admin" WHERE "id" = $1 AND "isActive" = TRUE LIMIT 1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+}

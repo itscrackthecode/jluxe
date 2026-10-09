@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminSession } from '@/lib/admin-session';
+import { hasSameOrigin } from '@/lib/admin-request';
 import { setPropertyCover } from '@/lib/db/queries/properties';
 
 const idSchema = z.string().uuid();
@@ -10,6 +11,7 @@ export const runtime = 'nodejs';
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, { params }: RouteContext) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
 

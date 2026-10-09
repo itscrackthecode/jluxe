@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAdminSession } from '@/lib/admin-session';
+import { getAdminSession, hasAdminPermission } from '@/lib/admin-session';
+import { hasSameOrigin } from '@/lib/admin-request';
 import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
 import { deleteProperty, findPropertyById, transitionPropertyPublication, updateProperty } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
@@ -10,6 +11,7 @@ export const runtime = 'nodejs';
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   if (!await getAdminSession()) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
   const { id } = await params;
   if (!idSchema.safeParse(id).success) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
@@ -46,6 +48,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PUT(request: Request, { params }: RouteContext) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
 
@@ -79,8 +82,11 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
-  if (!await getAdminSession()) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+export async function DELETE(request: Request, { params }: RouteContext) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+  if (!hasAdminPermission(session.role, 'delete-content')) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const { id } = await params;
   if (!idSchema.safeParse(id).success) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
   try {
