@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { enquiryStatuses } from '@/lib/db/types';
 import { getAdminSession } from '@/lib/admin-session';
+import { hasSameOrigin } from '@/lib/admin-request';
 import { findEnquiryById, updateEnquiryStatus } from '@/lib/db/queries/enquiries';
 
 const idSchema = z.string().uuid();
@@ -40,6 +41,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });

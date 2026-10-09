@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   });
   const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
   if (rateLimitResponse) return rateLimitResponse;
+
   const now = Date.now();
 
   let body: unknown;
@@ -35,7 +36,6 @@ export async function POST(request: Request) {
         || verified.resource_type !== 'image' || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(verified.format)
         || !Number.isSafeInteger(verified.bytes) || verified.bytes <= 0 || verified.bytes > 10 * 1024 * 1024
         || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)) {
-        await destroyCloudinaryImage(image.publicId).catch(() => {});
         return NextResponse.json({ success: false, error: 'Photos must be supported images no larger than 10 MB.' }, { status: 400 });
       }
       if (body.intent === 'discard') {

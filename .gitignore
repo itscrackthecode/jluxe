@@ -11,3 +11,8 @@ node_modules/
 .vercel
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+.env*
+
+# Local AI agent configuration
+.agents/
+.claude/

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminSession } from '@/lib/admin-session';
+import { hasSameOrigin } from '@/lib/admin-request';
 import { listAdminMedia } from '@/lib/db/queries/media';
 import { createCloudinaryMedia } from '@/lib/db/queries/media';
 import { createCloudinaryUploadSignature, destroyCloudinaryImage, getCloudinaryImageDetails, isCloudinaryConfigured, verifyCloudinaryUpload } from '@/lib/cloudinary';
@@ -54,6 +55,7 @@ const uploadFolders = {
 } as const;
 
 export async function POST(request: Request) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
   let payload: unknown;

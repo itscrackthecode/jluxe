@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { adminPortfolioSchema } from '@/lib/admin-portfolio';
 import { getAdminSession } from '@/lib/admin-session';
+import { hasSameOrigin } from '@/lib/admin-request';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 import {
   createAdminPortfolioWork,
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
 

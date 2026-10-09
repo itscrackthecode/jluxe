@@ -33,7 +33,7 @@ const sections = [
   {
     title: 'Cookies and security',
     paragraphs: [
-      'The restricted admin area uses a session cookie to keep an authenticated administrator signed in. This cookie is limited to the admin area and is configured as HTTP-only, with secure and same-site protections. The site does not currently implement a public cookie-consent feature or a separate analytics or advertising tracking system.',
+      'The restricted admin area uses a session cookie to keep an authenticated administrator signed in. This cookie is limited to the admin area and is configured as HTTP-only, with secure and same-site protections. Google Analytics is loaded across the website, including the admin area. The site does not currently present a cookie-consent interface.',
       'JLUXE uses access controls and server-side security measures in the application, and its service providers apply their own safeguards. No method of transmission or storage can be guaranteed to be completely secure.',
     ],
   },
