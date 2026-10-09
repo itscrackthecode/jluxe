@@ -50,3 +50,4 @@ npm run db:sql:migrate:baseline -- 001_initial.sql --confirm-schema --allow-remo
 ```
 
 Baseline creates `schema_migrations` if necessary and records the filename/checksum in a transaction. It does not execute `001_initial.sql`. Do not run this command until the live schema has been independently verified. Afterward, future SQL migrations can be applied with `npm run db:sql:migrate` (remote writes require the explicit `--allow-remote` option). No production baseline has been run as part of this change.
+
