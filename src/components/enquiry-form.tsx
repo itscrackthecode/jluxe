@@ -90,7 +90,7 @@ export default function EnquiryForm() {
   };
 
   return (
-    <div className="rounded-[28px] bg-white p-6 shadow-[0_18px_55px_rgba(6,47,41,0.08)] sm:p-8">
+    <div className="rounded-[28px] border border-[var(--viridian-950)]/10 bg-[var(--cream)] p-6 shadow-[0_18px_55px_rgba(6,47,41,0.08)] sm:p-8">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block">

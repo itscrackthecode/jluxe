@@ -11,10 +11,10 @@ export const siteConfig = {
   brand: 'JLUXE',
   url: 'https://thejluxe.com',
   contact: {
-    email: 'your-email@jluxe.example',
-    instagram: 'https://www.instagram.com/your-handle',
-    whatsapp: 'https://wa.me/00000000000',
-    whatsappNumber: '+00 00000 00000',
+    email: 'enquiry@thejluxe.com',
+    instagram: 'https://www.instagram.com/allwin123',
+    whatsapp: 'https://wa.me/919876543210',
+    whatsappNumber: '9876543210',
   },
   nav: {
     about: '/about',

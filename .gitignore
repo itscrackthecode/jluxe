@@ -16,3 +16,4 @@ node_modules/
 # Local AI agent configuration
 .agents/
 .claude/
+.env.vercel.production
