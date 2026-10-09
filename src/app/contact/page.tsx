@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ArrowRight, Instagram, Mail, MessageCircle } from 'lucide-react';
+import { Instagram, Mail, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import EnquiryForm from '@/components/enquiry-form';
 import SiteFooter from '@/components/site-footer';
@@ -35,19 +35,27 @@ export default function ContactPage() {
       </section>
 
       <section className="py-14 sm:py-18 lg:py-20" data-reveal>
-        <div className={`container-xl grid gap-10 ${directContacts.length ? 'lg:grid-cols-[0.75fr_1.25fr] lg:items-start lg:gap-16' : 'mx-auto max-w-3xl'}`}>
-          {directContacts.length > 0 && <aside className="max-w-md lg:sticky lg:top-28">
-            <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">DIRECT CONTACT</p>
-            <h2 className="mt-4 font-display text-3xl leading-tight sm:text-4xl">Prefer to reach out directly?</h2>
-            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">Use the contact details configured for JLUXE.</p>
-            <div className="mt-7 grid gap-5 border-t border-[var(--viridian-950)]/15 pt-5 text-sm">
-              {directContacts.map(({ label, href, value, icon: Icon }) => <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} className="touch-press flex min-w-0 items-start gap-3 break-all transition-colors hover:text-[var(--gold)]"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--gold)]" /><span>{value}</span></a>)}
+        <div className="container-xl grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-12">
+          <aside className="relative overflow-hidden rounded-[28px] border border-[var(--viridian-950)]/10 bg-[var(--viridian-950)] p-7 text-white shadow-[0_18px_55px_rgba(6,47,41,0.1)] sm:p-9 lg:min-h-full">
+            <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[var(--gold)]/10 blur-3xl" />
+            <div className="relative">
+              <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">GET IN TOUCH</p>
+              <h2 className="mt-4 max-w-md font-display text-3xl leading-tight sm:text-4xl">How can we help you?</h2>
+              <p className="mt-4 max-w-md text-sm leading-7 text-white/75 sm:text-base">
+                Tell us what you have in mind. Our team will be glad to understand your needs and help you find the right next step.
+              </p>
+              {directContacts.length > 0 && <div className="mt-8 grid gap-3 border-t border-white/15 pt-6">
+                {directContacts.map(({ label, href, value, icon: Icon }) => <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} className="touch-press group flex min-w-0 items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 transition-colors hover:border-[var(--gold)]/50 hover:bg-white/[0.08] focus-visible:outline-offset-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)]"><Icon className="h-4 w-4" /></span>
+                  <span className="min-w-0"><span className="block text-xs font-semibold tracking-[0.12em] text-white/55">{label}</span><span className="mt-1 block break-all text-sm font-medium text-white transition-colors group-hover:text-[var(--gold)]">{value}</span></span>
+                </a>)}
+              </div>}
             </div>
-          </aside>}
-          <div className={directContacts.length ? '' : 'lg:col-span-2'}>
+          </aside>
+          <div className="min-w-0">
             <div className="mb-5">
               <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">ENQUIRY FORM</p>
-              <h2 className="mt-3 font-display text-3xl text-[var(--viridian-950)] sm:text-4xl">How can we help?</h2>
+              <h2 className="mt-3 font-display text-3xl text-[var(--viridian-950)] sm:text-4xl">Send us an enquiry</h2>
             </div>
             <EnquiryForm />
           </div>
