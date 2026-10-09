@@ -32,9 +32,10 @@ export async function GET(
       success: true,
       data: {
         ...work,
-        media: media.map(({ id, storageKey, mimeType, width, height, position, altText }) => ({
+        media: media.map(({ id, storageKey, deliveryUrl, mimeType, width, height, position, altText }) => ({
           id,
           storageKey,
+          deliveryUrl,
           mimeType,
           width,
           height,

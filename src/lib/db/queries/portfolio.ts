@@ -1,10 +1,12 @@
 import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type {
   PortfolioWork,
   PortfolioWorkMediaItem,
   PortfolioWorkWithService,
   PublicationStatus,
   Service,
+  ServiceCategory,
   UUID,
 } from '../types';
 
@@ -15,13 +17,18 @@ export type PublicPortfolioWork = Omit<Pick<
   'id' | 'slug' | 'title' | 'description' | 'location' | 'year' | 'featured' | 'createdAt'
 >, 'createdAt'> & {
   createdAt: string;
-  service: Pick<Service, 'id' | 'slug' | 'title'>;
+  service: Pick<Service, 'id' | 'slug' | 'title'> & { categories: string[] };
+};
+
+export type PortfolioServiceOption = Pick<Service, 'id' | 'slug' | 'title'> & {
+  categories: string[];
+  categoryIds: UUID[];
 };
 
 export type AdminPortfolioWork = Omit<PortfolioWork, 'createdAt' | 'updatedAt'> & {
   createdAt: string;
   updatedAt: string;
-  service: Pick<Service, 'id' | 'slug' | 'title'>;
+  service: PortfolioServiceOption;
 };
 
 export type PortfolioWorkWrite = Pick<
@@ -36,11 +43,12 @@ type PortfolioRow = Omit<Pick<
   createdAt: string;
   serviceSlug: string;
   serviceTitle: string;
+  serviceCategories: string[];
 };
 
 function withService(row: PortfolioRow): PublicPortfolioWork {
-  const { serviceId, serviceSlug, serviceTitle, ...work } = row;
-  return { ...work, service: { id: serviceId, slug: serviceSlug, title: serviceTitle } };
+  const { serviceId, serviceSlug, serviceTitle, serviceCategories, ...work } = row;
+  return { ...work, service: { id: serviceId, slug: serviceSlug, title: serviceTitle, categories: serviceCategories } };
 }
 
 function escapeLikeValue(value: string) {
@@ -57,6 +65,7 @@ export async function findServiceBySlug(slug: string): Promise<Pick<Service, 'id
 
 export async function listPublicPortfolio(filters: {
   serviceSlug?: string;
+  category?: string;
   location?: string;
   featured?: boolean;
   sort: PortfolioSort;
@@ -65,14 +74,19 @@ export async function listPublicPortfolio(filters: {
 }): Promise<{ data: PublicPortfolioWork[]; total: number }> {
   const values = [
     filters.serviceSlug ?? null,
+    filters.category ?? null,
     filters.location ? escapeLikeValue(filters.location) : null,
     filters.featured ?? null,
   ];
   const conditions = `
     w."publicationStatus" = 'PUBLISHED'
     AND ($1::text IS NULL OR s."slug" = $1)
-    AND ($2::text IS NULL OR w."location" ILIKE '%' || $2 || '%' ESCAPE E'\\\\')
-    AND ($3::boolean IS NULL OR w."featured" = $3)`;
+    AND ($2::text IS NULL OR EXISTS (
+      SELECT 1 FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId"
+      WHERE scs."serviceId" = s."id" AND sc."name" = $2
+    ))
+    AND ($3::text IS NULL OR w."location" ILIKE '%' || $3 || '%' ESCAPE E'\\\\')
+    AND ($4::boolean IS NULL OR w."featured" = $4)`;
   const orderBy: Record<PortfolioSort, string> = {
     latest: 'w."createdAt" DESC, w."id" DESC',
     oldest: 'w."createdAt" ASC, w."id" ASC',
@@ -87,9 +101,10 @@ export async function listPublicPortfolio(filters: {
               w."location", w."year", w."featured",
               TO_CHAR(w."createdAt" AT TIME ZONE current_setting('TimeZone'),
                 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-              s."slug" AS "serviceSlug", s."title" AS "serviceTitle"
+              s."slug" AS "serviceSlug", s."title" AS "serviceTitle",
+              COALESCE((SELECT array_agg(sc."name" ORDER BY sc."sortOrder") FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId" WHERE scs."serviceId" = s."id"), ARRAY[]::text[]) AS "serviceCategories"
        ${from} WHERE ${conditions}
-       ORDER BY ${orderBy[filters.sort]} LIMIT $4 OFFSET $5`,
+       ORDER BY ${orderBy[filters.sort]} LIMIT $5 OFFSET $6`,
       [...values, filters.limit, filters.offset],
     ),
   ]);
@@ -106,7 +121,8 @@ export async function findPublishedPortfolioBySlug(slug: string): Promise<Public
             w."location", w."year", w."featured",
             TO_CHAR(w."createdAt" AT TIME ZONE current_setting('TimeZone'),
               'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-            s."slug" AS "serviceSlug", s."title" AS "serviceTitle"
+            s."slug" AS "serviceSlug", s."title" AS "serviceTitle",
+            COALESCE((SELECT array_agg(sc."name" ORDER BY sc."sortOrder") FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId" WHERE scs."serviceId" = s."id"), ARRAY[]::text[]) AS "serviceCategories"
      FROM "PortfolioWork" w
      JOIN "Service" s ON s."id" = w."serviceId"
      WHERE w."slug" = $1 AND w."publicationStatus" = 'PUBLISHED'
@@ -121,14 +137,57 @@ export async function listPortfolioWorkMedia(portfolioWorkIds: UUID[]): Promise<
 
   const result = await pool.query<PortfolioWorkMediaItem>(
     `SELECT pwm."portfolioWorkId", pwm."mediaId", pwm."position", pwm."altText",
-            m."id", m."storageKey", m."mimeType", m."width", m."height"
+              m."id", m."storageKey", m."mimeType", m."width", m."height", m."provider"
      FROM "PortfolioWorkMedia" pwm
      JOIN "Media" m ON m."id" = pwm."mediaId"
     WHERE pwm."portfolioWorkId" = ANY($1::uuid[])
     ORDER BY pwm."portfolioWorkId", pwm."position" ASC`,
-      [portfolioWorkIds],
+    [portfolioWorkIds],
   );
-  return result.rows;
+    return result.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null }));
+}
+
+export async function setPortfolioWorkCover(
+  portfolioWorkId: UUID,
+  mediaId: UUID | null,
+): Promise<'updated' | 'work-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const work = await client.query('SELECT "id" FROM "PortfolioWork" WHERE "id" = $1 LIMIT 1', [portfolioWorkId]);
+    if (work.rowCount === 0) return 'work-missing';
+
+    if (mediaId === null) {
+      await client.query(
+        'DELETE FROM "PortfolioWorkMedia" WHERE "portfolioWorkId" = $1 AND "position" = 0',
+        [portfolioWorkId],
+      );
+      return 'updated';
+    }
+
+    const media = await client.query('SELECT "id" FROM "Media" WHERE "id" = $1 LIMIT 1', [mediaId]);
+    if (media.rowCount === 0) return 'media-missing';
+
+    // The cover is the image at position 0; other associated images keep their order after it.
+    const existing = await client.query<{ mediaId: UUID; altText: string | null }>(
+      `SELECT "mediaId", "altText" FROM "PortfolioWorkMedia"
+       WHERE "portfolioWorkId" = $1
+       ORDER BY "position" ASC`,
+      [portfolioWorkId],
+    );
+    const coverAltText = existing.rows.find((row) => row.mediaId === mediaId)?.altText ?? null;
+    const others = existing.rows.filter((row) => row.mediaId !== mediaId);
+    await client.query('DELETE FROM "PortfolioWorkMedia" WHERE "portfolioWorkId" = $1', [portfolioWorkId]);
+    await client.query(
+      'INSERT INTO "PortfolioWorkMedia" ("portfolioWorkId", "mediaId", "position", "altText") VALUES ($1, $2, 0, $3)',
+      [portfolioWorkId, mediaId, coverAltText],
+    );
+    for (const [index, item] of others.entries()) {
+      await client.query(
+        'INSERT INTO "PortfolioWorkMedia" ("portfolioWorkId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [portfolioWorkId, item.mediaId, index + 1, item.altText],
+      );
+    }
+    return 'updated';
+  });
 }
 
 type AdminPortfolioRow = Omit<PortfolioWork, 'createdAt' | 'updatedAt'> & {
@@ -136,11 +195,13 @@ type AdminPortfolioRow = Omit<PortfolioWork, 'createdAt' | 'updatedAt'> & {
   updatedAt: string;
   serviceSlug: string;
   serviceTitle: string;
+  serviceCategories: string[];
+  serviceCategoryIds: UUID[];
 };
 
 function withAdminService(row: AdminPortfolioRow): AdminPortfolioWork {
-  const { serviceSlug, serviceTitle, ...work } = row;
-  return { ...work, service: { id: work.serviceId, slug: serviceSlug, title: serviceTitle } };
+  const { serviceSlug, serviceTitle, serviceCategories, serviceCategoryIds, ...work } = row;
+  return { ...work, service: { id: work.serviceId, slug: serviceSlug, title: serviceTitle, categories: serviceCategories, categoryIds: serviceCategoryIds } };
 }
 
 const adminPortfolioColumns = `
@@ -150,12 +211,59 @@ const adminPortfolioColumns = `
     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
   TO_CHAR(w."updatedAt" AT TIME ZONE current_setting('TimeZone'),
     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt",
-  s."slug" AS "serviceSlug", s."title" AS "serviceTitle"`;
+  s."slug" AS "serviceSlug", s."title" AS "serviceTitle",
+  COALESCE((SELECT array_agg(sc."name" ORDER BY sc."sortOrder") FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId" WHERE scs."serviceId" = s."id"), ARRAY[]::text[]) AS "serviceCategories",
+  COALESCE((SELECT array_agg(sc."id" ORDER BY sc."sortOrder") FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId" WHERE scs."serviceId" = s."id"), ARRAY[]::uuid[]) AS "serviceCategoryIds"`;
 
-export async function listPortfolioServiceOptions(): Promise<Array<Pick<Service, 'id' | 'slug' | 'title'>>> {
-  const result = await pool.query<Pick<Service, 'id' | 'slug' | 'title'>>(
-    `SELECT "id", "slug", "title" FROM "Service"
-     ORDER BY "sortOrder" ASC, "title" ASC, "id" ASC`,
+export async function updatePortfolioWorkMedia(
+  portfolioWorkId: UUID,
+  mediaItems: Array<{ mediaId: UUID; altText?: string | null }>,
+): Promise<'updated' | 'work-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const work = await client.query('SELECT "id" FROM "PortfolioWork" WHERE "id" = $1 LIMIT 1', [portfolioWorkId]);
+    if (work.rowCount === 0) return 'work-missing';
+
+    if (mediaItems.length > 0) {
+      const mediaIds = mediaItems.map((item) => item.mediaId);
+      const mediaCheck = await client.query(
+        'SELECT "id" FROM "Media" WHERE "id" = ANY($1::uuid[])',
+        [mediaIds],
+      );
+      if (mediaCheck.rowCount !== mediaIds.length) return 'media-missing';
+    }
+
+    await client.query('DELETE FROM "PortfolioWorkMedia" WHERE "portfolioWorkId" = $1', [portfolioWorkId]);
+
+    for (const [index, item] of mediaItems.entries()) {
+      await client.query(
+        'INSERT INTO "PortfolioWorkMedia" ("portfolioWorkId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [portfolioWorkId, item.mediaId, index, item.altText ?? null],
+      );
+    }
+
+    return 'updated';
+  });
+}
+
+export async function listPortfolioServiceOptions(): Promise<PortfolioServiceOption[]> {
+  const result = await pool.query<PortfolioServiceOption>(
+    `SELECT s."id", s."slug", s."title",
+       COALESCE(array_agg(sc."name" ORDER BY sc."sortOrder") FILTER (WHERE sc."id" IS NOT NULL), ARRAY[]::text[]) AS "categories",
+       COALESCE(array_agg(sc."id" ORDER BY sc."sortOrder") FILTER (WHERE sc."id" IS NOT NULL), ARRAY[]::uuid[]) AS "categoryIds"
+     FROM "Service" s
+     LEFT JOIN "ServiceCategoryService" scs ON scs."serviceId" = s."id"
+     LEFT JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId"
+     WHERE s."publicationStatus" = 'PUBLISHED'
+     GROUP BY s."id"
+     HAVING COUNT(sc."id") > 0
+     ORDER BY MIN(sc."sortOrder"), MIN(s."sortOrder"), s."title", s."id"`,
+  );
+  return result.rows;
+}
+
+export async function listServiceCategories(): Promise<ServiceCategory[]> {
+  const result = await pool.query<ServiceCategory>(
+    'SELECT "id", "name", "slug", "sortOrder" FROM "ServiceCategory" ORDER BY "sortOrder", "name"',
   );
   return result.rows;
 }

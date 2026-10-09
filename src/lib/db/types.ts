@@ -8,7 +8,7 @@ export const propertyStatuses = ['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'LEASED', '
 export const representationTypes = ['CHANNEL_PARTNER', 'AUTHORIZED_REPRESENTATIVE', 'OTHER'] as const;
 export const priceModes = ['EXACT', 'STARTING_FROM', 'ON_REQUEST'] as const;
 export const plotSizeUnits = ['SQFT', 'SQM', 'ACRE', 'HECTARE'] as const;
-export const enquiryStatuses = ['NEW', 'CONTACTED', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED'] as const;
+export const enquiryStatuses = ['NEW', 'CONTACTED', 'IN_DISCUSSION', 'CONVERTED', 'CLOSED'] as const;
 
 export type AdminRole = typeof adminRoles[number];
 export type PublicationStatus = typeof publicationStatuses[number];
@@ -28,6 +28,13 @@ export interface Admin {
   passwordHash: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ServiceCategory {
+  id: UUID;
+  name: string;
+  slug: string;
+  sortOrder: number;
 }
 
 export interface Service {
@@ -120,6 +127,8 @@ export interface PropertyMediaItem extends PropertyMedia {
   mimeType: string;
   width: number | null;
   height: number | null;
+  provider?: string;
+  deliveryUrl?: string | null;
 }
 
 export interface PortfolioWorkMediaItem extends PortfolioWorkMedia {
@@ -128,6 +137,8 @@ export interface PortfolioWorkMediaItem extends PortfolioWorkMedia {
   mimeType: string;
   width: number | null;
   height: number | null;
+  provider?: string;
+  deliveryUrl?: string | null;
 }
 
 export interface PortfolioWorkWithService extends PortfolioWork {

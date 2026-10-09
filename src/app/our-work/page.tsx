@@ -7,7 +7,7 @@ import WorkPortfolio from '@/components/work-portfolio';
 import { siteConfig } from '@/lib/data';
 
 export const metadata: Metadata = {
-  title: 'Our Work | JLUXE',
+  title: 'Our Work',
   description: 'Selected work, projects and capabilities across the JLUXE ecosystem.',
 };
 
@@ -40,7 +40,7 @@ export default function OurWorkPage() {
               Let&apos;s discuss your requirement, project or opportunity.
             </p>
           </div>
-          <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+          <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--viridian-950)] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
             Let&apos;s Talk <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

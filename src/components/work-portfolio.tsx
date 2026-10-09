@@ -8,10 +8,11 @@ import { getMediaImageUrl } from '@/lib/media';
 
 const pageSize = 12;
 
-type PortfolioService = { id: string; slug: string; title: string };
+type PortfolioService = { id: string; slug: string; title: string; categories: string[] };
 type PortfolioMedia = {
   id: string;
   storageKey: string;
+  deliveryUrl?: string | null;
   mimeType: string;
   width: number | null;
   height: number | null;
@@ -32,19 +33,19 @@ type PortfolioItem = {
 };
 
 export default function WorkPortfolio() {
-  const [activeService, setActiveService] = useState<string | null>(null);
-  const [services, setServices] = useState<PortfolioService[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [requestVersion, setRequestVersion] = useState(0);
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page), limit: String(pageSize), sort: 'latest' });
-    if (activeService) params.set('service', activeService);
+    if (activeCategory) params.set('category', activeCategory);
 
     setLoading(true);
     setError(false);
@@ -56,13 +57,9 @@ export default function WorkPortfolio() {
         if (!response.ok || result.success !== true) throw new Error('Unable to load portfolio work.');
 
         const nextItems = result.data as PortfolioItem[];
+        setCategories(result.categories as string[]);
         setItems(nextItems);
         setTotalPages(result.pagination.totalPages as number);
-        setServices((current) => {
-          const known = new Map(current.map((service) => [service.slug, service]));
-          nextItems.forEach((item) => known.set(item.service.slug, item.service));
-          return [...known.values()].sort((first, second) => first.title.localeCompare(second.title));
-        });
       } catch {
         if (!controller.signal.aborted) {
           setError(true);
@@ -76,10 +73,10 @@ export default function WorkPortfolio() {
 
     void loadWork();
     return () => controller.abort();
-  }, [activeService, page, requestVersion]);
+  }, [activeCategory, page, requestVersion]);
 
-  const resetService = () => {
-    setActiveService(null);
+  const resetCategory = () => {
+    setActiveCategory(null);
     setPage(1);
   };
 
@@ -87,7 +84,7 @@ export default function WorkPortfolio() {
     return (
       <section className="py-16 sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl border-y border-[var(--viridian-950)]/15 py-12 sm:py-16">
-          <p role="alert" className="text-sm text-[var(--muted)]">We couldn’t load selected work right now. Please try again.</p>
+          <p role="alert" className="text-sm text-[var(--muted)]">We couldn&apos;t load selected work right now. Please try again.</p>
           <button type="button" onClick={() => setRequestVersion((version) => version + 1)} className="touch-press mt-6 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
             <RotateCcw className="h-4 w-4" /> Try again
           </button>
@@ -96,7 +93,7 @@ export default function WorkPortfolio() {
     );
   }
 
-  if (!loading && items.length === 0 && !activeService) {
+  if (!loading && items.length === 0 && !activeCategory) {
     return (
       <section className="py-16 sm:py-20 lg:py-24" data-reveal>
         <div className="container-xl">
@@ -125,24 +122,22 @@ export default function WorkPortfolio() {
             <p className="text-xs font-semibold tracking-[0.22em] text-[var(--gold)]">SELECTED WORK</p>
             <h2 className="mt-4 font-display text-4xl text-[var(--viridian-950)] sm:text-5xl">Projects &amp; engagements</h2>
           </div>
-          {services.length > 0 && (
-            <div className="flex flex-wrap gap-2" aria-label="Filter work by category">
-              {[
-                { slug: null, title: 'All' },
-                ...services.map((service) => ({ slug: service.slug, title: service.title })),
-              ].map((service) => (
-                <button
-                  key={service.slug ?? 'all'}
-                  type="button"
-                  aria-pressed={activeService === service.slug}
-                  onClick={() => { setActiveService(service.slug); setPage(1); }}
-                  className={`touch-press min-h-11 border px-3 py-2 text-xs font-medium transition-colors ${activeService === service.slug ? 'border-[var(--viridian-900)] bg-[var(--viridian-900)] text-white' : 'border-[var(--viridian-950)]/15 text-[var(--viridian-950)] hover:border-[var(--gold)]'}`}
-                >
-                  {service.title}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2" aria-label="Filter work by category">
+            {[
+              { value: null, label: 'All' },
+              ...categories.map((category) => ({ value: category, label: category })),
+            ].map((cat) => (
+              <button
+                key={cat.value ?? 'all'}
+                type="button"
+                aria-pressed={activeCategory === cat.value}
+                onClick={() => { setActiveCategory(cat.value); setPage(1); }}
+                className={`touch-press min-h-11 border px-3 py-2 text-xs font-medium transition-colors ${activeCategory === cat.value ? 'border-[var(--viridian-900)] bg-[var(--viridian-950)] text-white' : 'border-[var(--viridian-950)]/15 text-[var(--viridian-950)] hover:border-[var(--gold)]'}`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -150,25 +145,31 @@ export default function WorkPortfolio() {
         ) : items.length > 0 ? (
           <div className="mt-8 grid gap-8 md:grid-cols-2" data-reveal-stagger>
             {items.map((item) => (
-              <article key={item.id} data-reveal className={`premium-card min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
-                <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
-                  <img src={getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)]">
-                  <span className="text-[var(--gold)]">{item.service.title}</span>
-                  {item.location && <span>{item.location}</span>}
-                  {item.year !== null && <span>{item.year}</span>}
-                  {item.featured && <span className="border-l border-[var(--viridian-950)]/20 pl-3">Featured</span>}
-                </div>
-                <h3 className="mt-3 font-display text-2xl text-[var(--viridian-950)] sm:text-3xl">{item.title}</h3>
-                {item.description && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{item.description}</p>}
-              </article>
+              <Link key={item.id} href={`/our-work/${item.slug}`} data-reveal className={`block min-w-0 ${item.featured ? 'md:col-span-2' : ''}`}>
+                <article className="premium-card">
+                  <div className={`premium-card-media flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--sand)] px-4 text-center text-sm text-[var(--muted)] ${item.featured ? 'md:aspect-[2/1]' : ''}`}>
+                    <img src={item.media[0]?.deliveryUrl ?? getMediaImageUrl(item.media[0]?.storageKey, 'portfolio')} alt={item.media[0]?.altText ?? 'JLUXE portfolio placeholder'} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getMediaImageUrl(null, 'portfolio'); }} />
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)]">
+                    {item.service.categories.length > 0 && <span className="text-[var(--muted)]">{item.service.categories.join(', ')}</span>}
+                    <span className="text-[var(--gold)]">#{item.service.title}</span>
+                    {item.location && <span>{item.location}</span>}
+                    {item.year !== null && <span>{item.year}</span>}
+                    {item.featured && <span className="border-l border-[var(--viridian-950)]/20 pl-3">Featured</span>}
+                  </div>
+                  <h3 className="mt-3 font-display text-2xl text-[var(--viridian-950)] sm:text-3xl">{item.title}</h3>
+                  {item.description && <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{item.description}</p>}
+                  <span className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)]">
+                    View work <ArrowRight className="h-4 w-4" />
+                  </span>
+                </article>
+              </Link>
             ))}
           </div>
         ) : (
           <div className="mt-8 border-b border-[var(--viridian-950)]/15 py-10">
-            <p className="text-sm text-[var(--muted)]">No published work is available for this service.</p>
-            <button type="button" onClick={resetService} className="touch-press mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
+            <p className="text-sm text-[var(--muted)]">No published work is available for this category.</p>
+            <button type="button" onClick={resetCategory} className="touch-press mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] hover:text-[var(--gold)]">
               View all work <ArrowRight className="h-4 w-4" />
             </button>
           </div>

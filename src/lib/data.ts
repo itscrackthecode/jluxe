@@ -1,13 +1,15 @@
 export const services = [
   { title:'Real Estate', kicker:'01', description:'Property sales, marketing and channel partnership for real opportunities.', href:'/services/real-estate', tone:'land' },
-  { title:'Business Solutions', kicker:'02', description:'Marketing, branding, lead generation and business development support.', href:'/services/business-solutions', tone:'business' },
+  { title:'Business Solutions', kicker:'02', description:'We provide integrated business solutions designed to help individuals, businesses, and financial institutions manage their real estate, collections, and banking requirements efficiently and securely.', href:'/services/business-solutions', tone:'business' },
   { title:'Recruitment & Training', kicker:'03', description:'Recruitment, staffing and practical training for people and organisations.', href:'/services/talent-training', tone:'training' },
-  { title:'Interiors & Design', kicker:'04', description:'Interior design solutions that turn spaces into purposeful environments.', href:'/services/interiors-design', tone:'interior' },
-  { title:'Boutique', kicker:'05', description:'A new JLUXE venture currently in development.', href:'/contact', tone:'boutique' },
+  { title:'Interior Design & Architecture', kicker:'04', description:'Interior design solutions that turn spaces into purposeful environments.', href:'/services/interiors-design', tone:'interior' },
 ];
+
+export const isConfiguredContact = (value: string) => Boolean(value.trim()) && !/(your-|000000|\.example)/i.test(value);
 
 export const siteConfig = {
   brand: 'JLUXE',
+  url: 'https://thejluxe.com',
   contact: {
     email: 'your-email@jluxe.example',
     instagram: 'https://www.instagram.com/your-handle',
@@ -39,9 +41,9 @@ export const workItems: WorkItem[] = [];
 export const heroSlides = [
   { eyebrow:'JLUXE', title:'Building relationships. Creating possibilities.', body:'Connecting people, services and opportunities across real estate, business, talent and design.', cta:'Explore JLUXE', href:'/about', theme:'land', backgroundImage:'/assets/images/jluxe-hero-bg.png' },
   { eyebrow:'REAL ESTATE', title:'Find the right space. Make the right move.', body:'Property opportunities for buyers, sellers and partners, supported by JLUXE’s real estate network.', cta:'Explore Real Estate', href:'/services/real-estate', theme:'land', backgroundImage:'/assets/images/real-estate.png' },
-  { eyebrow:'BUSINESS SOLUTIONS', title:'Ideas that move business forward.', body:'Marketing, branding, lead generation, sales and business development solutions built around real requirements.', cta:'Explore Business Solutions', href:'/services/business-solutions', theme:'business', backgroundImage:'/assets/images/business-solutions.png' },
+  { eyebrow:'BUSINESS SOLUTIONS', title:'Ideas that move business forward.', body:'We provide integrated business solutions designed to help individuals, businesses, and financial institutions manage their real estate, collections, and banking requirements efficiently and securely.', cta:'Explore Business Solutions', href:'/services/business-solutions', theme:'business', backgroundImage:'/assets/images/business-solutions.png' },
   { eyebrow:'RECRUITMENT & TRAINING', title:'Connecting talent with opportunity.', body:'Recruitment, staffing, corporate training, college training and career counselling.', cta:'Explore Recruitment & Training', href:'/services/talent-training', theme:'training', backgroundImage:'/assets/images/talent-training.png' },
-  { eyebrow:'INTERIORS & DESIGN', title:'Spaces designed around you.', body:'Interior designing focused on creating functional, thoughtful and distinctive spaces.', cta:'Explore Interiors & Designs', href:'/contact', theme:'interior', backgroundImage:'/assets/images/interiors-designs.png' },
+  { eyebrow:'INTERIOR DESIGN & ARCHITECTURE', title:'Spaces designed around you.', body:'Interior designing focused on creating functional, thoughtful and distinctive spaces.', cta:'Explore Interior Design & Architecture', href:'/services/interiors-design', theme:'interior', backgroundImage:'/assets/images/interiors-designs.png' },
 ];
 
 export const realEstateCapabilities = [
@@ -106,6 +108,21 @@ export const businessSolutionsServices = [
     number: '06',
     title: 'Event Management',
     description: 'Event management support for businesses and organizations.',
+  },
+  {
+    number: '07',
+    title: 'Real Estate Solutions',
+    description: 'Property acquisition, management and investment support.',
+  },
+  {
+    number: '08',
+    title: 'Collection Solutions',
+    description: 'Payment collection, account reconciliation and recovery support.',
+  },
+  {
+    number: '09',
+    title: 'Banking Solutions',
+    description: 'Banking, credit, account and transaction support.',
   },
 ];
 

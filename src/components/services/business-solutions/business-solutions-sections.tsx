@@ -1,6 +1,12 @@
+'use client';
+
+import { useState } from 'react';
+import type { KeyboardEvent, PointerEvent } from 'react';
 import {
   BriefcaseBusiness,
+  Building2,
   CalendarDays,
+  HandCoins,
   Landmark,
   Megaphone,
   Palette,
@@ -11,7 +17,156 @@ import {
   businessSolutionsServices,
 } from '@/lib/data';
 
-const serviceIcons = [Megaphone, Palette, Target, TrendingUp, Landmark, CalendarDays];
+const serviceIcons = [Megaphone, Palette, Target, TrendingUp, Landmark, CalendarDays, Building2, HandCoins, Landmark];
+
+const serviceItems: Record<string, string[]> = {
+  'Marketing Solutions': [
+    'Digital Marketing',
+    'Social Media Marketing',
+    'Property Marketing',
+    'Campaign Planning',
+    'Marketing Content',
+    'Promotional Activities',
+    'Event & Launch Support',
+  ],
+  'Branding Solutions': [
+    'Brand Strategy',
+    'Corporate Branding',
+    'Marketing Content',
+    'Campaign Support',
+    'Event & Launch Support',
+  ],
+  'Lead Generation': [
+    'Lead Generation Campaigns',
+    'Customer Acquisition',
+    'Lead Management',
+    'Customer Enquiry Support',
+    'Lead Follow-up',
+    'Business Development',
+  ],
+  'Sales & Business Development': [
+    'Sales Strategy & Planning',
+    'Lead Management',
+    'Sales Team Support',
+    'Sales Process Development',
+    'Customer Conversion',
+    'Sales Pipeline Management',
+    'Field Sales Support',
+  ],
+  'Banking Services': [
+    'Banking Support',
+    'Customer Acquisition',
+    'Relationship Management',
+    'Business Development Support',
+    'Banking Process Training',
+  ],
+  'Event Management': [
+    'Event & Launch Support',
+    'Promotional Activities',
+    'Event-Based Promotions',
+    'Corporate Events',
+  ],
+  'Real Estate Solutions': [
+    'Property acquisition and sales support',
+    'Property management',
+    'Real estate investment solutions',
+    'Due diligence and documentation support',
+    'Commercial and residential property services',
+    'Asset valuation and advisory',
+  ],
+  'Collection Solutions': [
+    'Receivables and payment collection',
+    'Loan and debt collection support',
+    'Customer payment follow-up',
+    'Account reconciliation',
+    'Recovery and settlement services',
+    'Collection reporting and monitoring',
+  ],
+  'Banking Solutions': [
+    'Banking and financial service support',
+    'Loan and credit-related services',
+    'Account and payment solutions',
+    'Financial documentation support',
+    'Customer onboarding and verification',
+    'Transaction and payment management',
+  ],
+};
+
+function BusinessSolutionCard({
+  service,
+  Icon,
+}: {
+  service: (typeof businessSolutionsServices)[number];
+  Icon: typeof Megaphone;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isActivated, setIsActivated] = useState(false);
+  const isOpen = isHovered || isActivated;
+  const panelId = `business-solution-${service.number}`;
+
+  const toggle = () => setIsActivated((current) => !current);
+  const close = () => {
+    setIsHovered(false);
+    setIsActivated(false);
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggle();
+    } else if (event.key === 'Escape') {
+      close();
+    }
+  };
+  const handlePointerEnter = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse') setIsHovered(true);
+  };
+  const handlePointerLeave = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse') setIsHovered(false);
+  };
+  const handlePointerUp = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') toggle();
+  };
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      aria-expanded={isOpen}
+      aria-controls={panelId}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
+      onPointerUp={handlePointerUp}
+      onKeyDown={handleKeyDown}
+      className="premium-card min-w-0 cursor-pointer bg-[var(--viridian-950)] p-6 text-left text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)] sm:p-7"
+      data-reveal
+    >
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{service.number}</span>
+        <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
+      </div>
+      <h3 className="mt-9 font-display text-2xl leading-snug text-[var(--cream)]">{service.title}</h3>
+      <p className="mt-3 max-w-sm text-sm leading-6 text-white/80">{service.description}</p>
+      <p className="mt-4 text-[11px] font-medium tracking-wide text-white/80">Hover / Tap for more info</p>
+
+      <div
+        id={panelId}
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <ul className="mt-5 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+            {serviceItems[service.title].map((item) => (
+            <li key={item} className="border border-white/25 bg-white/[0.06] px-2.5 py-1.5 text-xs leading-tight text-white/90">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function BusinessSolutionsServices() {
   return (
@@ -30,19 +185,12 @@ export function BusinessSolutionsServices() {
             const Icon = serviceIcons[index];
 
             return (
-              <article key={service.number} data-reveal className="premium-card min-w-0 bg-[var(--viridian-950)] p-6 sm:p-7">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{service.number}</span>
-                  <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
-                </div>
-                <h3 className="mt-9 font-display text-2xl leading-snug">{service.title}</h3>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-white/65">{service.description}</p>
-              </article>
+              <BusinessSolutionCard key={service.number} service={service} Icon={Icon} />
             );
           })}
         </div>
+
       </div>
     </section>
   );
 }
-

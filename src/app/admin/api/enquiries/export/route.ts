@@ -2,14 +2,16 @@ import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { z } from 'zod';
 import { enquiryStatuses } from '@/lib/db/types';
-import { getAdminSession } from '@/lib/admin-session';
+import { getAdminSession, hasAdminPermission } from '@/lib/admin-session';
 import { listEnquiriesForExport } from '@/lib/db/queries/enquiries';
 
 const querySchema = z.object({ search: z.string().trim().max(200).optional(), status: z.enum(enquiryStatuses).optional() });
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
-  if (!await getAdminSession()) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
+  if (!hasAdminPermission(session.role, 'export-enquiries')) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const params = new URL(request.url).searchParams;
   const parsed = querySchema.safeParse({ search: params.get('search') ?? undefined, status: params.get('status') ?? undefined });
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Invalid export filters.' }, { status: 400 });

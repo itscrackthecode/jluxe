@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { propertyStatuses, publicationStatuses } from '@/lib/db/types';
 import { getAdminSession } from '@/lib/admin-session';
+import { hasSameOrigin } from '@/lib/admin-request';
 import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
 import { createProperty, listAdminProperties } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
 

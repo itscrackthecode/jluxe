@@ -4,7 +4,7 @@ import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
 
 export const metadata: Metadata = {
-  title: 'Submit a Property | JLUXE',
+  title: 'Submit a Property',
   description: 'Share a property opportunity with JLUXE for consideration, marketing or channel partnership.',
 };
 

@@ -23,10 +23,10 @@ export default function JluxeCtaLink({ href, children, icon = arrowIcon, classNa
       href={href}
       target={target}
       rel={rel}
-      className={`jluxe-cta touch-press group relative inline-flex min-h-12 min-w-[220px] items-center overflow-hidden rounded-[0.9em] bg-[#F3EBDD] px-5 pr-14 text-sm font-semibold text-[#17382F] shadow-[inset_0_0_1.6em_-0.6em_#C6A15B] transition-[transform,box-shadow] duration-300 hover:shadow-[inset_0_0_1.6em_-0.4em_#C6A15B] active:scale-[0.98] ${className}`}
+      className={`jluxe-cta touch-press group relative inline-flex min-h-12 min-w-[220px] items-center overflow-hidden rounded-[0.9em] bg-[var(--cream)] px-5 pr-14 text-sm font-semibold text-[var(--viridian-950)] shadow-[inset_0_0_1.6em_-0.6em_var(--gold)] transition-[transform,box-shadow] duration-300 hover:shadow-[inset_0_0_1.6em_-0.4em_var(--gold)] active:scale-[0.98] ${className}`}
     >
       <span className="relative z-10">{children}</span>
-      <span aria-hidden="true" className="jluxe-cta-icon absolute right-1 top-1/2 z-0 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-[0.7em] bg-[#17382F] text-[#F3EBDD] shadow-[0.1em_0.1em_0.6em_0.2em_rgba(198,161,91,0.45)]">
+      <span aria-hidden="true" className="jluxe-cta-icon absolute right-1 top-1/2 z-0 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-[0.7em] bg-[var(--viridian-950)] text-[var(--cream)] shadow-[0.1em_0.1em_0.6em_0.2em_rgba(197,164,109,0.35)]">
         {icon}
       </span>
     </Link>

@@ -1,61 +1,156 @@
-import { BriefcaseBusiness, GraduationCap, UserRoundSearch } from 'lucide-react';
+import TrainingCategoryCard, {
+  type TrainingCategory,
+} from '@/components/services/talent-training/training-category-card';
 
-const pillars = [
+type TrainingSection = {
+  number: string;
+  title: string;
+  description: string;
+  categories: TrainingCategory[];
+};
+
+const sections: TrainingSection[] = [
   {
     number: '01',
     title: 'Recruitment & Staffing',
-    description: 'Finding the right people for the right roles. JLUXE works closely with organizations to understand business requirements, role expectations and organizational culture before identifying suitable candidates.',
-    icon: UserRoundSearch,
-    areas: ['Sales Recruitment', 'Real Estate Recruitment', 'HR & Administration', 'Customer Relationship Management', 'Finance & Accounts', 'Engineering & Project', 'Support Staff'],
+    description: 'Connecting businesses with the right talent and flexible workforce solutions.',
+    categories: [
+      {
+        title: 'Recruitment',
+        description: 'Finding the right talent for the right opportunity.',
+        items: [
+          'Permanent Recruitment',
+          'Executive Search',
+          'Sales Recruitment',
+          'CRM & Banking Recruitment',
+          'Customer Relationship Management',
+          'Real Estate Recruitment',
+          'Corporate & HR Recruitment',
+          'HR & Administration',
+          'Finance & Accounts',
+          'Engineering & Project',
+        ],
+      },
+      {
+        title: 'Staffing',
+        description: 'Flexible workforce solutions for evolving business requirements.',
+        items: [
+          'Contract & Temporary Staffing',
+          'Sales & Field Workforce',
+          'CRM & Customer Teams',
+          'Banking & Real Estate Teams',
+          'Support & Project Staffing',
+          'Support Staff',
+        ],
+      },
+    ],
   },
   {
     number: '02',
     title: 'Corporate Training',
-    description: 'Developing People. Strengthening Organizations. Customized programs designed to improve employee capabilities, professional effectiveness and workplace performance.',
-    icon: BriefcaseBusiness,
-    areas: ['Sales & Negotiation Skills', 'Customer Relationship Management', 'Leadership Development', 'Communication Skills', 'Business Etiquette', 'Team Building', 'Time Management', 'Presentation Skills', 'Interview & Hiring Skills', 'HR & People Management', 'Real Estate Sales Training', 'CRM & Lead Management', 'Professional Behaviour', 'Workplace Communication'],
+    description: 'Practical training programs designed around organizational needs, employee capabilities and business goals.',
+    categories: [
+      {
+        title: 'Sales & Negotiation',
+        description: 'Build confidence and capability across the customer conversation.',
+        items: ['Sales Skills', 'Negotiation', 'Closing', 'Lead Conversion', 'Customer Handling'],
+      },
+      {
+        title: 'CRM',
+        description: 'Strengthen customer relationships and everyday team practices.',
+        items: ['Customer Experience', 'Lead Management', 'Follow-up', 'Retention'],
+      },
+      {
+        title: 'Leadership',
+        description: 'Support capable teams through clear, confident leadership.',
+        items: ['Team Management', 'Leadership', 'Decision Making', 'Performance Management'],
+      },
+      {
+        title: 'Professional Skills',
+        description: 'Develop practical skills for effective, professional workplaces.',
+        items: ['Business Communication', 'Presentation Skills', 'Time Management', 'Workplace Etiquette', 'Team Building'],
+      },
+    ],
   },
   {
     number: '03',
-    title: 'College Training & Counselling',
-    description: 'Preparing Students for Careers and the Real World. JLUXE helps colleges and educational institutions build employability, confidence, communication and professional skills.',
-    icon: GraduationCap,
-    areas: ['Soft Skills Training', 'Communication Skills', 'Spoken English', 'Interview Skills', 'Group Discussion', 'Resume Building', 'Aptitude & Employability Skills', 'Corporate Etiquette', 'Personality Development', 'Leadership Skills', 'Team Building', 'Career Readiness', 'Sales & Customer Service Skills', 'Career Opportunities', 'Industry Expectations', 'Job Roles & Responsibilities', 'Skill Requirements', 'Career Pathways', 'Higher Education Opportunities', 'Interview Preparation', 'Employability Development'],
+    title: 'College & Institutional Training',
+    description: 'Preparing students with the skills, confidence and industry awareness needed to transition from campus to career.',
+    categories: [
+      {
+        title: 'Soft Skills',
+        description: 'Build communication, confidence and professional presence.',
+        items: [
+          'Communication',
+          'Spoken English',
+          'Personality Development',
+          'Presentation & Public Speaking',
+          'Interview Skills',
+          'Professional Etiquette',
+        ],
+      },
+      {
+        title: 'Technical Skills',
+        description: 'Explore practical training across core engineering and technology fields.',
+        items: [
+          { field: 'CSE & IT', examples: 'Java · Python · Full Stack Development' },
+          { field: 'AI & Data', examples: 'Machine Learning · Data Analytics · Generative AI' },
+          { field: 'ECE', examples: 'Embedded Systems · IoT · VLSI' },
+          { field: 'EEE', examples: 'Power Systems · PLC · Renewable Energy' },
+          { field: 'Mechanical', examples: 'AutoCAD · SolidWorks · CAD/CAM' },
+          { field: 'Civil', examples: 'AutoCAD · Revit · STAAD.Pro' },
+        ],
+      },
+      {
+        title: 'Career & Placement',
+        description: 'Help students prepare for the transition from campus to career.',
+        items: [
+          'Aptitude',
+          'Interview Preparation',
+          'Resume Building',
+          'Group Discussion',
+          'Career Guidance',
+          'Placement Readiness',
+        ],
+      },
+    ],
   },
 ];
 
-export function TalentTrainingServices() {
-  return (
-    <section className="bg-[var(--viridian-950)] py-20 text-white sm:py-24" data-reveal>
-      <div className="container-xl">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.22em] text-[var(--gold)]">RECRUITMENT &amp; TRAINING</p>
-            <h2 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">What We Offer</h2>
-          </div>
-        </div>
-        <div className="mt-10 grid gap-4 lg:grid-cols-3" data-reveal-stagger>
-          {pillars.map((pillar) => {
-            const Icon = pillar.icon;
+function TrainingSection({ section, isFirst }: { section: TrainingSection; isFirst: boolean }) {
+  const headingId = `training-section-${section.number}`;
 
-            return (
-              <article key={pillar.number} data-reveal className="premium-card min-w-0 bg-[var(--viridian-950)] p-6 sm:p-7">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{pillar.number}</span>
-                  <Icon aria-hidden="true" className="h-5 w-5 text-[var(--gold)]" strokeWidth={1.5} />
-                </div>
-                <h3 className="mt-9 font-display text-2xl leading-snug">{pillar.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-white/70">{pillar.description}</p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {pillar.areas.map((area) => (
-                    <span key={area} className="border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-xs leading-tight text-white/70">{area}</span>
-                  ))}
-                </div>
-              </article>
-            );
-          })}
+  return (
+    <section
+      aria-labelledby={headingId}
+      className={`bg-[var(--viridian-950)] py-12 text-white sm:py-16 ${isFirst ? '' : 'border-t border-white/10'}`}
+      data-reveal
+    >
+      <div className="container-xl grid items-center gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-10 xl:gap-16">
+        <div className="h-fit border border-white/15 bg-white/[0.04] p-6 sm:p-7">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{section.number}</p>
+          <h2 id={headingId} className="mt-4 font-display text-3xl leading-tight sm:text-4xl">
+            {section.title}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-white/70">{section.description}</p>
+        </div>
+
+        <div className="grid content-start gap-3" data-reveal-stagger>
+          {section.categories.map((category) => (
+            <TrainingCategoryCard key={category.title} category={category} />
+          ))}
         </div>
       </div>
     </section>
+  );
+}
+
+export function TalentTrainingServices() {
+  return (
+    <div>
+      {sections.map((section, index) => (
+        <TrainingSection key={section.number} section={section} isFirst={index === 0} />
+      ))}
+    </div>
   );
 }

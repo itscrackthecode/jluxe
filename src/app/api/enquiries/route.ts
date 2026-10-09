@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { z } from 'zod';
 import { createEnquiry, findServiceById } from '@/lib/db/queries/enquiries';
+import { sendJluxeNotification } from '@/lib/email-notifications';
+import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2).max(150),
@@ -28,22 +29,10 @@ async function sendEnquiryNotification(
   propertyId: string | null,
   submittedAt: Date,
 ) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const recipient = process.env.ENQUIRY_NOTIFICATION_EMAIL?.trim();
-
-  if (!apiKey || !recipient) {
-    throw new Error('Email notification configuration is missing.');
-  }
-
-  const from = process.env.RESEND_FROM_EMAIL?.trim()
-    || 'JLUXE Enquiries <onboarding@resend.dev>';
   const serviceLabel = input.interestedServiceLabel.replace(/[\r\n]+/g, ' ');
   const submittedDate = submittedAt.toISOString();
   const propertyReference = propertyId ? `Property reference: ${propertyId}` : null;
-  const resend = new Resend(apiKey);
-  const result = await resend.emails.send({
-    from,
-    to: recipient,
+  await sendJluxeNotification({
     replyTo: input.email,
     subject: `New JLUXE Enquiry - ${serviceLabel}`,
     text: [
@@ -75,13 +64,17 @@ async function sendEnquiryNotification(
       `<p style="white-space: pre-wrap">${escapeHtml(input.message)}</p>`,
     ].join(''),
   });
-
-  if (result.error) {
-    throw new Error(result.error.name || 'ResendError');
-  }
 }
 
 export async function POST(request: Request) {
+  const rateLimit = await checkPublicApiRateLimit(request, {
+    endpoint: 'POST /api/enquiries',
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let body: unknown;
 
   try {

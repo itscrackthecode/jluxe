@@ -20,7 +20,7 @@ const interestOptions = [
   'Real Estate',
   'Business Solutions',
   'Talent & Training',
-  'Interiors & Design',
+  'Interior Design & Architecture',
   'Other',
 ];
 
@@ -165,7 +165,7 @@ export default function EnquiryForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="touch-press inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--viridian-900)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-800)] disabled:cursor-not-allowed disabled:opacity-70"
+            className="touch-press inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--viridian-950)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-950)] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? (
               <>

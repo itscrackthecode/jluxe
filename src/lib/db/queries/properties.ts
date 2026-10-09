@@ -1,4 +1,5 @@
 import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type {
   Property,
   PropertyMediaItem,
@@ -37,6 +38,8 @@ export async function listPublicProperties(filters: {
   location?: string;
   propertyType?: PropertyType;
   status?: PropertyStatus;
+  priceMin?: number;
+  priceMax?: number;
   sort: PropertySort;
   limit: number;
   offset: number;
@@ -45,12 +48,16 @@ export async function listPublicProperties(filters: {
     filters.location ? escapeLikeValue(filters.location) : null,
     filters.propertyType ?? null,
     filters.status ?? null,
+    filters.priceMin ?? null,
+    filters.priceMax ?? null,
   ];
   const conditions = `
     "publicationStatus" = 'PUBLISHED'
     AND ($1::text IS NULL OR "location" ILIKE '%' || $1 || '%' ESCAPE E'\\\\')
     AND ($2::"PropertyType" IS NULL OR "propertyType" = $2::"PropertyType")
-    AND ($3::"PropertyStatus" IS NULL OR "status" = $3::"PropertyStatus")`;
+    AND ($3::"PropertyStatus" IS NULL OR "status" = $3::"PropertyStatus")
+    AND ($4::numeric IS NULL OR "priceAmount" >= $4)
+    AND ($5::numeric IS NULL OR "priceAmount" <= $5)`;
   const orderBy: Record<PropertySort, string> = {
     latest: '"createdAt" DESC, "id" DESC',
     price_asc: '"priceAmount" ASC NULLS LAST, "id" ASC',
@@ -66,7 +73,7 @@ export async function listPublicProperties(filters: {
               TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'),
                 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
        FROM "Property" WHERE ${conditions}
-       ORDER BY ${orderBy[filters.sort]} LIMIT $4 OFFSET $5`,
+       ORDER BY ${orderBy[filters.sort]} LIMIT $6 OFFSET $7`,
       [...values, filters.limit, filters.offset],
     ),
   ]);
@@ -133,14 +140,101 @@ export async function findPublishedPropertyBySlug(slug: string): Promise<PublicP
 export async function listPropertyMedia(propertyId: UUID): Promise<PropertyMediaItem[]> {
   const result = await pool.query<PropertyMediaItem>(
     `SELECT pm."propertyId", pm."mediaId", pm."position", pm."altText",
-            m."id", m."storageKey", m."mimeType", m."width", m."height"
+              m."id", m."storageKey", m."mimeType", m."width", m."height", m."provider"
      FROM "PropertyMedia" pm
      JOIN "Media" m ON m."id" = pm."mediaId"
      WHERE pm."propertyId" = $1
      ORDER BY pm."position" ASC`,
     [propertyId],
   );
-  return result.rows;
+    return result.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null }));
+}
+
+export async function listPropertiesMedia(propertyIds: UUID[]): Promise<PropertyMediaItem[]> {
+  if (propertyIds.length === 0) return [];
+
+  const result = await pool.query<PropertyMediaItem>(
+    `SELECT pm."propertyId", pm."mediaId", pm."position", pm."altText",
+              m."id", m."storageKey", m."mimeType", m."width", m."height", m."provider"
+     FROM "PropertyMedia" pm
+     JOIN "Media" m ON m."id" = pm."mediaId"
+     WHERE pm."propertyId" = ANY($1::uuid[])
+     ORDER BY pm."propertyId", pm."position" ASC`,
+    [propertyIds],
+  );
+    return result.rows.map((item) => ({ ...item, deliveryUrl: item.provider === 'cloudinary' ? cloudinaryDeliveryUrl(item.storageKey) : item.storageKey.startsWith('/') ? item.storageKey : null }));
+}
+
+export async function updatePropertyMedia(
+  propertyId: UUID,
+  mediaItems: Array<{ mediaId: UUID; altText?: string | null }>,
+): Promise<'updated' | 'property-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const property = await client.query('SELECT "id" FROM "Property" WHERE "id" = $1 LIMIT 1', [propertyId]);
+    if (property.rowCount === 0) return 'property-missing';
+
+    if (mediaItems.length > 0) {
+      const mediaIds = mediaItems.map((item) => item.mediaId);
+      const mediaCheck = await client.query(
+        'SELECT "id" FROM "Media" WHERE "id" = ANY($1::uuid[])',
+        [mediaIds],
+      );
+      if (mediaCheck.rowCount !== mediaIds.length) return 'media-missing';
+    }
+
+    await client.query('DELETE FROM "PropertyMedia" WHERE "propertyId" = $1', [propertyId]);
+
+    for (const [index, item] of mediaItems.entries()) {
+      await client.query(
+        'INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [propertyId, item.mediaId, index, item.altText ?? null],
+      );
+    }
+
+    return 'updated';
+  });
+}
+
+export async function setPropertyCover(
+  propertyId: UUID,
+  mediaId: UUID | null,
+): Promise<'updated' | 'property-missing' | 'media-missing'> {
+  return withTransaction(async (client) => {
+    const property = await client.query('SELECT "id" FROM "Property" WHERE "id" = $1 LIMIT 1', [propertyId]);
+    if (property.rowCount === 0) return 'property-missing';
+
+    if (mediaId === null) {
+      await client.query(
+        'DELETE FROM "PropertyMedia" WHERE "propertyId" = $1 AND "position" = 0',
+        [propertyId],
+      );
+      return 'updated';
+    }
+
+    const media = await client.query('SELECT "id" FROM "Media" WHERE "id" = $1 LIMIT 1', [mediaId]);
+    if (media.rowCount === 0) return 'media-missing';
+
+    const existing = await client.query<{ mediaId: UUID; altText: string | null }>(
+      `SELECT "mediaId", "altText" FROM "PropertyMedia"
+       WHERE "propertyId" = $1
+       ORDER BY "position" ASC`,
+      [propertyId],
+    );
+    const coverAltText = existing.rows.find((row) => row.mediaId === mediaId)?.altText ?? null;
+    const others = existing.rows.filter((row) => row.mediaId !== mediaId);
+    await client.query('DELETE FROM "PropertyMedia" WHERE "propertyId" = $1', [propertyId]);
+    await client.query(
+      'INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, 0, $3)',
+      [propertyId, mediaId, coverAltText],
+    );
+    for (const [index, item] of others.entries()) {
+      await client.query(
+        'INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, $3, $4)',
+        [propertyId, item.mediaId, index + 1, item.altText],
+      );
+    }
+    return 'updated';
+  });
 }
 
 export type PropertyWrite = Pick<
@@ -188,4 +282,59 @@ export async function updateProperty(id: UUID, input: PropertyWrite): Promise<Ad
 export async function deleteProperty(id: UUID): Promise<boolean> {
   const result = await pool.query('DELETE FROM "Property" WHERE "id" = $1', [id]);
   return Boolean(result.rowCount);
+}
+
+export async function transitionPropertyPublication(id: UUID, action: 'archive' | 'restore' | 'publish'): Promise<'updated' | 'missing' | 'invalid-transition'> {
+  return withTransaction(async (client) => {
+    const current = await client.query<{ publicationStatus: PublicationStatus }>(
+      'SELECT "publicationStatus" FROM "Property" WHERE "id" = $1 FOR UPDATE', [id],
+    );
+    const status = current.rows[0]?.publicationStatus;
+    if (!status) return 'missing';
+    if ((action === 'archive' && status !== 'PUBLISHED')
+      || (action === 'restore' && status !== 'ARCHIVED')
+      || (action === 'publish' && status !== 'DRAFT')) return 'invalid-transition';
+    const target = action === 'archive' ? 'ARCHIVED' : 'PUBLISHED';
+    await client.query('UPDATE "Property" SET "publicationStatus" = $2, "updatedAt" = NOW() WHERE "id" = $1', [id, target]);
+    return 'updated';
+  });
+}
+
+export async function createSellerPropertySubmission(input: {
+  property: PropertyWrite;
+  enquiry: { name: string; email: string; phone: string; message: string };
+  media: Array<{ storageKey: string; mimeType: string; byteSize: number; width: number; height: number }>;
+}): Promise<AdminProperty> {
+  return withTransaction(async (client) => {
+    const created = await client.query<AdminProperty>(
+      `INSERT INTO "Property" (
+         "slug", "title", "description", "location", "propertyType", "priceAmount",
+         "priceCurrency", "priceMode", "plotSize", "plotSizeUnit", "status",
+         "representationType", "publicationStatus", "updatedAt"
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+       RETURNING ${adminPropertyColumns}`,
+      [input.property.slug, input.property.title, input.property.description, input.property.location,
+        input.property.propertyType, input.property.priceAmount, input.property.priceCurrency, input.property.priceMode,
+        input.property.plotSize, input.property.plotSizeUnit, input.property.status, input.property.representationType,
+        input.property.publicationStatus],
+    );
+    const property = created.rows[0];
+    for (const [position, item] of input.media.entries()) {
+      const media = await client.query<{ id: UUID }>(
+        `INSERT INTO "Media" ("storageKey", "provider", "mimeType", "byteSize", "width", "height")
+         VALUES ($1, 'cloudinary', $2, $3, $4, $5) RETURNING "id"`,
+        [item.storageKey, item.mimeType, item.byteSize, item.width, item.height],
+      );
+      await client.query(
+        `INSERT INTO "PropertyMedia" ("propertyId", "mediaId", "position", "altText") VALUES ($1, $2, $3, NULL)`,
+        [property.id, media.rows[0].id, position],
+      );
+    }
+    await client.query(
+      `INSERT INTO "Enquiry" ("name", "email", "phone", "interestedServiceLabel", "message", "propertyId", "updatedAt")
+       VALUES ($1, $2, $3, 'Real Estate - Seller Property Submission', $4, $5, NOW())`,
+      [input.enquiry.name, input.enquiry.email, input.enquiry.phone, input.enquiry.message, property.id],
+    );
+    return property;
+  });
 }

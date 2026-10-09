@@ -9,6 +9,8 @@ import {
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { verifyAdminPassword } from './admin-password';
+import { findActiveAdminById } from './db/queries/admins';
+import type { AdminRole } from './db/types';
 
 export { hashAdminPassword, verifyAdminPassword } from './admin-password';
 
@@ -23,6 +25,18 @@ const adminSessionSchema = z.object({
 }).strict();
 
 type AdminSession = z.infer<typeof adminSessionSchema>;
+
+export type AdminPermission = 'edit-content' | 'delete-content' | 'export-enquiries';
+
+const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
+  OWNER: ['edit-content', 'delete-content', 'export-enquiries'],
+  ADMIN: ['edit-content', 'delete-content', 'export-enquiries'],
+  EDITOR: ['edit-content'],
+};
+
+export function hasAdminPermission(role: AdminRole, permission: AdminPermission) {
+  return rolePermissions[role].includes(permission);
+}
 
 function getSessionEncryptionKey() {
   const secret = process.env.ADMIN_SESSION_SECRET;
@@ -79,7 +93,11 @@ export async function getAdminSession(): Promise<AdminSession | null> {
     const parsed = adminSessionSchema.safeParse(JSON.parse(plaintext));
 
     if (!parsed.success || parsed.data.expiresAt <= Math.floor(Date.now() / 1000)) return null;
-    return parsed.data;
+
+    const currentAdmin = await findActiveAdminById(parsed.data.adminId);
+    if (!currentAdmin) return null;
+
+    return { ...parsed.data, displayName: currentAdmin.displayName, role: currentAdmin.role };
   } catch {
     return null;
   }

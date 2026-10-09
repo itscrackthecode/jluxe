@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -12,36 +13,79 @@ import {
   PhoneCall,
   X,
 } from 'lucide-react';
-import { services, siteConfig } from '@/lib/data';
+import { isConfiguredContact, services, siteConfig } from '@/lib/data';
 import MobileReveal from '@/components/mobile-reveal';
 
-const isPlaceholderContact = (value: string) => /your-|000000|\.example/.test(value);
-
-const contactItems = [
+const configuredContactItems = [
   {
     label: 'Email',
-    href: isPlaceholderContact(siteConfig.contact.email) ? siteConfig.nav.contact : `mailto:${siteConfig.contact.email}`,
+    href: `mailto:${siteConfig.contact.email}`,
     icon: Mail,
+    configured: isConfiguredContact(siteConfig.contact.email),
   },
   {
     label: 'Instagram',
-    href: isPlaceholderContact(siteConfig.contact.instagram) ? siteConfig.nav.contact : siteConfig.contact.instagram,
+    href: siteConfig.contact.instagram,
     icon: Instagram,
+    configured: isConfiguredContact(siteConfig.contact.instagram),
   },
   {
     label: 'WhatsApp',
-    href: isPlaceholderContact(siteConfig.contact.whatsapp) ? siteConfig.nav.contact : siteConfig.contact.whatsapp,
+    href: siteConfig.contact.whatsapp,
     icon: MessageCircle,
+    configured: isConfiguredContact(siteConfig.contact.whatsapp),
   },
-];
+].filter(({ configured }) => configured);
+const contactItems = configuredContactItems.length
+  ? configuredContactItems
+  : [{ label: 'Enquiry Form', href: siteConfig.nav.contact, icon: Mail }];
 
 export default function SiteHeader() {
+  const pathname = usePathname();
   const [openDropdown, setOpenDropdown] = useState<'services' | 'contact' | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('home');
   const ref = useRef<HTMLDivElement | null>(null);
   const servicesButtonRef = useRef<HTMLButtonElement | null>(null);
   const contactButtonRef = useRef<HTMLButtonElement | null>(null);
   const mobileButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (pathname !== '/') {
+      setActiveSection('');
+      return undefined;
+    }
+
+    const sections = ['services', 'work', 'contact']
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null);
+    if (!sections.length) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      const visibleSections = entries.filter((entry) => entry.isIntersecting);
+      if (!visibleSections.length) return;
+      const mostVisible = visibleSections.reduce((best, entry) =>
+        entry.intersectionRatio > best.intersectionRatio ? entry : best,
+      );
+      setActiveSection(mostVisible.target.id);
+    }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+    sections.forEach((section) => observer.observe(section));
+    const handleScroll = () => {
+      if (window.scrollY < 80) setActiveSection('home');
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [pathname]);
+
+  const homeActive = pathname === '/' && activeSection === 'home';
+  const aboutActive = pathname.startsWith('/about');
+  const servicesActive = pathname.startsWith('/services/') || (pathname === '/' && activeSection === 'services');
+  const workActive = pathname.startsWith('/our-work') || pathname.startsWith('/properties') || (pathname === '/' && activeSection === 'work');
+  const contactActive = pathname.startsWith('/contact') || (pathname === '/' && activeSection === 'contact');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -92,12 +136,19 @@ export default function SiteHeader() {
       <MobileReveal />
       <div className="container-xl relative" ref={ref}>
         <div className="flex h-20 items-center justify-between gap-4">
-          <Link href="/" className="touch-press font-display text-3xl tracking-tight text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">
-            {siteConfig.brand}
+          <Link href="/" aria-current={homeActive ? 'page' : undefined} data-active={homeActive} className="nav-home-link touch-press flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">
+            <span className="nav-home-mark"><img
+              src="/assets/images/jluxe-monogram.png"
+              alt=""
+              width={1312}
+              height={1199}
+              className="h-7 w-auto md:h-8"
+            /></span>
+            <span className="font-display text-3xl tracking-tight text-[var(--viridian-950)]">{siteConfig.brand}</span>
           </Link>
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-[var(--viridian-950)] md:flex">
-            <Link href={siteConfig.nav.about} className="transition hover:text-[var(--gold)]">About</Link>
+            <Link href="/about" aria-current={aboutActive ? 'page' : undefined} data-active={aboutActive} className={`nav-indicator transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)] ${aboutActive ? 'text-[var(--viridian-700)]' : ''}`}>About</Link>
             <div className="relative">
               <button
                 ref={servicesButtonRef}
@@ -105,7 +156,9 @@ export default function SiteHeader() {
                 aria-haspopup="true"
                 aria-expanded={openDropdown === 'services'}
                 aria-controls="services-menu"
-                className="flex items-center gap-1 transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]"
+                aria-current={servicesActive ? 'location' : undefined}
+                data-active={servicesActive}
+                className="nav-indicator flex items-center gap-1 transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]"
                 onClick={() => setOpenDropdown(openDropdown === 'services' ? null : 'services')}
               >
                 Our Services
@@ -118,7 +171,9 @@ export default function SiteHeader() {
                     <Link
                       key={service.title}
                       href={service.href}
-                      className="flex min-h-11 items-center justify-between rounded-xl px-3 py-2.5 text-sm text-[var(--viridian-950)] transition hover:bg-[var(--cream)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"
+                      aria-current={pathname === service.href ? 'page' : undefined}
+                      data-active={pathname === service.href}
+                      className="nav-indicator flex min-h-11 items-center justify-between rounded-xl px-3 py-2.5 text-sm text-[var(--viridian-950)] transition hover:bg-[var(--cream)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"
                       onClick={() => setOpenDropdown(null)}
                     >
                       <span>{service.title}</span>
@@ -129,7 +184,7 @@ export default function SiteHeader() {
               )}
             </div>
 
-            <Link href={siteConfig.nav.work} className="transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">Our Work</Link>
+            <Link href={siteConfig.nav.work} aria-current={workActive ? (pathname === '/' ? 'location' : 'page') : undefined} data-active={workActive} className="nav-indicator transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">Our Work</Link>
 
             <div className="relative">
               <button
@@ -138,7 +193,9 @@ export default function SiteHeader() {
                 aria-haspopup="true"
                 aria-expanded={openDropdown === 'contact'}
                 aria-controls="contact-menu"
-                className="flex items-center gap-1 transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]"
+                aria-current={contactActive ? 'location' : undefined}
+                data-active={contactActive}
+                className="nav-indicator flex items-center gap-1 transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]"
                 onClick={() => setOpenDropdown(openDropdown === 'contact' ? null : 'contact')}
               >
                 Contact
@@ -168,6 +225,8 @@ export default function SiteHeader() {
           <div className="hidden md:block">
             <Link
               href={siteConfig.nav.contact}
+              aria-current={contactActive ? (pathname === '/' ? 'location' : 'page') : undefined}
+              data-active={contactActive}
               aria-label="Let&apos;s Talk"
               className="jluxe-talk-button"
             >
@@ -202,18 +261,18 @@ export default function SiteHeader() {
             inert={!mobileOpen}
           >
             <div className={`flex max-h-[calc(100dvh-5.5rem-env(safe-area-inset-top,0px))] flex-col gap-3 overflow-y-auto py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-sm font-medium text-[var(--viridian-950)] transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0'}`}>
-              <Link href={siteConfig.nav.about} className="mobile-nav-link touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>About</Link>
+              <Link href="/about" aria-current={aboutActive ? 'page' : undefined} data-active={aboutActive} className={`mobile-nav-link nav-indicator touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] ${aboutActive ? 'text-[var(--viridian-700)]' : 'text-[var(--viridian-950)]'}`} onClick={() => setMobileOpen(false)}>About</Link>
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
                 <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Our Services</p>
                 <div className="grid gap-2">
                   {services.map((service) => (
-                    <Link key={service.title} href={service.href} className="mobile-nav-link touch-press flex min-h-11 items-center text-sm text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+                    <Link key={service.title} href={service.href} aria-current={pathname === service.href ? 'page' : undefined} data-active={pathname === service.href} className="mobile-nav-link nav-indicator touch-press flex min-h-11 items-center text-sm text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
                       {service.title}
                     </Link>
                   ))}
                 </div>
               </div>
-              <Link href={siteConfig.nav.work} className="mobile-nav-link touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>Our Work</Link>
+              <Link href={siteConfig.nav.work} aria-current={workActive ? (pathname === '/' ? 'location' : 'page') : undefined} data-active={workActive} className="mobile-nav-link nav-indicator touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>Our Work</Link>
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
                 <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Contact</p>
                 <div className="grid gap-2 text-sm">
@@ -225,7 +284,7 @@ export default function SiteHeader() {
                   ))}
                 </div>
               </div>
-              <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-900)] px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+              <Link href={siteConfig.nav.contact} aria-current={contactActive ? (pathname === '/' ? 'location' : 'page') : undefined} data-active={contactActive} className="mobile-talk-link touch-press inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--viridian-950)] px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
                 Let&apos;s Talk
                 <ArrowUpRight className="h-4 w-4" />
               </Link>

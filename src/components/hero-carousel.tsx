@@ -5,11 +5,10 @@ import { heroSlides } from '@/lib/data';
 import JluxeCtaLink from '@/components/jluxe-cta-link';
 
 const themes: Record<string, string> = {
-  land: 'linear-gradient(115deg,#042e28 0%,#0b4b40 42%,#496a59 70%,#c4a56e 100%)',
-  business: 'linear-gradient(115deg,#062e29 0%,#123f39 45%,#50675e 70%,#c9ad7c 100%)',
-  training: 'linear-gradient(115deg,#082f2a 0%,#174e45 42%,#6c776b 70%,#d1bc95 100%)',
-  interior: 'linear-gradient(115deg,#062e29 0%,#234c43 45%,#8b7c69 75%,#dfcfb2 100%)',
-  boutique: 'linear-gradient(115deg,#062f29 0%,#0b463d 50%,#174f44 100%)',
+  land: 'var(--viridian-950)',
+  business: 'var(--viridian-950)',
+  training: 'var(--viridian-950)',
+  interior: 'var(--viridian-950)',
 };
 
 export default function HeroCarousel() {
@@ -24,7 +23,7 @@ export default function HeroCarousel() {
 
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % heroSlides.length);
-    }, 2000);
+    }, 6000);
 
     return () => window.clearInterval(timer);
   }, [isPaused, index]);
@@ -77,14 +76,16 @@ export default function HeroCarousel() {
 
       <div className="hero-viewport-inner container-xl relative z-10 flex min-h-[640px] flex-col justify-end py-16 sm:min-h-[720px]">
         <div className="flex max-w-3xl items-start gap-4 pb-8">
-          <div key={slide.title} className="hero-copy flex-1">
+          <div key={slide.title} className="hero-copy hero-slide-copy flex-1">
             <div className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.28em] text-[var(--gold)]">
             {displayNumber ? (
               <>
               <span>{displayNumber}</span>
               <span className="h-px w-16 bg-[var(--gold)]/70" />
               </>
-            ) : null}
+            ) : (
+              <span className="h-px w-10 bg-[var(--gold)]/70" />
+            )}
               <span>{slide.eyebrow}</span>
             </div>
             <h1 key={slide.title} className="mt-6 max-w-2xl font-display text-4xl leading-[0.96] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
