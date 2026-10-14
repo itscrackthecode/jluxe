@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 const directContacts = [
   { label: 'Email', href: `mailto:${siteConfig.contact.email}`, value: siteConfig.contact.email, icon: Mail },
-  { label: 'Instagram', href: siteConfig.contact.instagram, value: 'Instagram', icon: Instagram },
+  { label: 'Instagram', href: siteConfig.contact.instagram, value: 'jluxedevelopers', icon: Instagram },
   { label: 'WhatsApp', href: `${siteConfig.contact.whatsapp}?text=${encodeURIComponent('Hello JLUXE Team!\n\nI came across your website and would like to know more about your services.\n\nCould you please share more information and guide me on how we can proceed?\n\nThank you!')}`, value: siteConfig.contact.whatsappNumber, icon: MessageCircle },
 ].filter((item) => isConfiguredContact(item.href) && isConfiguredContact(item.value));
 

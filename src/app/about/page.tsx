@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 import JluxeCtaLink from '@/components/jluxe-cta-link';
@@ -64,6 +65,15 @@ export default function AboutPage() {
       <SiteHeader />
 
       <section className="hero-glow relative isolate overflow-hidden bg-[var(--viridian-950)] py-20 text-white sm:py-24 lg:py-28">
+        <Image
+          src="/assets/images/About JLuxe Page.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="-z-20 object-cover object-center opacity-35"
+        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-[var(--viridian-950)]/95 via-[var(--viridian-950)]/80 to-[var(--viridian-950)]/65" />
         <div className="hero-copy container-xl relative z-10 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-16">
           <div className="max-w-4xl">
             <Eyebrow light>ABOUT JLUXE</Eyebrow>
