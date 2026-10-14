@@ -6,7 +6,7 @@ export default function RealEstateHero() {
       <div
         aria-hidden="true"
         className="hero-media"
-        style={{ backgroundImage: "url('/assets/images/real-estate.png')" }}
+        style={{ backgroundImage: "url('/assets/images/Real Estate page.png')" }}
       />
       <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(6,47,41,0.96)_0%,rgba(6,47,41,0.82)_42%,rgba(6,47,41,0.52)_74%,rgba(6,47,41,0.34)_100%)]" />
       <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_28%,rgba(3,25,21,0.42)_100%)]" />

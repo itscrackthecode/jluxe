@@ -23,7 +23,7 @@ export default function InteriorsDesignPage() {
     <main className="text-[var(--viridian-950)]">
       <SiteHeader />
       <section className="hero-viewport relative isolate min-h-[620px] overflow-hidden bg-[var(--viridian-950)] text-white sm:min-h-[680px]">
-        <div aria-hidden="true" className="hero-media" style={{ backgroundImage: "url('/assets/images/interiors-designs.png')" }} />
+        <div aria-hidden="true" className="hero-media" style={{ backgroundImage: "url('/assets/images/Interiors and Designs Page.png')" }} />
         <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(6,47,41,0.96)_0%,rgba(6,47,41,0.82)_42%,rgba(6,47,41,0.52)_74%,rgba(6,47,41,0.34)_100%)]" />
         <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_28%,rgba(3,25,21,0.42)_100%)]" />
         <div className="hero-viewport-inner container-xl relative z-10 flex min-h-[620px] items-center py-20 sm:min-h-[680px] lg:py-24">

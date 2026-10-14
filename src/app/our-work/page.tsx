@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import SiteFooter from '@/components/site-footer';
@@ -16,8 +17,17 @@ export default function OurWorkPage() {
     <main className="bg-[var(--cream)] text-[var(--viridian-950)]">
       <SiteHeader />
 
-      <section className="bg-[var(--viridian-950)] py-20 text-white sm:py-24 lg:py-28">
-        <div className="hero-copy container-xl grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+      <section className="relative isolate overflow-hidden bg-[var(--viridian-950)] py-20 text-white sm:py-24 lg:py-28">
+        <Image
+          src="/assets/images/Our Works.jpeg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="-z-20 object-cover object-center opacity-40"
+        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-[var(--viridian-950)]/95 via-[var(--viridian-950)]/80 to-[var(--viridian-950)]/65" />
+        <div className="hero-copy container-xl relative z-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
           <div>
             <p className="text-xs font-semibold tracking-[0.24em] text-[var(--gold)]">OUR WORK</p>
             <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.04] sm:text-6xl lg:text-7xl">
