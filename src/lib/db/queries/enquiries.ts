@@ -77,7 +77,7 @@ export async function createPropertyEnquiry(input: {
       priceAmount: string | null; priceCurrency: string | null; priceMode: string;
     }>(
       `SELECT "id", "slug", "title", "location", "propertyType", "priceAmount", "priceCurrency", "priceMode"
-       FROM "Property" WHERE "slug" = $1 AND "publicationStatus" = 'PUBLISHED' AND "status" = 'AVAILABLE'
+       FROM "Property" WHERE "slug" = $1 AND "publicationStatus" = 'PUBLISHED' AND "status" IN ('AVAILABLE', 'UNDER_OFFER')
        FOR SHARE`, [input.slug],
     );
     const property = propertyResult.rows[0];

@@ -36,12 +36,13 @@ const configuredContactItems = [
     configured: isConfiguredContact(siteConfig.contact.whatsapp),
   },
 ].filter(({ configured }) => configured);
-const contactItems = configuredContactItems.length
-  ? configuredContactItems
-  : [{ label: 'Enquiry Form', href: siteConfig.nav.contact, icon: Mail }];
-
 export default function SiteHeader() {
   const pathname = usePathname();
+  const contactItems = configuredContactItems.length
+    ? configuredContactItems.map((item) => item.label === 'WhatsApp'
+      ? { ...item, href: `${item.href}?text=${encodeURIComponent('Hello JLUXE Team!\n\nI came across your website and would like to know more about your services.\n\nCould you please share more information and guide me on how we can proceed?\n\nThank you!')}` }
+      : item)
+    : [{ label: 'Enquiry Form', href: siteConfig.nav.contact, icon: Mail }];
   const [openDropdown, setOpenDropdown] = useState<'services' | 'contact' | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');

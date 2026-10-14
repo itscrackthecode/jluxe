@@ -12,9 +12,9 @@ export const siteConfig = {
   url: 'https://thejluxe.com',
   contact: {
     email: 'enquiry@thejluxe.com',
-    instagram: 'https://www.instagram.com/allwin123',
-    whatsapp: 'https://wa.me/919876543210',
-    whatsappNumber: '9876543210',
+    instagram: 'https://www.instagram.com/jluxedevelopers',
+    whatsapp: 'https://wa.me/918122071875',
+    whatsappNumber: '8122071875',
   },
   nav: {
     about: '/about',
