@@ -5,7 +5,7 @@ import { getAdminSession } from '@/lib/admin-session';
 import { hasSameOrigin } from '@/lib/admin-request';
 import { findEnquiryById, updateEnquiryStatus } from '@/lib/db/queries/enquiries';
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().regex(/^(?:[eb]:)?[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 const statusUpdateSchema = z.object({
   status: z.enum(enquiryStatuses),
 }).strict();

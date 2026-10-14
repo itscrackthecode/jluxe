@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, MessageCircle, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { isConfiguredContact, siteConfig } from '@/lib/data';
 import PropertyImageGallery from '@/components/property-image-gallery';
+import PropertyEnquiryForm from '@/components/property-enquiry-form';
 
 type PropertyImage = {
   id: string;
@@ -150,8 +151,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
 
   const price = getPrice(property);
   const plotSize = getPlotSize(property);
-  const contactParams = new URLSearchParams({ interest: 'Real Estate', property: property.title });
-  const contactHref = `${siteConfig.nav.contact}?${contactParams.toString()}`;
+  const canEnquire = property.status === 'AVAILABLE';
   const hasWhatsApp = isConfiguredContact(siteConfig.contact.whatsapp);
 
   return (
@@ -194,10 +194,10 @@ export default function PropertyDetail({ slug }: { slug: string }) {
               <div className="mt-5 border-t border-[var(--viridian-950)]/10 pt-4">
                 <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--muted)]">PRICE</p>
                 <p className="mt-1 font-display text-2xl leading-tight text-[var(--viridian-950)]">{price ?? 'Contact for details'}</p>
-                <Link href={contactHref} className="touch-press mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 bg-[var(--viridian-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
-                  Enquire with JLUXE <ArrowRight className="h-4 w-4" />
-                </Link>
-                {hasWhatsApp && <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press mt-2 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
+                {canEnquire && <a href="#property-enquiry" className="touch-press mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--viridian-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
+                  Enquire About This Property <ArrowRight className="h-4 w-4" />
+                </a>}
+                {canEnquire && hasWhatsApp && <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press mt-2 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
               </div>
             </aside>
           </div>
@@ -209,6 +209,16 @@ export default function PropertyDetail({ slug }: { slug: string }) {
           </section>}
         </div>
       </section>
+      {canEnquire && <section id="property-enquiry" className="scroll-mt-24 border-t border-[var(--viridian-950)]/10 bg-[var(--cream)] py-10 sm:py-14" data-reveal>
+        <div className="container-xl mx-auto max-w-4xl">
+          <div className="mb-6 max-w-2xl">
+            <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY ENQUIRY</p>
+            <h2 className="mt-3 font-display text-3xl text-[var(--viridian-950)] sm:text-4xl">Interested in this property?</h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Share a few details and the JLUXE team will follow up about this opportunity.</p>
+          </div>
+          <PropertyEnquiryForm key={property.id} property={property} />
+        </div>
+      </section>}
     </>
   );
 }

@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     { header: 'Email', key: 'email', width: 32 },
     { header: 'Phone', key: 'phone', width: 20 },
     { header: 'Interested In', key: 'interestedServiceLabel', width: 28 },
+    { header: 'Enquiry Type', key: 'enquiryType', width: 24 },
     { header: 'Property', key: 'propertyTitle', width: 28 },
     { header: 'Message', key: 'message', width: 60 },
     { header: 'Status', key: 'status', width: 16 },
