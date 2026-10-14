@@ -106,7 +106,7 @@ button,a { -webkit-tap-highlight-color:transparent; }
   border-radius:9999px;
   transition:border-color .18s ease,background-color .18s ease;
 }
-.nav-home-link:hover .nav-home-mark,.nav-home-link:focus-visible .nav-home-mark,.nav-home-link[data-active="true"] .nav-home-mark {
+.nav-home-link:hover .nav-home-mark,.nav-home-link:focus-visible .nav-home-mark {
   border-color:rgba(197,164,109,.62);
   background:rgba(197,164,109,.12);
 }

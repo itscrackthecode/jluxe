@@ -16,6 +16,9 @@ import {
 import { isConfiguredContact, services, siteConfig } from '@/lib/data';
 import MobileReveal from '@/components/mobile-reveal';
 
+const isRouteOrChild = (pathname: string, route: string) =>
+  pathname === route || pathname.startsWith(`${route}/`);
+
 const configuredContactItems = [
   {
     label: 'Email',
@@ -45,48 +48,16 @@ export default function SiteHeader() {
     : [{ label: 'Enquiry Form', href: siteConfig.nav.contact, icon: Mail }];
   const [openDropdown, setOpenDropdown] = useState<'services' | 'contact' | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('home');
   const ref = useRef<HTMLDivElement | null>(null);
   const servicesButtonRef = useRef<HTMLButtonElement | null>(null);
   const contactButtonRef = useRef<HTMLButtonElement | null>(null);
   const mobileButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  useEffect(() => {
-    if (pathname !== '/') {
-      setActiveSection('');
-      return undefined;
-    }
-
-    const sections = ['services', 'work', 'contact']
-      .map((id) => document.getElementById(id))
-      .filter((section): section is HTMLElement => section !== null);
-    if (!sections.length) return undefined;
-
-    const observer = new IntersectionObserver((entries) => {
-      const visibleSections = entries.filter((entry) => entry.isIntersecting);
-      if (!visibleSections.length) return;
-      const mostVisible = visibleSections.reduce((best, entry) =>
-        entry.intersectionRatio > best.intersectionRatio ? entry : best,
-      );
-      setActiveSection(mostVisible.target.id);
-    }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
-
-    sections.forEach((section) => observer.observe(section));
-    const handleScroll = () => {
-      if (window.scrollY < 80) setActiveSection('home');
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [pathname]);
-
-  const homeActive = pathname === '/' && activeSection === 'home';
-  const aboutActive = pathname.startsWith('/about');
-  const servicesActive = pathname.startsWith('/services/') || (pathname === '/' && activeSection === 'services');
-  const workActive = pathname.startsWith('/our-work') || pathname.startsWith('/properties') || (pathname === '/' && activeSection === 'work');
-  const contactActive = pathname.startsWith('/contact') || (pathname === '/' && activeSection === 'contact');
+  const homeActive = pathname === '/';
+  const aboutActive = isRouteOrChild(pathname, '/about');
+  const servicesActive = isRouteOrChild(pathname, '/services');
+  const workActive = isRouteOrChild(pathname, '/our-work') || isRouteOrChild(pathname, '/properties');
+  const contactActive = isRouteOrChild(pathname, '/contact');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
