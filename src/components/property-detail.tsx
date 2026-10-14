@@ -62,6 +62,15 @@ function getPrice(property: ApiProperty) {
   return property.priceMode === 'STARTING_FROM' ? `From ${formatted}` : formatted;
 }
 
+function getWhatsAppPrice(property: ApiProperty) {
+  if (!property.priceAmount) return property.priceMode === 'ON_REQUEST' ? 'price on request' : null;
+  const amount = Number(property.priceAmount);
+  if (!Number.isFinite(amount)) return null;
+  const formattedAmount = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(amount);
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'starting from ' : '';
+  return `${prefix}Rs. ${formattedAmount}`;
+}
+
 function getPlotSize(property: ApiProperty) {
   if (!property.plotSize) return null;
 
@@ -151,8 +160,27 @@ export default function PropertyDetail({ slug }: { slug: string }) {
 
   const price = getPrice(property);
   const plotSize = getPlotSize(property);
-  const canEnquire = property.status === 'AVAILABLE';
+  const canEnquire = property.status === 'AVAILABLE' || property.status === 'UNDER_OFFER';
   const hasWhatsApp = isConfiguredContact(siteConfig.contact.whatsapp);
+  const propertyWhatsAppPrice = getWhatsAppPrice(property);
+  const propertyPublicUrl = `${siteConfig.url}/properties/${encodeURIComponent(property.slug)}`;
+  const propertyWhatsAppMessage = [
+    'Hello JLUXE Team!',
+    '',
+    "I'm interested in the following property listed on your website.",
+    '',
+    `Property: ${property.title}`,
+    ...(property.location ? [`Location: ${property.location}`] : []),
+    ...(propertyWhatsAppPrice ? [`Price: ${propertyWhatsAppPrice}`] : []),
+    `Property Link: ${propertyPublicUrl}`,
+    '',
+    'I would like to know more about its availability, plot details, pricing, and site visit options.',
+    '',
+    'Could you please share more information?',
+    '',
+    'Thank you!',
+  ].join('\n');
+  const propertyWhatsAppHref = `${siteConfig.contact.whatsapp}?text=${encodeURIComponent(propertyWhatsAppMessage)}`;
 
   return (
     <>
@@ -197,7 +225,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
                 {canEnquire && <a href="#property-enquiry" className="touch-press mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--viridian-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-800)]">
                   Enquire About This Property <ArrowRight className="h-4 w-4" />
                 </a>}
-                {canEnquire && hasWhatsApp && <a href={siteConfig.contact.whatsapp} target="_blank" rel="noreferrer" className="touch-press mt-2 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
+                {canEnquire && hasWhatsApp && <a href={propertyWhatsAppHref} target="_blank" rel="noreferrer" className="touch-press mt-2 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
               </div>
             </aside>
           </div>
