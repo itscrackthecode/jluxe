@@ -1,4 +1,5 @@
 import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type { Enquiry, EnquiryStatus, Service, UUID } from '../types';
 
 export type NewEnquiry = Pick<
@@ -74,10 +75,14 @@ export async function createPropertyEnquiry(input: {
   return withTransaction(async (client) => {
     const propertyResult = await client.query<{
       id: UUID; slug: string; title: string; location: string | null; propertyType: string;
-      priceAmount: string | null; priceCurrency: string | null; priceMode: string;
+      priceAmount: string | null; priceCurrency: string | null; priceMode: string; imageUrl: string | null;
     }>(
-      `SELECT "id", "slug", "title", "location", "propertyType", "priceAmount", "priceCurrency", "priceMode"
-       FROM "Property" WHERE "slug" = $1 AND "publicationStatus" = 'PUBLISHED' AND "status" IN ('AVAILABLE', 'UNDER_OFFER')
+      `SELECT p."id", p."slug", p."title", p."location", p."propertyType", p."priceAmount", p."priceCurrency", p."priceMode",
+              (SELECT CASE WHEN m."provider" = 'cloudinary' THEN m."storageKey"
+                           WHEN m."storageKey" LIKE 'https://%' THEN m."storageKey" ELSE NULL END
+               FROM "PropertyMedia" pm JOIN "Media" m ON m."id" = pm."mediaId"
+               WHERE pm."propertyId" = p."id" ORDER BY pm."position" ASC LIMIT 1) AS "imageUrl"
+       FROM "Property" p WHERE p."slug" = $1 AND p."publicationStatus" = 'PUBLISHED' AND p."status" IN ('AVAILABLE', 'UNDER_OFFER')
        FOR SHARE`, [input.slug],
     );
     const property = propertyResult.rows[0];
@@ -88,7 +93,12 @@ export async function createPropertyEnquiry(input: {
        RETURNING "id", TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"`,
       [input.name, input.email, input.phone, input.message, property.id],
     );
-    return { kind: 'created' as const, enquiry: result.rows[0], property };
+    return { kind: 'created' as const, enquiry: result.rows[0], property: {
+      ...property,
+      imageUrl: property.imageUrl
+        ? property.imageUrl.startsWith('https://') ? property.imageUrl : cloudinaryDeliveryUrl(property.imageUrl, 560)
+        : null,
+    } };
   });
 }
 
