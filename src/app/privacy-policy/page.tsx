@@ -14,19 +14,20 @@ const sections = [
     paragraphs: [
       'When you submit a Contact or Enquiry form, the site collects your name, email address, contact number, the service you are interested in, and your message. An enquiry may also be associated with a property reference.',
       'The Sell Property form collects your name, email address, contact number, property type, location, starting price, and any plot or land area and description you choose to provide. If you add photos, the site processes the images and their file and image details as part of your submission.',
+      'The Buy Property form collects your contact details, preferred property type and subtype, location, budget range, purchase purpose and timeline, and the property-specific requirements you choose to provide.',
       'Property listings and related enquiry records are stored and managed by JLUXE. The site also stores administrative account details needed to operate the restricted admin area, including account identity, role, active status, and authentication data.',
     ],
   },
   {
     title: 'How information is used',
     paragraphs: [
-      'JLUXE uses submitted information to respond to enquiries, review seller property submissions, manage property listings and related media, provide and administer its services, and operate and secure the website. Enquiry details are also sent to JLUXE by email so the team can respond.',
+      'JLUXE uses submitted information to respond to enquiries, review buyer requirements and seller property submissions, manage property listings and related media, provide and administer its services, and operate and secure the website. Enquiry details are also sent to JLUXE by email so the team can respond.',
     ],
   },
   {
     title: 'Storage and service providers',
     paragraphs: [
-      'Enquiries, property submissions, listing information, and related records are stored in the PostgreSQL database configured for the website. Uploaded property and site images are stored and delivered through Cloudinary. Resend is used to deliver enquiry notification emails and receives the information included in those notifications, such as the submitter’s name, email, phone number, service interest, message, and, where applicable, property reference.',
+      'Enquiries, buyer requirements, property submissions, listing information, and related records are stored in the PostgreSQL database configured for the website. Uploaded property and site images are stored and delivered through Cloudinary. Resend is used to deliver enquiry notification emails and receives the information included in those notifications, such as the submitter’s name, email, phone number, service interest, message, property preferences, and, where applicable, property reference.',
       'These providers process information to support the functions described above. Their own terms and privacy practices may also apply to their services.',
     ],
   },

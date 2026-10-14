@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { siteConfig } from '@/lib/data';
 import MediaGallerySlider, { type GalleryImage } from '@/components/media-gallery-slider';
 
 const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-base text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)] md:text-sm';
@@ -282,10 +281,10 @@ export default function PropertyListing() {
           <div className="mt-8 flex flex-col items-start gap-4 border-b border-[var(--viridian-950)]/15 py-10 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-2xl">
               <p className="font-display text-2xl text-[var(--viridian-950)] sm:text-3xl">No properties currently available.</p>
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">We&apos;re currently updating our available property opportunities. Looking for something specific? Talk to JLUXE.</p>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">We&apos;re currently updating our available property opportunities. Looking for something specific? Make an enquiry and tell us what you have in mind.</p>
             </div>
-            <Link href={siteConfig.nav.contact} className="touch-press inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--viridian-950)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
-              Talk to JLUXE <ArrowRight className="h-4 w-4" />
+            <Link href="/contact/buy-property" className="touch-press inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--viridian-950)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--viridian-950)]">
+              Make an Enquiry <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         )}

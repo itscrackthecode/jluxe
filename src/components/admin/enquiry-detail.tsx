@@ -14,6 +14,7 @@ type EnquiryDetails = {
   interestedServiceId: string | null;
   interestedServiceLabel: string;
   propertyId: string | null;
+  enquiryType: string;
   message: string;
   status: EnquiryStatusValue;
   createdAt: string;
@@ -107,7 +108,7 @@ export default function EnquiryDetail({ id }: { id: string }) {
       </Link>
       <div className="mt-5 flex flex-col justify-between gap-4 border-b border-white/15 pb-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">ENQUIRY</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">{enquiry.enquiryType.replaceAll('_', ' ')}</p>
           <h1 className="mt-2 font-display text-4xl text-white">{enquiry.name}</h1>
         </div>
         <div className="flex items-end gap-3">

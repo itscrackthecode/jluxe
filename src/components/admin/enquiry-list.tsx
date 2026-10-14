@@ -12,6 +12,7 @@ type EnquiryRow = {
   email: string;
   phone: string;
   interestedServiceLabel: string;
+  enquiryType: string;
   status: EnquiryStatusValue;
   createdAt: string;
   property: { title: string; slug: string; location: string | null } | null;
@@ -182,7 +183,7 @@ export default function EnquiryList() {
                       {item.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-4 text-[#f5f1e8]">{item.interestedServiceLabel}</td>
+                  <td className="px-3 py-4 text-[#f5f1e8]">{item.interestedServiceLabel}<span className="mt-1 block text-[10px] text-[#9caaa4]">{item.enquiryType.replaceAll('_', ' ')}</span></td>
                   <td className="px-3 py-4">
                     <a href={`mailto:${item.email}`} className="block text-white hover:text-[var(--gold)]">
                       {item.email}
