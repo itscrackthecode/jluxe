@@ -64,7 +64,8 @@ export default function MediaLibrary() {
     setUploading(true);
     setUploadError('');
     try {
-      const signingResponse = await fetch('/admin/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intent: 'sign' }) });
+      const purpose = 'website';
+      const signingResponse = await fetch('/admin/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intent: 'sign', purpose }) });
       const signing = await signingResponse.json();
       if (!signingResponse.ok || !signing.success) throw new Error(signing.error ?? 'Unable to prepare upload.');
       const form = new FormData();
@@ -72,13 +73,16 @@ export default function MediaLibrary() {
       form.set('api_key', signing.apiKey);
       form.set('timestamp', String(signing.timestamp));
       form.set('upload_preset', signing.uploadPreset);
+      form.set('public_id', signing.publicId);
+      form.set('overwrite', String(signing.overwrite));
+      form.set('allowed_formats', signing.allowedFormats);
       form.set('signature', signing.signature);
       if (signing.assetFolder) form.set('asset_folder', signing.assetFolder);
       const uploadedResponse = await fetch(signing.uploadUrl ?? `https://api.cloudinary.com/v1_1/${signing.cloudName}/image/upload`, { method: 'POST', body: form });
       const uploaded = await uploadedResponse.json();
       if (!uploadedResponse.ok) throw new Error('Cloudinary rejected this image upload.');
       const saved = await fetch('/admin/api/media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-        intent: 'complete', publicId: uploaded.public_id, version: uploaded.version, signature: uploaded.signature,
+        intent: 'complete', purpose, publicId: uploaded.public_id, version: uploaded.version, signature: uploaded.signature,
         secureUrl: uploaded.secure_url, format: uploaded.format, bytes: uploaded.bytes, width: uploaded.width,
         height: uploaded.height, resourceType: uploaded.resource_type,
       }) });

@@ -1,7 +1,8 @@
 'use client';
 
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
 import {
   buyerAreaUnitLabel,
   buyerAreaUnits,
@@ -83,6 +84,7 @@ const controlClass = 'min-h-12 w-full min-w-0 rounded-xl border border-[var(--vi
 const labelClass = 'mb-2 block text-sm font-medium text-[var(--viridian-950)]';
 
 export default function BuyerPropertyForm({ property }: { property?: SelectedProperty }) {
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [values, setValues] = useState(() => createInitialValues(property));
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -131,6 +133,8 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
     }
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+      if (!turnstileToken) throw new Error('Security check unavailable.');
       const response = await fetch('/api/properties/buy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,6 +153,7 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
           phone: values.phone.trim(),
           preferredContactMethod: values.preferredContactMethod,
           additionalRequirements: values.additionalRequirements.trim(),
+          turnstileToken,
         }),
       });
       const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
@@ -389,6 +394,7 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
           </label>
         </section>
 
+        <TurnstileWidget ref={turnstileRef} action="buyer_requirements" />
         <div className="border-t border-[var(--viridian-950)]/10 pt-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <button type="submit" disabled={status === 'submitting'} className="touch-press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--viridian-950)] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(6,47,41,0.16)] transition-[background-color,transform,box-shadow] hover:bg-[var(--viridian-800)] hover:shadow-[0_10px_25px_rgba(6,47,41,0.2)] disabled:cursor-not-allowed disabled:opacity-70">

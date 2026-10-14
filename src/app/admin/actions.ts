@@ -1,9 +1,11 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { z } from 'zod';
 import { findAdminByEmail } from '@/lib/db/queries/admins';
 import { clearAdminSession, createAdminSession, verifyAdminPassword } from '@/lib/admin-session';
+import { checkPublicApiRateLimit } from '@/lib/public-api-rate-limit';
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(320),
@@ -16,6 +18,14 @@ export async function loginAdminAction(
   _previousState: AdminLoginState,
   formData: FormData,
 ): Promise<AdminLoginState> {
+  const requestHeaders = new Headers(await headers());
+  const rateLimit = await checkPublicApiRateLimit(
+    new Request('https://admin.thejluxe.com/admin/login', { headers: requestHeaders }),
+    { endpoint: 'POST /admin/login', limit: 5, windowMs: 10 * 60 * 1000 },
+  );
+  if (rateLimit.status === 'limited') return { error: 'Too many sign-in attempts. Please try again later.' };
+  if (rateLimit.status === 'unavailable') return { error: 'Sign-in protection is temporarily unavailable. Please try again later.' };
+
   const parsed = loginSchema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
