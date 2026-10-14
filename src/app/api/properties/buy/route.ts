@@ -14,6 +14,7 @@ import {
 } from '@/lib/buyer-property';
 import { createBuyerPropertyEnquiry } from '@/lib/db/queries/buyer-property-enquiries';
 import { sendJluxeNotification } from '@/lib/email-notifications';
+import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 const optionalText = (maxLength: number) => z.preprocess(
@@ -120,15 +121,6 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
 
 export const runtime = 'nodejs';
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
 function titleCase(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -183,41 +175,38 @@ export async function POST(request: Request) {
 
     const { enquiry } = created;
 
-    const detailLines = Object.entries(details).map(([key, value]) => `${titleCase(key)}: ${value}`);
-    const plainText = [
-      'New JLUXE Buyer Property Enquiry',
-      `Reference: ${enquiry.id}`,
-      `Submitted: ${new Date(enquiry.createdAt).toISOString()}`,
-      '',
-      'Enquiry type: General buyer requirements',
-      '',
-      'Property preferences',
-      `Property type: ${buyerPropertyTypeLabels[propertyType]}`,
-      `Property subtype: ${input.propertySubtype}`,
-      `Preferred city / location: ${input.preferredCity}`,
-      `Preferred locality: ${input.preferredLocality ?? 'Not provided'}`,
-      `Budget: INR ${input.budgetMin} to INR ${input.budgetMax}`,
-      `Purchase purpose: ${input.purchasePurpose ?? 'Not provided'}`,
-      ...detailLines,
-      `Purchase timeline: ${input.purchaseTimeline ?? 'Not provided'}`,
-      '',
-      'Customer contact',
-      `Name: ${input.name}`,
-      `Email: ${input.email}`,
-      `Phone / WhatsApp: ${input.phone}`,
-      `Preferred contact method: ${input.preferredContactMethod}`,
-      '',
-      'Additional requirements:',
-      input.additionalRequirements ?? 'Not provided',
-    ].join('\n');
-    const html = `<h1>New JLUXE General Buyer Requirements Enquiry</h1><p><strong>Reference:</strong> ${escapeHtml(enquiry.id)}<br><strong>Submitted:</strong> ${escapeHtml(new Date(enquiry.createdAt).toISOString())}</p><h2>Property preferences</h2><dl><dt>Property type</dt><dd>${escapeHtml(buyerPropertyTypeLabels[propertyType])}</dd><dt>Property subtype</dt><dd>${escapeHtml(input.propertySubtype)}</dd><dt>Preferred city / location</dt><dd>${escapeHtml(input.preferredCity)}</dd><dt>Preferred locality</dt><dd>${escapeHtml(input.preferredLocality ?? 'Not provided')}</dd><dt>Budget</dt><dd>INR ${escapeHtml(input.budgetMin)} to INR ${escapeHtml(input.budgetMax)}</dd><dt>Purchase purpose</dt><dd>${escapeHtml(input.purchasePurpose ?? 'Not provided')}</dd>${detailLines.map((line) => { const [label, ...value] = line.split(': '); return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value.join(': '))}</dd>`; }).join('')}<dt>Purchase timeline</dt><dd>${escapeHtml(input.purchaseTimeline ?? 'Not provided')}</dd></dl><h2>Customer contact</h2><dl><dt>Name</dt><dd>${escapeHtml(input.name)}</dd><dt>Email</dt><dd>${escapeHtml(input.email)}</dd><dt>Phone / WhatsApp</dt><dd>${escapeHtml(input.phone)}</dd><dt>Preferred contact method</dt><dd>${escapeHtml(input.preferredContactMethod)}</dd></dl><h2>Additional requirements</h2><p style="white-space:pre-wrap">${escapeHtml(input.additionalRequirements ?? 'Not provided')}</p>`;
+    const rendered = renderJluxeEmail({
+      title: 'Buyer requirements enquiry',
+      summary: 'A customer has shared property requirements for the JLUXE team to review.',
+      reference: enquiry.id,
+      sections: [
+        { title: 'Property preferences', fields: [
+          { label: 'Submitted', value: formatEmailDate(enquiry.createdAt) },
+          { label: 'Property type', value: buyerPropertyTypeLabels[propertyType] },
+          { label: 'Property subtype', value: input.propertySubtype },
+          { label: 'Preferred city / location', value: input.preferredCity },
+          { label: 'Preferred locality', value: input.preferredLocality },
+          { label: 'Minimum budget (INR)', value: input.budgetMin },
+          { label: 'Maximum budget (INR)', value: input.budgetMax },
+          { label: 'Purchase purpose', value: input.purchasePurpose },
+          ...Object.entries(details).map(([key, value]) => ({ label: titleCase(key), value })),
+          { label: 'Purchase timeline', value: input.purchaseTimeline },
+        ] },
+        { title: 'Customer contact', fields: [
+          { label: 'Name', value: input.name }, { label: 'Email', value: input.email },
+          { label: 'Phone / WhatsApp', value: input.phone },
+          { label: 'Preferred contact method', value: input.preferredContactMethod },
+        ] },
+        { title: 'Additional requirements', fields: [{ label: 'Requirements', value: input.additionalRequirements }] },
+      ],
+    });
 
     try {
       await sendJluxeNotification({
         replyTo: input.email,
         subject: `Buyer Requirements Enquiry — ${input.preferredCity}`,
-        text: plainText,
-        html,
+        text: rendered.text,
+        html: rendered.html,
       });
     } catch (error) {
       console.error('Failed to send buyer property enquiry notification email.', {

@@ -6,6 +6,7 @@ import { hasPostgresErrorCode } from '@/lib/db/errors';
 import { plotSizeUnits, propertyTypes, type PlotSizeUnit } from '@/lib/db/types';
 import { cloudinaryDeliveryUrl, getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
 import { sendJluxeNotification } from '@/lib/email-notifications';
+import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 const optionalText = (maxLength: number) => z.preprocess(
@@ -194,41 +195,43 @@ export async function POST(request: Request) {
 
     try {
       const submittedAt = property.createdAt;
-      const submittedDate = new Date(submittedAt).toISOString();
+      const submittedDate = formatEmailDate(submittedAt);
       const imageDetails = notificationMedia.map((image, index) => [
         `Photo ${index + 1}: ${cloudinaryDeliveryUrl(image.publicId)}`,
         `  Public ID: ${image.publicId}`,
         `  Format: ${image.format}; dimensions: ${image.width} × ${image.height}; size: ${image.bytes} bytes`,
       ].join('\n'));
+      const rendered = renderJluxeEmail({
+        title: 'Seller property submission',
+        summary: 'A seller has submitted property details for JLUXE review.',
+        reference: property.id,
+        sections: [
+          { title: 'Seller contact', fields: [
+            { label: 'Name', value: input.name }, { label: 'Email', value: input.email },
+            { label: 'Phone / WhatsApp', value: input.phone },
+          ] },
+          { title: 'Submitted property', fields: [
+            { label: 'Submitted', value: submittedDate },
+            { label: 'Property reference', value: property.slug },
+            { label: 'Property type', value: formatLabel(input.propertyType) },
+            { label: 'Location', value: input.location }, { label: 'Starting price', value: input.startingPrice },
+            { label: 'Plot / land area', value: input.plotSize },
+            { label: 'Area unit', value: input.plotSizeUnit ? formatLabel(input.plotSizeUnit) : null },
+            { label: 'Description', value: input.description },
+          ] },
+          { title: 'Submitted photos', fields: [{ label: 'Photo count', value: String(notificationMedia.length) },
+            ...imageDetails.map((detail, index) => ({ label: `Photo ${index + 1}`, value: detail }))] },
+        ],
+        images: notificationMedia.map((image, index) => ({
+          url: cloudinaryDeliveryUrl(image.publicId, 560), alt: `Seller-submitted property photo ${index + 1}`,
+        })),
+      });
 
       await sendJluxeNotification({
         replyTo: input.email,
         subject: `New Seller Submission — ${property.id}`,
-        text: [
-          'New JLUXE Seller Property Submission',
-          '',
-          `Submission reference: ${property.id}`,
-          `Property reference: ${property.slug}`,
-          `Submitted: ${submittedDate}`,
-          '',
-          'Seller contact',
-          `Name: ${input.name}`,
-          `Email: ${input.email}`,
-          `Phone / WhatsApp: ${input.phone}`,
-          '',
-          'Property details',
-          `Property type: ${formatLabel(input.propertyType)}`,
-          `Location: ${input.location}`,
-          `Starting price: ${input.startingPrice}`,
-          `Plot / land area: ${input.plotSize ?? 'Not provided'}`,
-          `Area unit: ${input.plotSizeUnit ? formatLabel(input.plotSizeUnit) : 'Not provided'}`,
-          '',
-          'Additional description:',
-          input.description ?? 'Not provided',
-          '',
-          `Photos submitted: ${notificationMedia.length}`,
-          ...(imageDetails.length ? ['', ...imageDetails] : []),
-        ].join('\n'),
+        text: rendered.text,
+        html: rendered.html,
       });
     } catch (error) {
       console.error('Failed to send seller property notification email.', {

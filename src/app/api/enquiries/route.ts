@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createEnquiry, findServiceById } from '@/lib/db/queries/enquiries';
 import { sendJluxeNotification } from '@/lib/email-notifications';
+import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 
 const enquirySchema = z.object({
@@ -15,54 +16,34 @@ const enquirySchema = z.object({
 
 export const runtime = 'nodejs';
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
 async function sendEnquiryNotification(
   input: z.infer<typeof enquirySchema>,
   propertyId: string | null,
   submittedAt: Date,
 ) {
   const serviceLabel = input.interestedServiceLabel.replace(/[\r\n]+/g, ' ');
-  const submittedDate = submittedAt.toISOString();
-  const propertyReference = propertyId ? `Property reference: ${propertyId}` : null;
+  const submittedDate = formatEmailDate(submittedAt);
+  const rendered = renderJluxeEmail({
+    title: 'New website enquiry',
+    summary: `A customer has contacted JLUXE about ${input.interestedServiceLabel}.`,
+    reference: propertyId,
+    sections: [
+      { title: 'Customer contact', fields: [
+        { label: 'Name', value: input.name }, { label: 'Email', value: input.email },
+        { label: 'Phone / WhatsApp', value: input.phone },
+      ] },
+      { title: 'Enquiry details', fields: [
+        { label: 'Interested service', value: input.interestedServiceLabel },
+        { label: 'Message', value: input.message },
+        { label: 'Submitted', value: submittedDate },
+      ] },
+    ],
+  });
   await sendJluxeNotification({
     replyTo: input.email,
     subject: `New JLUXE Enquiry - ${serviceLabel}`,
-    text: [
-      'New JLUXE Enquiry',
-      '',
-      `Name: ${input.name}`,
-      `Email: ${input.email}`,
-      `Phone / WhatsApp: ${input.phone}`,
-      `Interested service: ${input.interestedServiceLabel}`,
-      ...(propertyReference ? [propertyReference] : []),
-      `Submitted: ${submittedDate}`,
-      '',
-      'Message:',
-      input.message,
-    ].join('\n'),
-    html: [
-      '<h1>New JLUXE Enquiry</h1>',
-      '<dl>',
-      `<dt><strong>Name</strong></dt><dd>${escapeHtml(input.name)}</dd>`,
-      `<dt><strong>Email</strong></dt><dd>${escapeHtml(input.email)}</dd>`,
-      `<dt><strong>Phone / WhatsApp</strong></dt><dd>${escapeHtml(input.phone)}</dd>`,
-      `<dt><strong>Interested service</strong></dt><dd>${escapeHtml(input.interestedServiceLabel)}</dd>`,
-      ...(propertyReference
-        ? [`<dt><strong>Property reference</strong></dt><dd>${escapeHtml(propertyId!)}</dd>`]
-        : []),
-      `<dt><strong>Submitted</strong></dt><dd>${escapeHtml(submittedDate)}</dd>`,
-      '</dl>',
-      '<h2>Message</h2>',
-      `<p style="white-space: pre-wrap">${escapeHtml(input.message)}</p>`,
-    ].join(''),
+    text: rendered.text,
+    html: rendered.html,
   });
 }
 
