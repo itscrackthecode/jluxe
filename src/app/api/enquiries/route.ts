@@ -6,6 +6,7 @@ import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
 import { readJsonBody } from '@/lib/read-json-body';
+import { findPublishedPropertyBySlug } from '@/lib/db/queries/properties';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2).max(150),
@@ -14,6 +15,7 @@ const enquirySchema = z.object({
   interestedServiceId: z.string().trim().uuid().optional(),
   interestedServiceLabel: z.string().trim().min(1).max(150),
   message: z.string().trim().min(12).max(10_000),
+  propertySlug: z.string().trim().min(1).max(180).optional(),
   turnstileToken: z.string().min(1).max(2048),
 }).strict();
 
@@ -23,6 +25,7 @@ async function sendEnquiryNotification(
   input: z.infer<typeof enquirySchema>,
   propertyId: string | null,
   submittedAt: Date,
+  property?: { title: string; slug: string; location: string | null } | null,
 ) {
   const serviceLabel = input.interestedServiceLabel.replace(/[\r\n]+/g, ' ');
   const submittedDate = formatEmailDate(submittedAt);
@@ -37,6 +40,7 @@ async function sendEnquiryNotification(
       ] },
       { title: 'Enquiry details', fields: [
         { label: 'Interested service', value: input.interestedServiceLabel },
+        ...(property ? [{ label: 'Property', value: property.title }, { label: 'Property location', value: property.location }, { label: 'Property listing', value: 'View property', linkUrl: `/properties/${encodeURIComponent(property.slug)}` }] : []),
         { label: 'Message', value: input.message },
         { label: 'Submitted', value: submittedDate },
       ] },
@@ -87,6 +91,8 @@ export async function POST(request: Request) {
       }
     }
 
+    const property = input.propertySlug ? await findPublishedPropertyBySlug(input.propertySlug) : null;
+    if (input.propertySlug && !property) return NextResponse.json({ success: false, error: 'The selected property is unavailable.' }, { status: 400 });
     const enquiry = await createEnquiry({
       name: input.name,
       email: input.email,
@@ -94,10 +100,11 @@ export async function POST(request: Request) {
       interestedServiceId: input.interestedServiceId,
       interestedServiceLabel: input.interestedServiceLabel,
       message: input.message,
+      ...(property ? { propertyId: property.id, interestedServiceLabel: 'Real Estate - General Property Enquiry' } : {}),
     });
 
     try {
-      await sendEnquiryNotification(input, enquiry.propertyId, enquiry.createdAt);
+      await sendEnquiryNotification(input, enquiry.propertyId, enquiry.createdAt, property);
     } catch (error) {
       console.error('Failed to send enquiry notification email.', {
         errorName: error instanceof Error ? error.name : 'UnknownError',

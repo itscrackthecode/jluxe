@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { siteConfig } from '@/lib/data';
-import { getMediaImageUrl } from '@/lib/media';
 import MediaGallerySlider from '@/components/media-gallery-slider';
 
 type WorkMedia = {
@@ -27,6 +26,7 @@ type ApiWork = {
   featured: boolean;
   createdAt: string;
   service: { id: string; slug: string; title: string };
+  linkedProperty: { slug: string; title: string } | null;
   media: WorkMedia[];
 };
 
@@ -135,6 +135,7 @@ export default function WorkDetail({ slug }: { slug: string }) {
                 <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">{work.description}</p>
               </div>
             )}
+            {work.linkedProperty && <Link href={`/properties/${work.linkedProperty.slug}`} className="mt-6 inline-flex min-h-11 items-center gap-2 border border-[var(--viridian-950)]/20 px-4 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:border-[var(--gold)]">View related property: {work.linkedProperty.title}<ArrowRight className="h-4 w-4" /></Link>}
             {(work.location || work.year !== null) && (
               <dl className="mt-8 grid gap-5 border-t border-[var(--viridian-950)]/15 pt-6 sm:grid-cols-2">
                 {work.location && <div><dt className="text-xs text-[var(--muted)]">Location</dt><dd className="mt-1 text-sm font-medium">{work.location}</dd></div>}

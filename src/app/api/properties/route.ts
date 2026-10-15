@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { propertyStatuses, propertyTypes } from '@/lib/db/types';
+import { propertyStatuses, propertyTypes, propertyAvailabilityValues } from '@/lib/db/types';
 import { formatNumericValue } from '@/lib/db/numeric';
-import { listPropertiesMedia, listPublicProperties } from '@/lib/db/queries/properties';
+import { listPropertiesConfigurations, listPropertiesInventory, listPropertiesMedia, listPublicProperties } from '@/lib/db/queries/properties';
+import { applyConfigurationAvailability, getPropertyAvailability } from '@/lib/property-availability';
 
 const pricePattern = /^\d+(\.\d+)?$/;
 
@@ -10,6 +11,8 @@ const propertyQuerySchema = z.object({
   location: z.string().trim().min(1).max(255).optional(),
   propertyType: z.enum(propertyTypes).optional(),
   status: z.enum(propertyStatuses).optional(),
+  availability: z.enum(propertyAvailabilityValues).optional(),
+  bedrooms: z.string().regex(/^\d{1,2}$/).optional(),
   priceMin: z.string().regex(pricePattern).optional(),
   priceMax: z.string().regex(pricePattern).optional(),
   sort: z.enum(['latest', 'price_asc', 'price_desc']).default('latest'),
@@ -25,6 +28,8 @@ export async function GET(request: Request) {
     location: searchParams.get('location') ?? undefined,
     propertyType: searchParams.get('propertyType') ?? undefined,
     status: searchParams.get('status') ?? undefined,
+    availability: searchParams.get('availability') ?? undefined,
+    bedrooms: searchParams.get('bedrooms') ?? undefined,
     priceMin: searchParams.get('priceMin') ?? undefined,
     priceMax: searchParams.get('priceMax') ?? undefined,
     sort: searchParams.get('sort') ?? undefined,
@@ -49,7 +54,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error }, { status: 400 });
   }
 
-  const { location, propertyType, status, sort } = parsed.data;
+  const { location, propertyType, status, availability, sort } = parsed.data;
+  const bedrooms = parsed.data.bedrooms === undefined ? undefined : Number(parsed.data.bedrooms);
   const priceMin = parsed.data.priceMin !== undefined ? Number(parsed.data.priceMin) : undefined;
   const priceMax = parsed.data.priceMax !== undefined ? Number(parsed.data.priceMax) : undefined;
   const page = Number(parsed.data.page);
@@ -68,6 +74,8 @@ export async function GET(request: Request) {
       location,
       propertyType,
       status,
+      availability,
+      bedrooms,
       priceMin,
       priceMax,
       sort,
@@ -75,7 +83,24 @@ export async function GET(request: Request) {
       offset: skip,
     });
 
-    const media = await listPropertiesMedia(properties.map((property) => property.id));
+    const [media, rawConfigurations, inventory] = await Promise.all([
+      listPropertiesMedia(properties.map((property) => property.id)),
+      listPropertiesConfigurations(properties.map((property) => property.id)),
+      listPropertiesInventory(properties.map((property) => property.id)),
+    ]);
+    const configurations = applyConfigurationAvailability(rawConfigurations, inventory);
+    const configurationsByProperty = new Map<string, typeof configurations>();
+    const inventoryByProperty = new Map<string, typeof inventory>();
+    for (const unit of inventory) {
+      const list = inventoryByProperty.get(unit.propertyId) ?? [];
+      list.push(unit);
+      inventoryByProperty.set(unit.propertyId, list);
+    }
+    for (const configuration of configurations) {
+      const list = configurationsByProperty.get(configuration.propertyId) ?? [];
+      list.push(configuration);
+      configurationsByProperty.set(configuration.propertyId, list);
+    }
     const mediaByProperty = new Map<string, Array<{
       id: string;
       storageKey: string;
@@ -107,8 +132,12 @@ export async function GET(request: Request) {
       data: properties.map((property) => {
         const propMedia = mediaByProperty.get(property.id) ?? [];
         const coverMedia = propMedia.find((m) => m.position === 0) ?? propMedia[0] ?? null;
+        const propertyConfigurations = configurationsByProperty.get(property.id) ?? [];
+        const propertyInventory = inventoryByProperty.get(property.id) ?? [];
         return {
           ...property,
+          availability: getPropertyAvailability(property.availability, propertyConfigurations, propertyInventory),
+          configurations: propertyConfigurations,
           priceAmount: formatNumericValue(property.priceAmount),
           plotSize: formatNumericValue(property.plotSize),
           coverImage: coverMedia ? { storageKey: coverMedia.storageKey, deliveryUrl: coverMedia.deliveryUrl, altText: coverMedia.altText } : null,

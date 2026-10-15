@@ -1,6 +1,10 @@
 import { withTransaction } from '../pool';
 
 export type NewBuyerPropertyEnquiry = {
+  propertyId: string | null;
+  propertyTitle: string;
+  propertySlug: string;
+  propertyLocation: string | null;
   propertyType: string;
   propertySubtype: string;
   preferredCity: string;
@@ -29,10 +33,10 @@ export async function createBuyerPropertyEnquiry(input: NewBuyerPropertyEnquiry)
        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17, $18)
        RETURNING "id", "createdAt"`,
       [
-        null,
-        '',
-        '',
-        null,
+        input.propertyId,
+        input.propertyTitle,
+        input.propertySlug,
+        input.propertyLocation,
         input.propertyType,
         input.propertySubtype,
         input.preferredCity,

@@ -21,6 +21,10 @@ type EnquiryDetails = {
   updatedAt: string;
   interestedService: { title: string; slug: string } | null;
   property: { title: string; slug: string; location: string | null } | null;
+  configurationName: string | null;
+  configurationPriceSnapshot: string | null;
+  inventoryReference: string | null;
+  inventoryPriceSnapshot: string | null;
 };
 
 function formatDate(value: string) {
@@ -172,6 +176,8 @@ export default function EnquiryDetail({ id }: { id: string }) {
             <dt className="text-xs font-medium text-[#9caaa4]">Property</dt>
             <dd className="mt-1 text-sm font-medium text-white">{enquiry.property?.title ?? 'Property reference'}</dd>
             {enquiry.property?.location && <dd className="mt-1 text-xs text-[#9caaa4]">{enquiry.property.location}</dd>}
+            {enquiry.configurationName && <dd className="mt-2 text-sm text-white">Selected configuration: {enquiry.configurationName}{enquiry.configurationPriceSnapshot ? ` · ${enquiry.configurationPriceSnapshot}` : ''}</dd>}
+            {enquiry.inventoryReference && <dd className="mt-2 text-sm text-white">Selected unit / plot: {enquiry.inventoryReference}{enquiry.inventoryPriceSnapshot ? ` · ${enquiry.inventoryPriceSnapshot}` : ''}</dd>}
             <dd className="mt-2"><Link href={`/admin/properties/${enquiry.propertyId}`} className="text-xs font-semibold text-[var(--gold)] hover:underline">Review property and photos</Link></dd>
           </div>
         )}

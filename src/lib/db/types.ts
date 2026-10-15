@@ -18,6 +18,8 @@ export type RepresentationType = typeof representationTypes[number];
 export type PriceMode = typeof priceModes[number];
 export type PlotSizeUnit = typeof plotSizeUnits[number];
 export type EnquiryStatus = typeof enquiryStatuses[number];
+export const propertyAvailabilityValues = ['AVAILABLE', 'LIMITED', 'COMING_SOON', 'RESERVED', 'SOLD_OUT', 'UNAVAILABLE'] as const;
+export type PropertyAvailability = typeof propertyAvailabilityValues[number];
 
 export interface Admin {
   id: UUID;
@@ -63,6 +65,29 @@ export interface Property {
   status: PropertyStatus;
   representationType: RepresentationType;
   publicationStatus: PublicationStatus;
+  subtype: string | null;
+  projectName: string | null;
+  address: string | null;
+  locality: string | null;
+  city: string | null;
+  state: string | null;
+  locationUrl: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  builtUpArea: NumericValue | null;
+  builtUpAreaUnit: PlotSizeUnit | null;
+  floorCount: number | null;
+  parkingSpaces: number | null;
+  roadAccess: string | null;
+  approvalInfo: string | null;
+  features: string[];
+  customAttributes: Record<string, string>;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  priceMinimum: NumericValue | null;
+  priceMaximum: NumericValue | null;
+  priceBasis: string;
+  availability: PropertyAvailability;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,6 +104,7 @@ export interface PortfolioWork {
   publicationStatus: PublicationStatus;
   createdAt: Date;
   updatedAt: Date;
+  propertyId?: UUID | null;
 }
 
 export interface Enquiry {

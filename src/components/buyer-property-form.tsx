@@ -139,6 +139,7 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...(property ? { propertySlug: property.slug } : {}),
           propertyType: values.propertyType,
           propertySubtype: values.propertySubtype,
           preferredCity: values.preferredCity.trim(),

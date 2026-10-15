@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
+import Link from 'next/link';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2, 'Please enter your full name.').max(150),
@@ -30,6 +31,8 @@ export default function EnquiryForm() {
   const [submissionError, setSubmissionError] = useState('');
   const submissionLock = useRef(false);
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const [selectedProperty, setSelectedProperty] = useState<{ slug: string; title: string; location: string | null } | null>(null);
+  const [propertySlug, setPropertySlug] = useState('');
 
   const {
     register,
@@ -45,11 +48,14 @@ export default function EnquiryForm() {
   });
 
   useEffect(() => {
-    const property = new URLSearchParams(window.location.search).get('property');
-    if (!property) return;
-
-    setValue('interest', 'Real Estate');
-    setValue('message', `I'm interested in ${property}.`);
+    const slug = new URLSearchParams(window.location.search).get('property');
+    if (!slug || slug.length > 180) return;
+    setPropertySlug(slug);
+    const controller = new AbortController();
+    fetch(`/api/properties/${encodeURIComponent(slug)}`, { signal: controller.signal })
+      .then(async (response) => { const result = await response.json(); if (response.ok && result.success) { const property = result.data as { slug: string; title: string; location: string | null }; setSelectedProperty(property); setValue('interest', 'Real Estate'); setValue('message', `I'm interested in ${property.title}.`); } })
+      .catch(() => {});
+    return () => controller.abort();
   }, [setValue]);
 
   const onSubmit = async (values: EnquiryFormValues) => {
@@ -71,6 +77,7 @@ export default function EnquiryForm() {
           phone: values.phone,
           interestedServiceLabel: values.interest,
           message: values.message,
+          ...(selectedProperty && selectedProperty.slug === propertySlug ? { propertySlug: selectedProperty.slug } : {}),
           turnstileToken,
         }),
       });
@@ -97,6 +104,7 @@ export default function EnquiryForm() {
   return (
     <div className="rounded-[28px] border border-[var(--viridian-950)]/10 bg-[var(--cream)] p-6 shadow-[0_18px_55px_rgba(6,47,41,0.08)] sm:p-8">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+        {selectedProperty && <div className="border-l-2 border-[var(--gold)] bg-white/60 px-4 py-3 text-sm"><p className="font-semibold">Enquiry about <Link href={`/properties/${selectedProperty.slug}`} className="underline">{selectedProperty.title}</Link></p>{selectedProperty.location && <p className="mt-1 text-xs text-[var(--muted)]">{selectedProperty.location}</p>}</div>}
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-[var(--viridian-950)]">Name *</span>

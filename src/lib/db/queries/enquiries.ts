@@ -1,5 +1,6 @@
 import { pool, withTransaction } from '../pool';
 import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
+import { getConfigurationAvailability, getPropertyAvailability, isPropertyOptionEnquirable } from '@/lib/property-availability';
 import type { Enquiry, EnquiryStatus, Service, UUID } from '../types';
 
 export type NewEnquiry = Pick<
@@ -14,6 +15,8 @@ export type AdminEnquiryListItem = Omit<Pick<
   enquiryType: 'GENERAL' | 'BUYER_REQUIREMENTS' | 'PROPERTY_ENQUIRY' | 'SELLER_SUBMISSION';
   createdAt: string;
   property: { title: string; slug: string; location: string | null } | null;
+  configurationName: string | null;
+  inventoryReference: string | null;
 };
 
 export type AdminEnquiryDetail = Omit<Enquiry, 'createdAt' | 'updatedAt'> & {
@@ -22,6 +25,10 @@ export type AdminEnquiryDetail = Omit<Enquiry, 'createdAt' | 'updatedAt'> & {
   updatedAt: string;
   interestedService: { title: string; slug: string } | null;
   property: { title: string; slug: string; location: string | null } | null;
+  configurationName: string | null;
+  configurationPriceSnapshot: string | null;
+  inventoryReference: string | null;
+  inventoryPriceSnapshot: string | null;
 };
 
 interface BuyerEnquiryQueryRow {
@@ -43,6 +50,12 @@ interface BuyerEnquiryQueryRow {
   purchaseTimeline: string | null;
   preferredContactMethod: string;
   additionalRequirements: string | null;
+  propertyId: UUID | null;
+  propertyTitle: string;
+  propertySlug: string;
+  propertyLocation: string | null;
+  configurationName: string | null;
+  inventoryReference: string | null;
 }
 
 export async function countNewEnquiries(): Promise<number> {
@@ -92,34 +105,73 @@ export async function createPropertyEnquiry(input: {
   email: string;
   phone: string;
   message: string;
+  configurationId?: UUID;
+  inventoryId?: UUID;
 }) {
   return withTransaction(async (client) => {
     const propertyResult = await client.query<{
       id: UUID; slug: string; title: string; location: string | null; propertyType: string;
-      priceAmount: string | null; priceCurrency: string | null; priceMode: string; imageUrl: string | null;
+      priceAmount: string | null; priceCurrency: string | null; priceMode: string;
+      priceMinimum: string | null; priceMaximum: string | null; priceBasis: string; availability: string; imageUrl: string | null;
     }>(
-      `SELECT p."id", p."slug", p."title", p."location", p."propertyType", p."priceAmount", p."priceCurrency", p."priceMode",
+      `SELECT p."id", p."slug", p."title", p."location", p."propertyType", p."priceAmount"::text AS "priceAmount", p."priceCurrency", p."priceMode", p."availability",
+              p."priceMinimum"::text AS "priceMinimum", p."priceMaximum"::text AS "priceMaximum", p."priceBasis",
               (SELECT CASE WHEN m."provider" = 'cloudinary' THEN m."storageKey"
                            WHEN m."storageKey" LIKE 'https://%' THEN m."storageKey" ELSE NULL END
                FROM "PropertyMedia" pm JOIN "Media" m ON m."id" = pm."mediaId"
-               WHERE pm."propertyId" = p."id" ORDER BY pm."position" ASC LIMIT 1) AS "imageUrl"
-       FROM "Property" p WHERE p."slug" = $1 AND p."publicationStatus" = 'PUBLISHED' AND p."status" IN ('AVAILABLE', 'UNDER_OFFER')
+               WHERE pm."propertyId" = p."id" AND pm."assetType" = 'GALLERY'
+               ORDER BY pm."position" ASC LIMIT 1) AS "imageUrl"
+       FROM "Property" p WHERE p."slug" = $1 AND p."publicationStatus" = 'PUBLISHED'
        FOR SHARE`, [input.slug],
     );
     const property = propertyResult.rows[0];
     if (!property) return { kind: 'unavailable' as const };
+    if (input.configurationId && input.inventoryId) return { kind: 'invalid-configuration' as const };
+    const [configurationAvailabilityRows, inventoryAvailabilityRows] = await Promise.all([
+      client.query<{ id: UUID; availability: string }>(`SELECT "id", "availability" FROM "PropertyConfiguration" WHERE "propertyId"=$1`, [property.id]),
+      client.query<{ configurationId: UUID | null; availability: string }>(`SELECT "configurationId", "availability" FROM "PropertyInventory" WHERE "propertyId"=$1`, [property.id]),
+    ]);
+    const projectAvailability = getPropertyAvailability(property.availability, configurationAvailabilityRows.rows, inventoryAvailabilityRows.rows);
+    if (!isPropertyOptionEnquirable(projectAvailability) && !input.configurationId && !input.inventoryId) return { kind: 'unavailable' as const };
+    let selectedConfiguration: { id: UUID; name: string; priceSnapshot: string | null; availability: string } | null = null;
+    let selectedInventory: { id: UUID; reference: string; priceSnapshot: string | null } | null = null;
+    if (input.configurationId) {
+      const configResult = await client.query<{ id: UUID; name: string; priceMode: string; priceAmount: string | null; priceMinimum: string | null; priceMaximum: string | null; priceCurrency: string | null; priceBasis: string; availability: string }>(
+        `SELECT "id", "name", "priceMode", "priceAmount"::text AS "priceAmount", "priceMinimum"::text AS "priceMinimum", "priceMaximum"::text AS "priceMaximum", "priceCurrency", "priceBasis", "availability" FROM "PropertyConfiguration" WHERE "id"=$1 AND "propertyId"=$2 FOR SHARE`,
+        [input.configurationId, property.id],
+      );
+      const config = configResult.rows[0];
+      if (!config) return { kind: 'invalid-configuration' as const };
+      const availability = getConfigurationAvailability(config, inventoryAvailabilityRows.rows);
+      if (!isPropertyOptionEnquirable(availability)) return { kind: 'unavailable' as const };
+      const price = config.priceMode === 'ON_REQUEST' ? 'Price on request'
+        : config.priceMode === 'RANGE' && (config.priceMinimum || config.priceMaximum)
+          ? `${config.priceCurrency ?? 'INR'} ${config.priceMinimum ?? '—'} – ${config.priceMaximum ?? '—'}${config.priceBasis !== 'TOTAL' ? ` ${config.priceBasis.toLowerCase()}` : ''}`
+          : config.priceAmount ? `${config.priceCurrency ?? 'INR'} ${config.priceAmount}${config.priceMode === 'PER_UNIT' || config.priceBasis !== 'TOTAL' ? ` ${config.priceBasis.toLowerCase()}` : ''}` : null;
+      selectedConfiguration = { id: config.id, name: config.name, priceSnapshot: price, availability };
+    }
+    if (input.inventoryId) {
+      const inventoryResult = await client.query<{ id: UUID; reference: string; availability: string; priceAmount: string | null; priceCurrency: string | null }>(
+        `SELECT "id", "reference", "availability", "priceAmount"::text AS "priceAmount", "priceCurrency" FROM "PropertyInventory" WHERE "id"=$1 AND "propertyId"=$2 FOR SHARE`,
+        [input.inventoryId, property.id],
+      );
+      const inventory = inventoryResult.rows[0];
+      if (!inventory) return { kind: 'invalid-configuration' as const };
+      if (!isPropertyOptionEnquirable(inventory.availability)) return { kind: 'unavailable' as const };
+      selectedInventory = { id: inventory.id, reference: inventory.reference, priceSnapshot: inventory.priceAmount ? `${inventory.priceCurrency ?? 'INR'} ${inventory.priceAmount}` : null };
+    }
     const result = await client.query<{ id: UUID; createdAt: string }>(
-      `INSERT INTO "Enquiry" ("name", "email", "phone", "interestedServiceLabel", "message", "propertyId", "updatedAt")
-       VALUES ($1, $2, $3, 'Real Estate - Property Enquiry', $4, $5, NOW())
+      `INSERT INTO "Enquiry" ("name", "email", "phone", "interestedServiceLabel", "message", "propertyId", "configurationId", "configurationName", "configurationPriceSnapshot", "inventoryId", "inventoryReference", "inventoryPriceSnapshot", "updatedAt")
+       VALUES ($1, $2, $3, 'Real Estate - Property Enquiry', $4, $5, $6, $7, $8, $9, $10, $11, NOW())
        RETURNING "id", TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"`,
-      [input.name, input.email, input.phone, input.message, property.id],
+      [input.name, input.email, input.phone, input.message, property.id, selectedConfiguration?.id ?? null, selectedConfiguration?.name ?? null, selectedConfiguration?.priceSnapshot ?? null, selectedInventory?.id ?? null, selectedInventory?.reference ?? null, selectedInventory?.priceSnapshot ?? null],
     );
     return { kind: 'created' as const, enquiry: result.rows[0], property: {
       ...property,
       imageUrl: property.imageUrl
         ? property.imageUrl.startsWith('https://') ? property.imageUrl : cloudinaryDeliveryUrl(property.imageUrl, 560)
         : null,
-    } };
+    }, configuration: selectedConfiguration, inventory: selectedInventory };
   });
 }
 
@@ -142,15 +194,15 @@ export async function listAdminEnquiries(filters: {
          SELECT 'e:' || e."id"::text AS "id", e."name", e."email", e."phone", e."interestedServiceLabel",
                 CASE WHEN e."interestedServiceLabel" = 'Real Estate - Property Enquiry' THEN 'PROPERTY_ENQUIRY'
                      WHEN e."interestedServiceLabel" ILIKE '%Seller Property Submission%' THEN 'SELLER_SUBMISSION' ELSE 'GENERAL' END AS "enquiryType",
-                e."status", e."createdAt", p."title" AS "propertyTitle", p."slug" AS "propertySlug", p."location" AS "propertyLocation", e."message"
+                 e."status", e."createdAt", p."title" AS "propertyTitle", p."slug" AS "propertySlug", p."location" AS "propertyLocation", e."message", e."configurationName", e."inventoryReference"
          FROM "Enquiry" e LEFT JOIN "Property" p ON p."id" = e."propertyId"
          UNION ALL
          SELECT 'b:' || b."id"::text, b."name", b."email", b."phone", 'Buyer Requirements', 'BUYER_REQUIREMENTS',
-                b."status", b."createdAt", NULL, NULL, NULL,
+                 b."status", b."createdAt", b."propertyTitle", b."propertySlug", b."propertyLocation",
                 'Property type: ' || b."propertyType" || ' / ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
                 E'\\nPreferred locality: ' || COALESCE(b."preferredLocality", 'Not provided') || E'\\nBudget: INR ' || b."budgetMin"::text || ' to INR ' || b."budgetMax"::text ||
                 E'\\nPurpose: ' || COALESCE(b."purchasePurpose", 'Not provided') || E'\\nTimeline: ' || COALESCE(b."purchaseTimeline", 'Not provided') ||
-                E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided')
+                 E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided'), b."configurationName", b."inventoryReference"
          FROM public."BuyerPropertyEnquiry" b
        ) SELECT COUNT(*) AS "total" FROM all_enquiries WHERE ${conditions}`,
       values,
@@ -164,29 +216,29 @@ export async function listAdminEnquiries(filters: {
          SELECT 'e:' || e."id"::text AS "id", e."name", e."email", e."phone", e."interestedServiceLabel",
                 CASE WHEN e."interestedServiceLabel" = 'Real Estate - Property Enquiry' THEN 'PROPERTY_ENQUIRY'
                      WHEN e."interestedServiceLabel" ILIKE '%Seller Property Submission%' THEN 'SELLER_SUBMISSION' ELSE 'GENERAL' END AS "enquiryType",
-                e."status", e."createdAt", p."title" AS "propertyTitle", p."slug" AS "propertySlug", p."location" AS "propertyLocation", e."message"
+                 e."status", e."createdAt", p."title" AS "propertyTitle", p."slug" AS "propertySlug", p."location" AS "propertyLocation", e."message", e."configurationName", e."inventoryReference"
          FROM "Enquiry" e LEFT JOIN "Property" p ON p."id" = e."propertyId"
          UNION ALL
          SELECT 'b:' || b."id"::text, b."name", b."email", b."phone", 'Buyer Requirements', 'BUYER_REQUIREMENTS',
-                b."status", b."createdAt", NULL, NULL, NULL,
+                 b."status", b."createdAt", b."propertyTitle", b."propertySlug", b."propertyLocation",
                 'Property type: ' || b."propertyType" || ' / ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
                 E'\\nPreferred locality: ' || COALESCE(b."preferredLocality", 'Not provided') || E'\\nBudget: INR ' || b."budgetMin"::text || ' to INR ' || b."budgetMax"::text ||
                 E'\\nPurpose: ' || COALESCE(b."purchasePurpose", 'Not provided') || E'\\nTimeline: ' || COALESCE(b."purchaseTimeline", 'Not provided') ||
-                E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided')
+                 E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided'), b."configurationName", b."inventoryReference"
          FROM public."BuyerPropertyEnquiry" b
        ) SELECT all_enquiries."id", all_enquiries."name", all_enquiries."email", all_enquiries."phone", all_enquiries."interestedServiceLabel",
               all_enquiries."enquiryType", all_enquiries."status",
               TO_CHAR(all_enquiries."createdAt" AT TIME ZONE current_setting('TimeZone'), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
-              all_enquiries."propertyTitle", all_enquiries."propertySlug", all_enquiries."propertyLocation"
+               all_enquiries."propertyTitle", all_enquiries."propertySlug", all_enquiries."propertyLocation", all_enquiries."configurationName", all_enquiries."inventoryReference"
        FROM all_enquiries WHERE ${conditions}
        ORDER BY all_enquiries."createdAt" DESC, all_enquiries."id" DESC
        LIMIT $3 OFFSET $4`,
       [...values, filters.limit, filters.offset],
     );
 
-    return {
+     return {
       total: Number(countResult.rows[0]?.total ?? 0),
-      data: rowsResult.rows.map(({ propertyTitle, propertySlug, propertyLocation, ...enquiry }) => ({
+       data: rowsResult.rows.map(({ propertyTitle, propertySlug, propertyLocation, ...enquiry }) => ({
         ...enquiry,
         property: propertyTitle === null || propertySlug === null
           ? null
@@ -197,10 +249,11 @@ export async function listAdminEnquiries(filters: {
 }
 
 export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | null> {
-  const [source, rawId] = id.startsWith('b:') || id.startsWith('e:') ? [id.slice(0, 1), id.slice(2)] : ['e', id];
+    const [source, rawId] = id.startsWith('b:') || id.startsWith('e:') ? [id.slice(0, 1), id.slice(2)] : ['e', id];
   if (source === 'b') {
     const buyerResult = await pool.query<BuyerEnquiryQueryRow>(
       `SELECT "id", "name", "email", "phone", "status", "createdAt", "createdAt" AS "updatedAt",
+              "propertyId", "propertyTitle", "propertySlug", "propertyLocation", "configurationName", "inventoryReference",
               "propertyType", "propertySubtype", "preferredCity", "preferredLocality", "budgetMin", "budgetMax",
               "purchasePurpose", "propertyRequirements", "purchaseTimeline", "preferredContactMethod", "additionalRequirements"
        FROM public."BuyerPropertyEnquiry" WHERE "id" = $1 LIMIT 1`, [rawId],
@@ -208,9 +261,11 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     const b = buyerResult.rows[0];
     if (!b) return null;
     const details = Object.entries(b.propertyRequirements as Record<string, string>).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${value}`).join('\n');
-    return { id: `b:${b.id}`, name: b.name, email: b.email, phone: b.phone, interestedServiceId: null, interestedServiceLabel: 'Buyer Requirements', propertyId: null,
+    return { id: `b:${b.id}`, name: b.name, email: b.email, phone: b.phone, interestedServiceId: null, interestedServiceLabel: 'Buyer Requirements', propertyId: b.propertyId,
       enquiryType: 'BUYER_REQUIREMENTS', message: `Property type: ${b.propertyType} / ${b.propertySubtype}\nPreferred location: ${b.preferredCity}\nPreferred locality: ${b.preferredLocality ?? 'Not provided'}\nBudget: INR ${b.budgetMin} to INR ${b.budgetMax}\nPurpose: ${b.purchasePurpose ?? 'Not provided'}\nTimeline: ${b.purchaseTimeline ?? 'Not provided'}\n${details}\nAdditional requirements: ${b.additionalRequirements ?? 'Not provided'}\nPreferred contact: ${b.preferredContactMethod}`,
-      status: b.status, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString(), interestedService: null, property: null };
+       status: b.status, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString(), interestedService: null,
+       property: b.propertySlug ? { title: b.propertyTitle, slug: b.propertySlug, location: b.propertyLocation } : null,
+       configurationName: b.configurationName, configurationPriceSnapshot: null, inventoryReference: b.inventoryReference, inventoryPriceSnapshot: null };
   }
   const result = await pool.query<AdminEnquiryDetail & {
     serviceTitle: string | null;
@@ -218,6 +273,10 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     propertyTitle: string | null;
     propertySlug: string | null;
     propertyLocation: string | null;
+     configurationName: string | null;
+     configurationPriceSnapshot: string | null;
+     inventoryReference: string | null;
+     inventoryPriceSnapshot: string | null;
   }>(
     `SELECT e."id", e."name", e."email", e."phone", e."interestedServiceId",
             e."interestedServiceLabel", e."propertyId", e."message", e."status",
@@ -227,7 +286,7 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
               'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt",
             s."title" AS "serviceTitle", s."slug" AS "serviceSlug",
             p."title" AS "propertyTitle", p."slug" AS "propertySlug",
-            p."location" AS "propertyLocation"
+             p."location" AS "propertyLocation", e."configurationName", e."configurationPriceSnapshot", e."inventoryReference", e."inventoryPriceSnapshot"
      FROM "Enquiry" e
      LEFT JOIN "Service" s ON s."id" = e."interestedServiceId"
      LEFT JOIN "Property" p ON p."id" = e."propertyId"
@@ -243,6 +302,10 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     propertyTitle,
     propertySlug,
     propertyLocation,
+    configurationName,
+    configurationPriceSnapshot,
+    inventoryReference,
+    inventoryPriceSnapshot,
     ...enquiry
   } = row;
 
@@ -256,6 +319,10 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     property: propertyTitle === null || propertySlug === null
       ? null
       : { title: propertyTitle, slug: propertySlug, location: propertyLocation },
+    configurationName,
+    configurationPriceSnapshot,
+    inventoryReference,
+    inventoryPriceSnapshot,
   };
 }
 

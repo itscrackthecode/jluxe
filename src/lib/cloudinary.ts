@@ -53,6 +53,19 @@ export function createSellerCloudinaryUploadSignature(timestamp: number) {
   return { cloudName: values.cloudName, apiKey: values.apiKey, uploadPreset: values.uploadPreset, assetFolder, publicId, overwrite: false, allowedFormats: allowedUploadFormats, signature };
 }
 
+export function createCloudinaryPropertyDocumentSignature(timestamp: number) {
+  const values = config();
+  const assetFolder = 'jluxe/properties/documents';
+  const publicId = `${randomUUID().replaceAll('-', '')}.pdf`;
+  const allowedFormats = 'pdf';
+  const signature = digest(`allowed_formats=${allowedFormats}&asset_folder=${assetFolder}&overwrite=false&public_id=${publicId}&timestamp=${timestamp}&upload_preset=${values.uploadPreset}${values.apiSecret}`);
+  return { cloudName: values.cloudName, apiKey: values.apiKey, uploadPreset: values.uploadPreset, assetFolder, publicId, overwrite: false, allowedFormats, signature };
+}
+
+export function cloudinaryRawDeliveryUrl(publicId: string) {
+  return `https://res.cloudinary.com/${cloudName()}/raw/upload/${publicId}`;
+}
+
 export function verifySellerCloudinaryUpload(publicId: string, version: number, signature: string, secureUrl: string) {
   const { cloudName: name } = config();
   try {
@@ -99,4 +112,26 @@ export async function getCloudinaryImageDetails(publicId: string) {
   });
   if (!response.ok) throw new Error('Cloudinary image verification failed.');
   return await response.json() as { public_id: string; resource_type: string; format: string; bytes: number; width: number; height: number; asset_folder?: string };
+}
+
+export async function getCloudinaryRawDetails(publicId: string) {
+  const { cloudName: name, apiKey, apiSecret } = config();
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${name}/resources/raw/upload/${publicId.split('/').map(encodeURIComponent).join('/')}`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('Cloudinary document verification failed.');
+  return await response.json() as { public_id: string; resource_type: string; format: string; bytes: number; asset_folder?: string };
+}
+
+export async function destroyCloudinaryRaw(publicId: string) {
+  const { cloudName, apiKey, apiSecret } = config();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = digest(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`);
+  const body = new FormData();
+  body.set('public_id', publicId); body.set('timestamp', String(timestamp)); body.set('api_key', apiKey); body.set('signature', signature);
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/destroy`, { method: 'POST', body });
+  if (!response.ok) throw new Error('Cloudinary document deletion failed.');
+  const result = await response.json() as { result?: string };
+  if (result.result !== 'ok' && result.result !== 'not found') throw new Error('Cloudinary document deletion failed.');
 }
