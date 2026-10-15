@@ -52,7 +52,13 @@ function getCookieOptions(maxAge: number) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
-    path: '/admin',
+    // Cookie path is '/' so the browser sends it on all paths under the
+    // admin subdomain (admin.thejluxe.com/, /login, /properties, etc.).
+    // The path:'/admin' restriction is no longer needed because the
+    // subdomain itself provides the isolation boundary. The cookie remains
+    // httpOnly + secure + sameSite:lax so it is not shared with the public
+    // site on thejluxe.com.
+    path: '/',
     maxAge,
   };
 }

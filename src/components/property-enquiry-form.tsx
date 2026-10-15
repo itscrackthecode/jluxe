@@ -1,7 +1,8 @@
 'use client';
 
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
 
 type PropertySummary = {
   id: string; slug: string; title: string; location: string | null; propertyType: string;
@@ -25,6 +26,7 @@ function formatPrice(property: PropertySummary) {
 }
 
 export default function PropertyEnquiryForm({ property }: { property: PropertySummary }) {
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
   const [values, setValues] = useState({ name: '', phone: '', email: '', message: '' });
@@ -36,8 +38,10 @@ export default function PropertyEnquiryForm({ property }: { property: PropertySu
     setStatus('submitting');
     setError('');
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+      if (!turnstileToken) throw new Error('Security check unavailable.');
       const response = await fetch(`/api/properties/${encodeURIComponent(property.slug)}/enquiries`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...values, turnstileToken }),
       });
       const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
       if (!response.ok || result?.success !== true) {
@@ -75,6 +79,7 @@ export default function PropertyEnquiryForm({ property }: { property: PropertySu
             <label className="min-w-0"><span className={labelClass}>Email address *</span><input className={controlClass} type="email" autoComplete="email" value={values.email} onChange={(e) => { setValues({ ...values, email: e.target.value }); setStatus('idle'); }} maxLength={320} required /></label>
           </div>
           <label className="block"><span className={labelClass}>Message *</span><textarea className={controlClass} rows={4} value={values.message} onChange={(e) => { setValues({ ...values, message: e.target.value }); setStatus('idle'); }} minLength={5} maxLength={5000} required placeholder="Tell us what you would like to know about this property." /></label>
+          <TurnstileWidget ref={turnstileRef} action="property_enquiry" />
           <button type="submit" disabled={status === 'submitting'} className="touch-press inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--viridian-950)] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(6,47,41,0.15)] transition-colors hover:bg-[var(--viridian-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70">
             {status === 'submitting' ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</> : <>Send property enquiry <ArrowRight className="h-4 w-4" /></>}
           </button>

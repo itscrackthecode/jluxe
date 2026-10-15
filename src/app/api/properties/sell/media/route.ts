@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSellerCloudinaryUploadSignature, destroyCloudinaryImage, getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 export const runtime = 'nodejs';
 
@@ -17,12 +19,16 @@ export async function POST(request: Request) {
   if (rateLimitResponse) return rateLimitResponse;
 
   const now = Date.now();
-
-  let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: 'Invalid upload request.' }, { status: 400 }); }
-  if (!body || typeof body !== 'object' || !('intent' in body)) {
+  const bodyResult = await readJsonBody(request, 8 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
+  const body = bodyResult.value;
+  if (!body || typeof body !== 'object' || !('intent' in body) || !('turnstileToken' in body)
+    || !['sign', 'verify', 'discard'].includes(String(body.intent)) || typeof body.turnstileToken !== 'string') {
     return NextResponse.json({ success: false, error: 'Invalid upload request.' }, { status: 400 });
   }
+
+  const verification = await verifyTurnstileToken(body.turnstileToken, 'seller_media', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
 
   if (body.intent === 'verify' || body.intent === 'discard') {
     const image = body as { intent: string; publicId?: unknown; version?: unknown; signature?: unknown; secureUrl?: unknown };
@@ -35,7 +41,8 @@ export async function POST(request: Request) {
       if (verified.public_id !== image.publicId || verified.asset_folder !== 'jluxe/seller-submissions'
         || verified.resource_type !== 'image' || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(verified.format)
         || !Number.isSafeInteger(verified.bytes) || verified.bytes <= 0 || verified.bytes > 10 * 1024 * 1024
-        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)) {
+        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)
+        || verified.width <= 0 || verified.height <= 0 || verified.width > 30_000 || verified.height > 30_000) {
         return NextResponse.json({ success: false, error: 'Photos must be supported images no larger than 10 MB.' }, { status: 400 });
       }
       if (body.intent === 'discard') {

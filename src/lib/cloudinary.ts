@@ -1,5 +1,5 @@
 import 'server-only';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 
 function cloudName() {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -36,18 +36,21 @@ function safeEqual(left: string, right: string) {
 }
 
 export type AdminCloudinaryAssetFolder = 'jluxe/website' | 'jluxe/properties' | 'jluxe/portfolio';
+const allowedUploadFormats = 'avif,jpg,jpeg,png,webp';
 
 export function createCloudinaryUploadSignature(timestamp: number, assetFolder: AdminCloudinaryAssetFolder = 'jluxe/website') {
   const values = config();
-  const signature = digest(`asset_folder=${assetFolder}&timestamp=${timestamp}&upload_preset=${values.uploadPreset}${values.apiSecret}`);
-  return { cloudName: values.cloudName, apiKey: values.apiKey, uploadPreset: values.uploadPreset, assetFolder, signature };
+  const publicId = randomUUID().replaceAll('-', '');
+  const signature = digest(`allowed_formats=${allowedUploadFormats}&asset_folder=${assetFolder}&overwrite=false&public_id=${publicId}&timestamp=${timestamp}&upload_preset=${values.uploadPreset}${values.apiSecret}`);
+  return { cloudName: values.cloudName, apiKey: values.apiKey, uploadPreset: values.uploadPreset, assetFolder, publicId, overwrite: false, allowedFormats: allowedUploadFormats, signature };
 }
 
 export function createSellerCloudinaryUploadSignature(timestamp: number) {
   const values = config();
   const assetFolder = 'jluxe/seller-submissions';
-  const signature = digest(`asset_folder=${assetFolder}&timestamp=${timestamp}&upload_preset=${values.uploadPreset}${values.apiSecret}`);
-  return { cloudName: values.cloudName, apiKey: values.apiKey, uploadPreset: values.uploadPreset, assetFolder, signature };
+  const publicId = randomUUID().replaceAll('-', '');
+  const signature = digest(`allowed_formats=${allowedUploadFormats}&asset_folder=${assetFolder}&overwrite=false&public_id=${publicId}&timestamp=${timestamp}&upload_preset=${values.uploadPreset}${values.apiSecret}`);
+  return { cloudName: values.cloudName, apiKey: values.apiKey, uploadPreset: values.uploadPreset, assetFolder, publicId, overwrite: false, allowedFormats: allowedUploadFormats, signature };
 }
 
 export function verifySellerCloudinaryUpload(publicId: string, version: number, signature: string, secureUrl: string) {

@@ -159,6 +159,7 @@ export default function EnquiryList() {
               <Trash2 className="h-4 w-4" /> Delete enquiries
             </button>
           )}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Native navigation is required to download the API response. */}
           <a
             href="/admin/api/enquiries/export"
             className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 px-4 text-sm font-medium text-[#f5f1e8] transition-colors hover:bg-white/10 hover:border-white/40"

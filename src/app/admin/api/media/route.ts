@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 }
 
 const uploadSchema = z.object({
-  intent: z.literal('complete'), publicId: z.string().min(1).max(500), version: z.number().int().positive(), signature: z.string().regex(/^[a-f0-9]{40}$/i),
+  intent: z.literal('complete'), purpose: z.enum(['website', 'properties', 'portfolio']), publicId: z.string().min(1).max(500), version: z.number().int().positive(), signature: z.string().regex(/^[a-f0-9]{40}$/i),
   secureUrl: z.string().url(), format: z.enum(['jpg', 'jpeg', 'png', 'webp', 'avif']), bytes: z.number().int().positive().max(10 * 1024 * 1024),
   width: z.number().int().positive().max(30000), height: z.number().int().positive().max(30000), resourceType: z.literal('image'),
 });
@@ -83,6 +83,7 @@ export async function POST(request: Request) {
     }
     const verified = await getCloudinaryImageDetails(item.publicId);
     if (verified.public_id !== item.publicId || verified.resource_type !== 'image'
+      || verified.asset_folder !== uploadFolders[item.purpose]
       || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(verified.format)
       || !Number.isSafeInteger(verified.bytes) || verified.bytes <= 0 || verified.bytes > 10 * 1024 * 1024
       || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)) {

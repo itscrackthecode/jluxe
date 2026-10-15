@@ -1,4 +1,5 @@
 import { pool, withTransaction } from '../pool';
+import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type { Enquiry, EnquiryStatus, Service, UUID } from '../types';
 
 export type NewEnquiry = Pick<
@@ -22,6 +23,27 @@ export type AdminEnquiryDetail = Omit<Enquiry, 'createdAt' | 'updatedAt'> & {
   interestedService: { title: string; slug: string } | null;
   property: { title: string; slug: string; location: string | null } | null;
 };
+
+interface BuyerEnquiryQueryRow {
+  id: UUID;
+  name: string;
+  email: string;
+  phone: string;
+  status: EnquiryStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  propertyType: string;
+  propertySubtype: string;
+  preferredCity: string;
+  preferredLocality: string | null;
+  budgetMin: string;
+  budgetMax: string;
+  purchasePurpose: string | null;
+  propertyRequirements: Record<string, string>;
+  purchaseTimeline: string | null;
+  preferredContactMethod: string;
+  additionalRequirements: string | null;
+}
 
 export async function countNewEnquiries(): Promise<number> {
   const result = await pool.query<{ total: string }>(
@@ -74,10 +96,14 @@ export async function createPropertyEnquiry(input: {
   return withTransaction(async (client) => {
     const propertyResult = await client.query<{
       id: UUID; slug: string; title: string; location: string | null; propertyType: string;
-      priceAmount: string | null; priceCurrency: string | null; priceMode: string;
+      priceAmount: string | null; priceCurrency: string | null; priceMode: string; imageUrl: string | null;
     }>(
-      `SELECT "id", "slug", "title", "location", "propertyType", "priceAmount", "priceCurrency", "priceMode"
-       FROM "Property" WHERE "slug" = $1 AND "publicationStatus" = 'PUBLISHED' AND "status" IN ('AVAILABLE', 'UNDER_OFFER')
+      `SELECT p."id", p."slug", p."title", p."location", p."propertyType", p."priceAmount", p."priceCurrency", p."priceMode",
+              (SELECT CASE WHEN m."provider" = 'cloudinary' THEN m."storageKey"
+                           WHEN m."storageKey" LIKE 'https://%' THEN m."storageKey" ELSE NULL END
+               FROM "PropertyMedia" pm JOIN "Media" m ON m."id" = pm."mediaId"
+               WHERE pm."propertyId" = p."id" ORDER BY pm."position" ASC LIMIT 1) AS "imageUrl"
+       FROM "Property" p WHERE p."slug" = $1 AND p."publicationStatus" = 'PUBLISHED' AND p."status" IN ('AVAILABLE', 'UNDER_OFFER')
        FOR SHARE`, [input.slug],
     );
     const property = propertyResult.rows[0];
@@ -88,7 +114,12 @@ export async function createPropertyEnquiry(input: {
        RETURNING "id", TO_CHAR("createdAt" AT TIME ZONE current_setting('TimeZone'), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"`,
       [input.name, input.email, input.phone, input.message, property.id],
     );
-    return { kind: 'created' as const, enquiry: result.rows[0], property };
+    return { kind: 'created' as const, enquiry: result.rows[0], property: {
+      ...property,
+      imageUrl: property.imageUrl
+        ? property.imageUrl.startsWith('https://') ? property.imageUrl : cloudinaryDeliveryUrl(property.imageUrl, 560)
+        : null,
+    } };
   });
 }
 
@@ -192,7 +223,7 @@ export async function deleteAdminEnquiries(ids: string[]): Promise<number> {
 export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | null> {
   const [source, rawId] = id.startsWith('b:') || id.startsWith('e:') ? [id.slice(0, 1), id.slice(2)] : ['e', id];
   if (source === 'b') {
-    const buyerResult = await pool.query<any>(
+    const buyerResult = await pool.query<BuyerEnquiryQueryRow>(
       `SELECT "id", "name", "email", "phone", "status", "createdAt", "createdAt" AS "updatedAt",
               "propertyType", "propertySubtype", "preferredCity", "preferredLocality", "budgetMin", "budgetMax",
               "purchasePurpose", "propertyRequirements", "purchaseTimeline", "preferredContactMethod", "additionalRequirements"
@@ -204,6 +235,8 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     return { id: `b:${b.id}`, name: b.name, email: b.email, phone: b.phone, interestedServiceId: null, interestedServiceLabel: 'Buyer Requirements', propertyId: null,
       enquiryType: 'BUYER_REQUIREMENTS', message: [`Property category: ${b.propertyType}`, `Property type: ${b.propertySubtype}`, `Preferred location: ${b.preferredCity}`, `Preferred locality: ${b.preferredLocality ?? 'Not provided'}`, `Budget: INR ${b.budgetMin} to INR ${b.budgetMax}`, b.purchasePurpose ? `Purpose: ${b.purchasePurpose}` : null, b.purchaseTimeline ? `Timeline: ${b.purchaseTimeline}` : null, details, `Additional requirements: ${b.additionalRequirements ?? 'Not provided'}`, `Preferred contact: ${b.preferredContactMethod}`].filter((line): line is string => Boolean(line)).join('\n'),
       status: b.status, createdAt: b.createdAt, updatedAt: b.updatedAt, interestedService: null, property: null };
+      enquiryType: 'BUYER_REQUIREMENTS', message: `Property type: ${b.propertyType} / ${b.propertySubtype}\nPreferred location: ${b.preferredCity}\nPreferred locality: ${b.preferredLocality ?? 'Not provided'}\nBudget: INR ${b.budgetMin} to INR ${b.budgetMax}\nPurpose: ${b.purchasePurpose ?? 'Not provided'}\nTimeline: ${b.purchaseTimeline ?? 'Not provided'}\n${details}\nAdditional requirements: ${b.additionalRequirements ?? 'Not provided'}\nPreferred contact: ${b.preferredContactMethod}`,
+      status: b.status, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString(), interestedService: null, property: null };
   }
   const result = await pool.query<AdminEnquiryDetail & {
     serviceTitle: string | null;

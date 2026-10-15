@@ -6,7 +6,10 @@ import { hasPostgresErrorCode } from '@/lib/db/errors';
 import { plotSizeUnits, propertyTypes, type PlotSizeUnit } from '@/lib/db/types';
 import { cloudinaryDeliveryUrl, getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
 import { sendJluxeNotification } from '@/lib/email-notifications';
+import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -14,6 +17,7 @@ const optionalText = (maxLength: number) => z.preprocess(
 );
 
 const sellerPropertySchema = z.object({
+  turnstileToken: z.string().min(1).max(2048),
   name: z.string().trim().min(2).max(150),
   email: z.string().trim().email().max(320),
   phone: z.string().trim().min(6).max(32),
@@ -92,14 +96,10 @@ export async function POST(request: Request) {
   const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
   if (rateLimitResponse) return rateLimitResponse;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 });
-  }
+  const bodyResult = await readJsonBody(request, 128 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
 
-  const parsed = sellerPropertySchema.safeParse(body);
+  const parsed = sellerPropertySchema.safeParse(bodyResult.value);
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Please review the required details and try again.' },
@@ -108,6 +108,8 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+  const verification = await verifyTurnstileToken(input.turnstileToken, 'seller_submission', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
   const title = `${formatLabel(input.propertyType)} in ${input.location}`.slice(0, 200);
   const baseSlug = createPropertySlug(title).slice(0, 176);
   if (!baseSlug) {
@@ -133,7 +135,8 @@ export async function POST(request: Request) {
         || verified.asset_folder !== 'jluxe/seller-submissions'
         || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(verified.format)
         || !Number.isSafeInteger(verified.bytes) || verified.bytes <= 0 || verified.bytes > 10 * 1024 * 1024
-        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)) {
+        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)
+        || verified.width <= 0 || verified.height <= 0 || verified.width > 30_000 || verified.height > 30_000) {
         return NextResponse.json({ success: false, error: 'Photos must be supported images no larger than 10 MB.' }, { status: 400 });
       }
       media.push({
@@ -194,41 +197,43 @@ export async function POST(request: Request) {
 
     try {
       const submittedAt = property.createdAt;
-      const submittedDate = new Date(submittedAt).toISOString();
+      const submittedDate = formatEmailDate(submittedAt);
       const imageDetails = notificationMedia.map((image, index) => [
         `Photo ${index + 1}: ${cloudinaryDeliveryUrl(image.publicId)}`,
         `  Public ID: ${image.publicId}`,
         `  Format: ${image.format}; dimensions: ${image.width} × ${image.height}; size: ${image.bytes} bytes`,
       ].join('\n'));
+      const rendered = renderJluxeEmail({
+        title: 'Seller property submission',
+        summary: 'A seller has submitted property details for JLUXE review.',
+        reference: property.id,
+        sections: [
+          { title: 'Seller contact', fields: [
+            { label: 'Name', value: input.name }, { label: 'Email', value: input.email },
+            { label: 'Phone / WhatsApp', value: input.phone },
+          ] },
+          { title: 'Submitted property', fields: [
+            { label: 'Submitted', value: submittedDate },
+            { label: 'Property reference', value: property.slug },
+            { label: 'Property type', value: formatLabel(input.propertyType) },
+            { label: 'Location', value: input.location }, { label: 'Starting price', value: input.startingPrice },
+            { label: 'Plot / land area', value: input.plotSize },
+            { label: 'Area unit', value: input.plotSizeUnit ? formatLabel(input.plotSizeUnit) : null },
+            { label: 'Description', value: input.description },
+          ] },
+          { title: 'Submitted photos', fields: [{ label: 'Photo count', value: String(notificationMedia.length) },
+            ...imageDetails.map((detail, index) => ({ label: `Photo ${index + 1}`, value: detail }))] },
+        ],
+        images: notificationMedia.map((image, index) => ({
+          url: cloudinaryDeliveryUrl(image.publicId, 560), alt: `Seller-submitted property photo ${index + 1}`,
+        })),
+      });
 
       await sendJluxeNotification({
         replyTo: input.email,
         subject: `New Seller Submission — ${property.id}`,
-        text: [
-          'New JLUXE Seller Property Submission',
-          '',
-          `Submission reference: ${property.id}`,
-          `Property reference: ${property.slug}`,
-          `Submitted: ${submittedDate}`,
-          '',
-          'Seller contact',
-          `Name: ${input.name}`,
-          `Email: ${input.email}`,
-          `Phone / WhatsApp: ${input.phone}`,
-          '',
-          'Property details',
-          `Property type: ${formatLabel(input.propertyType)}`,
-          `Location: ${input.location}`,
-          `Starting price: ${input.startingPrice}`,
-          `Plot / land area: ${input.plotSize ?? 'Not provided'}`,
-          `Area unit: ${input.plotSizeUnit ? formatLabel(input.plotSizeUnit) : 'Not provided'}`,
-          '',
-          'Additional description:',
-          input.description ?? 'Not provided',
-          '',
-          `Photos submitted: ${notificationMedia.length}`,
-          ...(imageDetails.length ? ['', ...imageDetails] : []),
-        ].join('\n'),
+        text: rendered.text,
+        html: rendered.html,
       });
     } catch (error) {
       console.error('Failed to send seller property notification email.', {

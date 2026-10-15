@@ -15,7 +15,10 @@ import {
 } from '@/lib/buyer-property';
 import { createBuyerPropertyEnquiry } from '@/lib/db/queries/buyer-property-enquiries';
 import { sendJluxeNotification } from '@/lib/email-notifications';
+import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -31,6 +34,7 @@ const nullableAmount = z.preprocess(
 );
 
 const commonFields = {
+  turnstileToken: z.string().min(1).max(2048),
   propertySubtype: z.string().trim().min(2).max(150),
   preferredCity: z.string().trim().min(2).max(255),
   preferredLocality: optionalText(255),
@@ -132,15 +136,6 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
 
 export const runtime = 'nodejs';
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
 function titleCase(value: string) {
   return value.replaceAll('_', ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -154,14 +149,10 @@ export async function POST(request: Request) {
   const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
   if (rateLimitResponse) return rateLimitResponse;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 });
-  }
+  const bodyResult = await readJsonBody(request, 64 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
 
-  const parsed = buyerEnquirySchema.safeParse(body);
+  const parsed = buyerEnquirySchema.safeParse(bodyResult.value);
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Please review the required details and try again.' },
@@ -170,6 +161,8 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+  const verification = await verifyTurnstileToken(input.turnstileToken, 'buyer_requirements', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
   const propertyType = input.propertyType;
   const details = Object.fromEntries(
     Object.entries(input.details).filter(([, value]) => typeof value === 'string' && value.length > 0),
@@ -221,13 +214,38 @@ export async function POST(request: Request) {
       input.additionalRequirements ?? 'Not provided',
     ].join('\n');
     const html = `<h1>New JLUXE General Buyer Requirements Enquiry</h1><p><strong>Reference:</strong> ${escapeHtml(enquiry.id)}<br><strong>Submitted:</strong> ${escapeHtml(new Date(enquiry.createdAt).toISOString())}</p><h2>Property preferences</h2><dl><dt>Property category</dt><dd>${escapeHtml(buyerPropertyTypeLabels[propertyType])}</dd><dt>Property type</dt><dd>${escapeHtml(input.propertySubtype)}</dd><dt>Preferred city / location</dt><dd>${escapeHtml(input.preferredCity)}</dd><dt>Preferred locality</dt><dd>${escapeHtml(input.preferredLocality ?? 'Not provided')}</dd><dt>Budget</dt><dd>INR ${escapeHtml(input.budgetMin)} to INR ${escapeHtml(input.budgetMax)}</dd>${detailLines.map((line) => { const [label, ...value] = line.split(': '); return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value.join(': '))}</dd>`; }).join('')}</dl><h2>Customer contact</h2><dl><dt>Name</dt><dd>${escapeHtml(input.name)}</dd><dt>Email</dt><dd>${escapeHtml(input.email)}</dd><dt>Phone / WhatsApp</dt><dd>${escapeHtml(input.phone)}</dd><dt>Preferred contact method</dt><dd>${escapeHtml(input.preferredContactMethod)}</dd></dl><h2>Additional requirements</h2><p style="white-space:pre-wrap">${escapeHtml(input.additionalRequirements ?? 'Not provided')}</p>`;
+    const rendered = renderJluxeEmail({
+      title: 'Buyer requirements enquiry',
+      summary: 'A customer has shared property requirements for the JLUXE team to review.',
+      reference: enquiry.id,
+      sections: [
+        { title: 'Property preferences', fields: [
+          { label: 'Submitted', value: formatEmailDate(enquiry.createdAt) },
+          { label: 'Property type', value: buyerPropertyTypeLabels[propertyType] },
+          { label: 'Property subtype', value: input.propertySubtype },
+          { label: 'Preferred city / location', value: input.preferredCity },
+          { label: 'Preferred locality', value: input.preferredLocality },
+          { label: 'Minimum budget (INR)', value: input.budgetMin },
+          { label: 'Maximum budget (INR)', value: input.budgetMax },
+          { label: 'Purchase purpose', value: input.purchasePurpose },
+          ...Object.entries(details).map(([key, value]) => ({ label: titleCase(key), value })),
+          { label: 'Purchase timeline', value: input.purchaseTimeline },
+        ] },
+        { title: 'Customer contact', fields: [
+          { label: 'Name', value: input.name }, { label: 'Email', value: input.email },
+          { label: 'Phone / WhatsApp', value: input.phone },
+          { label: 'Preferred contact method', value: input.preferredContactMethod },
+        ] },
+        { title: 'Additional requirements', fields: [{ label: 'Requirements', value: input.additionalRequirements }] },
+      ],
+    });
 
     try {
       await sendJluxeNotification({
         replyTo: input.email,
         subject: `Buyer Requirements Enquiry — ${input.preferredCity}`,
-        text: plainText,
-        html,
+        text: rendered.text,
+        html: rendered.html,
       });
     } catch (error) {
       console.error('Failed to send buyer property enquiry notification email.', {
