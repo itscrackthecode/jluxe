@@ -71,9 +71,6 @@ export default function HeroCarousel() {
       <div aria-hidden="true" className="hero-vignette absolute inset-0" />
       <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,22,19,0.18),rgba(3,22,19,0.32))]" />
       <div className="absolute inset-0 opacity-60 foliage" />
-      <div className="absolute -right-24 top-20 h-[420px] w-[420px] rounded-full border border-white/10" />
-      <div className="absolute right-[8%] top-[22%] hidden h-48 w-48 rounded-full border border-[var(--gold)]/30 lg:block" />
-
       <div className="hero-viewport-inner container-xl relative z-10 flex min-h-[640px] flex-col justify-end py-16 sm:min-h-[720px]">
         <div className="flex max-w-3xl items-start gap-4 pb-8">
           <div key={slide.title} className="hero-copy hero-slide-copy flex-1">

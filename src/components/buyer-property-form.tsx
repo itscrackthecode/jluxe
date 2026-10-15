@@ -16,11 +16,18 @@ import {
   buyerPropertyTypeLabels,
   buyerPropertyTypes,
   buyerPropertySubtypes,
-  buyerPurposeOptions,
   buyerReadinessOptions,
-  buyerTimelineOptions,
   type BuyerPropertyType,
 } from '@/lib/buyer-property';
+
+const MIN_BUDGET = 100_000;
+const MAX_BUDGET = 1_000_000_000;
+const BUDGET_STEP = 100_000;
+const budgetFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
 
 type FormValues = {
   propertyType: BuyerPropertyType;
@@ -29,16 +36,13 @@ type FormValues = {
   preferredLocality: string;
   budgetMin: string;
   budgetMax: string;
-  purchasePurpose: string;
   bedrooms: string;
   propertyCondition: string;
   preferredArea: string;
   areaUnit: string;
   intendedUse: string;
   otherIntendedUse: string;
-  requiredFloorArea: string;
   readiness: string;
-  purchaseTimeline: string;
   name: string;
   email: string;
   phone: string;
@@ -60,18 +64,15 @@ function createInitialValues(property?: SelectedProperty): FormValues {
     propertySubtype: property ? buyerSubtypeForPropertyType(property.propertyType) : '',
     preferredCity: property?.location ?? '',
     preferredLocality: '',
-    budgetMin: '',
-    budgetMax: '',
-    purchasePurpose: '',
+    budgetMin: String(MIN_BUDGET),
+    budgetMax: String(MAX_BUDGET),
     bedrooms: '',
     propertyCondition: '',
     preferredArea: '',
-    areaUnit: '',
+    areaUnit: 'SQFT',
     intendedUse: '',
     otherIntendedUse: '',
-    requiredFloorArea: '',
     readiness: '',
-    purchaseTimeline: '',
     name: '',
     email: '',
     phone: '',
@@ -111,13 +112,13 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
         bedrooms: values.bedrooms,
         propertyCondition: values.propertyCondition,
         preferredArea: values.preferredArea,
-        areaUnit: values.areaUnit,
+        ...(values.preferredArea ? { areaUnit: values.areaUnit } : {}),
       };
     } else if (values.propertyType === 'COMMERCIAL') {
       details = {
         intendedUse: values.intendedUse,
         otherIntendedUse: values.otherIntendedUse,
-        requiredFloorArea: values.requiredFloorArea,
+        requiredFloorArea: values.preferredArea,
         areaUnit: values.areaUnit,
         readiness: values.readiness,
       };
@@ -129,7 +130,10 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
         otherIntendedUse: values.otherIntendedUse,
       };
     } else if (values.propertyType === 'OTHER') {
-      details = {};
+      details = {
+        preferredArea: values.preferredArea,
+        ...(values.preferredArea ? { areaUnit: values.areaUnit } : {}),
+      };
     }
 
     try {
@@ -145,9 +149,7 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
           preferredLocality: values.preferredLocality.trim(),
           budgetMin: values.budgetMin,
           budgetMax: values.budgetMax,
-          purchasePurpose: values.purchasePurpose,
           details,
-          purchaseTimeline: values.purchaseTimeline,
           name: values.name.trim(),
           email: values.email.trim(),
           phone: values.phone.trim(),
@@ -176,9 +178,14 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
     }
   };
 
-  const measurementUnits = values.propertyType === 'LAND_PLOT'
-    ? buyerAreaUnits
-    : buyerAreaUnits.filter((unit) => unit === 'SQFT' || unit === 'SQM');
+  const areaRequired = values.propertyType === 'COMMERCIAL' || values.propertyType === 'LAND_PLOT';
+  const areaLabel = values.propertyType === 'COMMERCIAL'
+    ? 'Required floor area'
+    : values.propertyType === 'LAND_PLOT'
+      ? 'Preferred land area'
+      : 'Preferred size or area';
+  const minimumBudgetPosition = ((Number(values.budgetMin) - MIN_BUDGET) / (MAX_BUDGET - MIN_BUDGET)) * 100;
+  const maximumBudgetPosition = ((Number(values.budgetMax) - MIN_BUDGET) / (MAX_BUDGET - MIN_BUDGET)) * 100;
 
   return (
     <div className="overflow-hidden rounded-[28px] border border-[var(--viridian-950)]/10 bg-[var(--cream)] shadow-[0_18px_55px_rgba(6,47,41,0.1)]">
@@ -218,13 +225,19 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
             </div>
           </fieldset>}
 
-          {!property && <label>
-            <span className={labelClass}>Property subtype *</span>
-            <select className={controlClass} value={values.propertySubtype} onChange={(event) => update('propertySubtype', event.target.value)} required>
-              <option value="">Select a subtype</option>
-              {(buyerPropertySubtypes[values.propertyType as keyof typeof buyerPropertySubtypes] ?? ['Other']).map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}
-            </select>
-          </label>}
+          {!property && <div>
+            <label>
+              <span className={labelClass}>Property Type *</span>
+              {values.propertyType === 'OTHER' ? (
+                <input className={controlClass} value={values.propertySubtype} onChange={(event) => update('propertySubtype', event.target.value)} required minLength={2} maxLength={150} placeholder="Enter the property type" />
+              ) : (
+                <select className={controlClass} value={values.propertySubtype} onChange={(event) => update('propertySubtype', event.target.value)} required>
+                  <option value="">Select a property type</option>
+                  {(buyerPropertySubtypes[values.propertyType as keyof typeof buyerPropertySubtypes] ?? ['Other']).map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}
+                </select>
+              )}
+            </label>
+          </div>}
 
           <div className="grid gap-5 sm:grid-cols-2">
             <label>
@@ -238,28 +251,20 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
           </div>
 
           <div>
-            <p className={labelClass}>Budget range <span className="ml-1 rounded-full bg-[var(--viridian-950)]/5 px-2 py-1 text-xs font-semibold text-[var(--viridian-800)]">INR</span> <span aria-hidden="true">*</span></p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label><span className="sr-only">Minimum budget in INR</span><input className={controlClass} type="number" inputMode="decimal" min="1" step="0.01" value={values.budgetMin} onChange={(event) => update('budgetMin', event.target.value)} required placeholder="Minimum budget" /></label>
-              <label><span className="sr-only">Maximum budget in INR</span><input className={controlClass} type="number" inputMode="decimal" min={values.budgetMin || '1'} step="0.01" value={values.budgetMax} onChange={(event) => update('budgetMax', event.target.value)} required placeholder="Maximum budget" /></label>
+            <p id="budget-range-label" className={labelClass}>Budget range <span className="ml-1 rounded-full bg-[var(--viridian-950)]/5 px-2 py-1 text-xs font-semibold text-[var(--viridian-800)]">INR</span> <span aria-hidden="true">*</span></p>
+            <div role="group" aria-labelledby="budget-range-label" className="rounded-xl border border-[var(--viridian-950)]/10 bg-white px-4 pb-3 pt-4 sm:px-5">
+              <div className="flex items-center justify-between gap-4 text-sm font-medium text-[var(--viridian-950)]" aria-live="polite">
+                <output>Min {budgetFormatter.format(Number(values.budgetMin))}</output>
+                <output className="text-right">Max {budgetFormatter.format(Number(values.budgetMax))}</output>
+              </div>
+              <div className="buyer-budget-range relative mt-3 h-7">
+                <div aria-hidden="true" className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--viridian-950)]/10" />
+                <div aria-hidden="true" className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[var(--gold)]" style={{ left: `${minimumBudgetPosition}%`, width: `${maximumBudgetPosition - minimumBudgetPosition}%` }} />
+                <input className="buyer-budget-range-input" type="range" aria-label="Minimum budget in Indian rupees" aria-valuetext={budgetFormatter.format(Number(values.budgetMin))} min={MIN_BUDGET} max={Math.max(MIN_BUDGET, Number(values.budgetMax) - BUDGET_STEP)} step={BUDGET_STEP} value={values.budgetMin} onChange={(event) => update('budgetMin', event.target.value)} />
+                <input className="buyer-budget-range-input" type="range" aria-label="Maximum budget in Indian rupees" aria-valuetext={budgetFormatter.format(Number(values.budgetMax))} min={Math.min(MAX_BUDGET, Number(values.budgetMin) + BUDGET_STEP)} max={MAX_BUDGET} step={BUDGET_STEP} value={values.budgetMax} onChange={(event) => update('budgetMax', event.target.value)} />
+              </div>
+              <span className="flex justify-between text-[10px] text-[var(--muted)]"><span>₹1 lakh</span><span>₹100 crore</span></span>
             </div>
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label>
-              <span className={labelClass}>Purpose of purchase <span className="font-normal text-[var(--muted)]">(optional)</span></span>
-              <select className={controlClass} value={values.purchasePurpose} onChange={(event) => update('purchasePurpose', event.target.value)}>
-                <option value="">Select a purpose</option>
-                {buyerPurposeOptions.map((purpose) => <option key={purpose} value={purpose}>{purpose}</option>)}
-              </select>
-            </label>
-            <label>
-              <span className={labelClass}>Purchase timeline <span className="font-normal text-[var(--muted)]">(optional)</span></span>
-              <select className={controlClass} value={values.purchaseTimeline} onChange={(event) => update('purchaseTimeline', event.target.value)}>
-                <option value="">Select a timeline</option>
-                {buyerTimelineOptions.map((timeline) => <option key={timeline} value={timeline}>{timeline}</option>)}
-              </select>
-            </label>
           </div>
         </section>
 
@@ -287,17 +292,6 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
                 {buyerConditionOptions.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
             </label>
-            <label>
-              <span className={labelClass}>Preferred size or area <span className="font-normal text-[var(--muted)]">(optional)</span></span>
-              <input className={controlClass} type="number" inputMode="decimal" min="0.01" step="0.01" value={values.preferredArea} onChange={(event) => update('preferredArea', event.target.value)} placeholder="Enter an area" />
-            </label>
-            <label>
-              <span className={labelClass}>Area unit {values.preferredArea && <span aria-hidden="true">*</span>}</span>
-              <select className={controlClass} value={values.areaUnit} onChange={(event) => update('areaUnit', event.target.value)} required={Boolean(values.preferredArea)}>
-                <option value="">Select a unit</option>
-                {measurementUnits.map((unit) => <option key={unit} value={unit}>{buyerAreaUnitLabel(unit)}</option>)}
-              </select>
-            </label>
           </div>}
 
           {values.propertyType === 'COMMERCIAL' && <div className="grid gap-5 sm:grid-cols-2">
@@ -313,17 +307,6 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
               <input className={controlClass} value={values.otherIntendedUse} onChange={(event) => update('otherIntendedUse', event.target.value)} required maxLength={120} placeholder="Describe the intended use" />
             </label>}
             <label>
-              <span className={labelClass}>Required floor area *</span>
-              <input className={controlClass} type="number" inputMode="decimal" min="0.01" step="0.01" value={values.requiredFloorArea} onChange={(event) => update('requiredFloorArea', event.target.value)} required placeholder="Enter an area" />
-            </label>
-            <label>
-              <span className={labelClass}>Area unit *</span>
-              <select className={controlClass} value={values.areaUnit} onChange={(event) => update('areaUnit', event.target.value)} required>
-                <option value="">Select a unit</option>
-                {measurementUnits.map((unit) => <option key={unit} value={unit}>{buyerAreaUnitLabel(unit)}</option>)}
-              </select>
-            </label>
-            <label>
               <span className={labelClass}>Ready-to-use preference *</span>
               <select className={controlClass} value={values.readiness} onChange={(event) => update('readiness', event.target.value)} required>
                 <option value="">Select a preference</option>
@@ -333,17 +316,6 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
           </div>}
 
           {values.propertyType === 'LAND_PLOT' && <div className="grid gap-5 sm:grid-cols-2">
-            <label>
-              <span className={labelClass}>Preferred land area *</span>
-              <input className={controlClass} type="number" inputMode="decimal" min="0.01" step="0.01" value={values.preferredArea} onChange={(event) => update('preferredArea', event.target.value)} required placeholder="Enter an area" />
-            </label>
-            <label>
-              <span className={labelClass}>Area unit *</span>
-              <select className={controlClass} value={values.areaUnit} onChange={(event) => update('areaUnit', event.target.value)} required>
-                <option value="">Select a unit</option>
-                {measurementUnits.map((unit) => <option key={unit} value={unit}>{buyerAreaUnitLabel(unit)}</option>)}
-              </select>
-            </label>
             <label>
               <span className={labelClass}>Intended use *</span>
               <select className={controlClass} value={values.intendedUse} onChange={(event) => update('intendedUse', event.target.value)} required>
@@ -357,7 +329,20 @@ export default function BuyerPropertyForm({ property }: { property?: SelectedPro
             </label>}
           </div>}
 
-          {values.propertyType === 'OTHER' && <p className="rounded-xl border border-[var(--gold)]/35 bg-[var(--gold)]/5 px-4 py-3 text-sm leading-6 text-[var(--muted)]">You can describe any specific needs for this property in the additional requirements section below.</p>}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label>
+              <span className={labelClass}>{areaLabel} {areaRequired ? <span aria-hidden="true">*</span> : <span className="font-normal text-[var(--muted)]">(optional)</span>}</span>
+              <input className={controlClass} type="number" inputMode="decimal" min="0.01" step="0.01" value={values.preferredArea} onChange={(event) => update('preferredArea', event.target.value)} required={areaRequired} placeholder="Enter an area" />
+            </label>
+            <label>
+              <span className={labelClass}>Area unit{areaRequired ? ' *' : ''}</span>
+              <select className={controlClass} value={values.areaUnit} onChange={(event) => update('areaUnit', event.target.value)} required={areaRequired || Boolean(values.preferredArea)}>
+                {buyerAreaUnits.map((unit) => <option key={unit} value={unit}>{buyerAreaUnitLabel(unit)}</option>)}
+              </select>
+            </label>
+          </div>
+
+          {values.propertyType === 'OTHER' && <p className="rounded-xl border border-[var(--gold)]/35 bg-[var(--gold)]/5 px-4 py-3 text-sm leading-6 text-[var(--muted)]">Use the additional requirements field to share any further details about this property.</p>}
         </section>
 
         <section aria-labelledby="buyer-contact-title" className="space-y-5 border-t border-[var(--viridian-950)]/10 pt-7">
