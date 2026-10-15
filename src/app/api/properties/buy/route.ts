@@ -20,6 +20,15 @@ import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/publi
 import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
 import { readJsonBody } from '@/lib/read-json-body';
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
   z.string().trim().max(maxLength).nullable().optional().transform((value) => value ?? null),
