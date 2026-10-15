@@ -152,8 +152,16 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    const databaseError = error as Error & {
+      code?: unknown;
+      column?: unknown;
+      table?: unknown;
+    };
     console.error('Failed to list public properties.', {
       errorName: error instanceof Error ? error.name : 'UnknownError',
+      errorCode: typeof databaseError.code === 'string' ? databaseError.code : undefined,
+      errorTable: typeof databaseError.table === 'string' ? databaseError.table : undefined,
+      errorColumn: typeof databaseError.column === 'string' ? databaseError.column : undefined,
     });
 
     return NextResponse.json(
