@@ -24,6 +24,27 @@ export type AdminEnquiryDetail = Omit<Enquiry, 'createdAt' | 'updatedAt'> & {
   property: { title: string; slug: string; location: string | null } | null;
 };
 
+interface BuyerEnquiryQueryRow {
+  id: UUID;
+  name: string;
+  email: string;
+  phone: string;
+  status: EnquiryStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  propertyType: string;
+  propertySubtype: string;
+  preferredCity: string;
+  preferredLocality: string | null;
+  budgetMin: string;
+  budgetMax: string;
+  purchasePurpose: string | null;
+  propertyRequirements: Record<string, string>;
+  purchaseTimeline: string | null;
+  preferredContactMethod: string;
+  additionalRequirements: string | null;
+}
+
 export async function countNewEnquiries(): Promise<number> {
   const result = await pool.query<{ total: string }>(
     `SELECT (SELECT COUNT(*) FROM "Enquiry" WHERE "status" = 'NEW') +
@@ -178,7 +199,7 @@ export async function listAdminEnquiries(filters: {
 export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | null> {
   const [source, rawId] = id.startsWith('b:') || id.startsWith('e:') ? [id.slice(0, 1), id.slice(2)] : ['e', id];
   if (source === 'b') {
-    const buyerResult = await pool.query<any>(
+    const buyerResult = await pool.query<BuyerEnquiryQueryRow>(
       `SELECT "id", "name", "email", "phone", "status", "createdAt", "createdAt" AS "updatedAt",
               "propertyType", "propertySubtype", "preferredCity", "preferredLocality", "budgetMin", "budgetMax",
               "purchasePurpose", "propertyRequirements", "purchaseTimeline", "preferredContactMethod", "additionalRequirements"
@@ -189,7 +210,7 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     const details = Object.entries(b.propertyRequirements as Record<string, string>).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${value}`).join('\n');
     return { id: `b:${b.id}`, name: b.name, email: b.email, phone: b.phone, interestedServiceId: null, interestedServiceLabel: 'Buyer Requirements', propertyId: null,
       enquiryType: 'BUYER_REQUIREMENTS', message: `Property type: ${b.propertyType} / ${b.propertySubtype}\nPreferred location: ${b.preferredCity}\nPreferred locality: ${b.preferredLocality ?? 'Not provided'}\nBudget: INR ${b.budgetMin} to INR ${b.budgetMax}\nPurpose: ${b.purchasePurpose ?? 'Not provided'}\nTimeline: ${b.purchaseTimeline ?? 'Not provided'}\n${details}\nAdditional requirements: ${b.additionalRequirements ?? 'Not provided'}\nPreferred contact: ${b.preferredContactMethod}`,
-      status: b.status, createdAt: b.createdAt, updatedAt: b.updatedAt, interestedService: null, property: null };
+      status: b.status, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString(), interestedService: null, property: null };
   }
   const result = await pool.query<AdminEnquiryDetail & {
     serviceTitle: string | null;
