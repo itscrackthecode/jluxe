@@ -85,8 +85,6 @@ export default function AboutPage() {
             JLUXE is a business ecosystem connecting people, properties, businesses, talent, opportunities and growth.
           </p>
         </div>
-        <div aria-hidden="true" className="pointer-events-none absolute -right-28 top-10 hidden h-[470px] w-[470px] rounded-full border border-white/[0.08] lg:block" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-6 top-32 hidden h-[330px] w-[330px] rounded-full border border-[var(--gold)]/20 lg:block" />
       </section>
 
       <section className="py-16 sm:py-20 lg:py-24" data-reveal>

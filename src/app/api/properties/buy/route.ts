@@ -7,6 +7,7 @@ import {
   buyerConditionOptions,
   buyerContactMethods,
   buyerLandUseOptions,
+  buyerAreaUnitLabel,
   buyerPropertyTypeLabels,
   buyerPurposeOptions,
   buyerReadinessOptions,
@@ -100,7 +101,18 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
   z.object({
     ...commonFields,
     propertyType: z.literal('OTHER'),
-    details: z.object({ additionalDetails: optionalText(1000) }).strict(),
+    details: z.object({
+      additionalDetails: optionalText(1000),
+      preferredArea: nullableAmount,
+      areaUnit: z.preprocess(
+        (value) => value === '' ? null : value,
+        z.enum(buyerAreaUnits).nullable().optional().transform((value) => value ?? null),
+      ),
+    }).strict().superRefine((details, context) => {
+      if (details.preferredArea !== null && !details.areaUnit) {
+        context.addIssue({ code: 'custom', path: ['areaUnit'], message: 'Choose a unit for the preferred area.' });
+      }
+    }),
   }),
 ]).superRefine((input, context) => {
   const validSubtypes = input.propertyType === 'RESIDENTIAL'
@@ -108,9 +120,9 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
     : input.propertyType === 'COMMERCIAL'
       ? ['Office', 'Retail space', 'Commercial building', 'Other']
       : input.propertyType === 'LAND_PLOT'
-        ? ['Residential plot', 'Commercial plot', 'Agricultural land', 'Other']
-        : ['Other'];
-  if (!validSubtypes.includes(input.propertySubtype)) {
+      ? ['Residential plot', 'Commercial plot', 'Agricultural land', 'Other']
+      : [];
+  if (input.propertyType !== 'OTHER' && !validSubtypes.includes(input.propertySubtype)) {
     context.addIssue({ code: 'custom', path: ['propertySubtype'], message: 'Choose a valid property subtype.' });
   }
   if (Number(input.budgetMax) < Number(input.budgetMin)) {
@@ -130,7 +142,7 @@ function escapeHtml(value: string) {
 }
 
 function titleCase(value: string) {
-  return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replaceAll('_', ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export async function POST(request: Request) {
@@ -183,7 +195,7 @@ export async function POST(request: Request) {
 
     const { enquiry } = created;
 
-    const detailLines = Object.entries(details).map(([key, value]) => `${titleCase(key)}: ${value}`);
+    const detailLines = Object.entries(details).map(([key, value]) => `${titleCase(key)}: ${key === 'areaUnit' ? buyerAreaUnitLabel(value) : value}`);
     const plainText = [
       'New JLUXE Buyer Property Enquiry',
       `Reference: ${enquiry.id}`,
@@ -192,14 +204,12 @@ export async function POST(request: Request) {
       'Enquiry type: General buyer requirements',
       '',
       'Property preferences',
-      `Property type: ${buyerPropertyTypeLabels[propertyType]}`,
-      `Property subtype: ${input.propertySubtype}`,
+      `Property category: ${buyerPropertyTypeLabels[propertyType]}`,
+      `Property type: ${input.propertySubtype}`,
       `Preferred city / location: ${input.preferredCity}`,
       `Preferred locality: ${input.preferredLocality ?? 'Not provided'}`,
       `Budget: INR ${input.budgetMin} to INR ${input.budgetMax}`,
-      `Purchase purpose: ${input.purchasePurpose ?? 'Not provided'}`,
       ...detailLines,
-      `Purchase timeline: ${input.purchaseTimeline ?? 'Not provided'}`,
       '',
       'Customer contact',
       `Name: ${input.name}`,
@@ -210,7 +220,7 @@ export async function POST(request: Request) {
       'Additional requirements:',
       input.additionalRequirements ?? 'Not provided',
     ].join('\n');
-    const html = `<h1>New JLUXE General Buyer Requirements Enquiry</h1><p><strong>Reference:</strong> ${escapeHtml(enquiry.id)}<br><strong>Submitted:</strong> ${escapeHtml(new Date(enquiry.createdAt).toISOString())}</p><h2>Property preferences</h2><dl><dt>Property type</dt><dd>${escapeHtml(buyerPropertyTypeLabels[propertyType])}</dd><dt>Property subtype</dt><dd>${escapeHtml(input.propertySubtype)}</dd><dt>Preferred city / location</dt><dd>${escapeHtml(input.preferredCity)}</dd><dt>Preferred locality</dt><dd>${escapeHtml(input.preferredLocality ?? 'Not provided')}</dd><dt>Budget</dt><dd>INR ${escapeHtml(input.budgetMin)} to INR ${escapeHtml(input.budgetMax)}</dd><dt>Purchase purpose</dt><dd>${escapeHtml(input.purchasePurpose ?? 'Not provided')}</dd>${detailLines.map((line) => { const [label, ...value] = line.split(': '); return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value.join(': '))}</dd>`; }).join('')}<dt>Purchase timeline</dt><dd>${escapeHtml(input.purchaseTimeline ?? 'Not provided')}</dd></dl><h2>Customer contact</h2><dl><dt>Name</dt><dd>${escapeHtml(input.name)}</dd><dt>Email</dt><dd>${escapeHtml(input.email)}</dd><dt>Phone / WhatsApp</dt><dd>${escapeHtml(input.phone)}</dd><dt>Preferred contact method</dt><dd>${escapeHtml(input.preferredContactMethod)}</dd></dl><h2>Additional requirements</h2><p style="white-space:pre-wrap">${escapeHtml(input.additionalRequirements ?? 'Not provided')}</p>`;
+    const html = `<h1>New JLUXE General Buyer Requirements Enquiry</h1><p><strong>Reference:</strong> ${escapeHtml(enquiry.id)}<br><strong>Submitted:</strong> ${escapeHtml(new Date(enquiry.createdAt).toISOString())}</p><h2>Property preferences</h2><dl><dt>Property category</dt><dd>${escapeHtml(buyerPropertyTypeLabels[propertyType])}</dd><dt>Property type</dt><dd>${escapeHtml(input.propertySubtype)}</dd><dt>Preferred city / location</dt><dd>${escapeHtml(input.preferredCity)}</dd><dt>Preferred locality</dt><dd>${escapeHtml(input.preferredLocality ?? 'Not provided')}</dd><dt>Budget</dt><dd>INR ${escapeHtml(input.budgetMin)} to INR ${escapeHtml(input.budgetMax)}</dd>${detailLines.map((line) => { const [label, ...value] = line.split(': '); return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value.join(': '))}</dd>`; }).join('')}</dl><h2>Customer contact</h2><dl><dt>Name</dt><dd>${escapeHtml(input.name)}</dd><dt>Email</dt><dd>${escapeHtml(input.email)}</dd><dt>Phone / WhatsApp</dt><dd>${escapeHtml(input.phone)}</dd><dt>Preferred contact method</dt><dd>${escapeHtml(input.preferredContactMethod)}</dd></dl><h2>Additional requirements</h2><p style="white-space:pre-wrap">${escapeHtml(input.additionalRequirements ?? 'Not provided')}</p>`;
 
     try {
       await sendJluxeNotification({

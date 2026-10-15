@@ -38,14 +38,14 @@ export const buyerConditionOptions = ['Ready to move', 'Under construction', 'Ei
 export const buyerReadinessOptions = ['Ready to use', 'Under construction', 'Either'] as const;
 export const buyerCommercialUseOptions = ['Office', 'Retail', 'Business premises', 'Other'] as const;
 export const buyerLandUseOptions = ['Residential', 'Commercial', 'Investment', 'Other'] as const;
-export const buyerAreaUnits = ['SQFT', 'SQM', 'GROUND', 'ACRE', 'HECTARE'] as const;
+export const buyerAreaUnits = ['SQFT', 'CENT', 'SQM', 'GROUND', 'ACRE', 'HECTARE'] as const;
 export const buyerPurposeOptions = ['Personal use', 'Investment', 'Business'] as const;
 export const buyerTimelineOptions = ['Immediately', 'Within 3 months', 'Within 6 months', 'Just exploring'] as const;
 export const buyerContactMethods = ['Phone', 'WhatsApp', 'Email'] as const;
 
 export function buyerAreaUnitLabel(unit: string) {
   const labels: Record<string, string> = {
-    SQFT: 'sq. ft.', SQM: 'sq. m.', GROUND: 'grounds', ACRE: 'acres', HECTARE: 'hectares',
+    SQFT: 'sq. ft.', CENT: 'cent', SQM: 'sq. m.', GROUND: 'grounds', ACRE: 'acres', HECTARE: 'hectares',
   };
   return labels[unit] ?? unit;
 }

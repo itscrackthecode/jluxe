@@ -116,9 +116,10 @@ export async function listAdminEnquiries(filters: {
          UNION ALL
          SELECT 'b:' || b."id"::text, b."name", b."email", b."phone", 'Buyer Requirements', 'BUYER_REQUIREMENTS',
                 b."status", b."createdAt", NULL, NULL, NULL,
-                'Property type: ' || b."propertyType" || ' / ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
+                'Property category: ' || b."propertyType" || ' / Property type: ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
                 E'\\nPreferred locality: ' || COALESCE(b."preferredLocality", 'Not provided') || E'\\nBudget: INR ' || b."budgetMin"::text || ' to INR ' || b."budgetMax"::text ||
-                E'\\nPurpose: ' || COALESCE(b."purchasePurpose", 'Not provided') || E'\\nTimeline: ' || COALESCE(b."purchaseTimeline", 'Not provided') ||
+                CASE WHEN b."purchasePurpose" IS NOT NULL THEN E'\\nPurpose: ' || b."purchasePurpose" ELSE '' END ||
+                CASE WHEN b."purchaseTimeline" IS NOT NULL THEN E'\\nTimeline: ' || b."purchaseTimeline" ELSE '' END ||
                 E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided')
          FROM public."BuyerPropertyEnquiry" b
        ) SELECT COUNT(*) AS "total" FROM all_enquiries WHERE ${conditions}`,
@@ -138,9 +139,10 @@ export async function listAdminEnquiries(filters: {
          UNION ALL
          SELECT 'b:' || b."id"::text, b."name", b."email", b."phone", 'Buyer Requirements', 'BUYER_REQUIREMENTS',
                 b."status", b."createdAt", NULL, NULL, NULL,
-                'Property type: ' || b."propertyType" || ' / ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
+                'Property category: ' || b."propertyType" || ' / Property type: ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
                 E'\\nPreferred locality: ' || COALESCE(b."preferredLocality", 'Not provided') || E'\\nBudget: INR ' || b."budgetMin"::text || ' to INR ' || b."budgetMax"::text ||
-                E'\\nPurpose: ' || COALESCE(b."purchasePurpose", 'Not provided') || E'\\nTimeline: ' || COALESCE(b."purchaseTimeline", 'Not provided') ||
+                CASE WHEN b."purchasePurpose" IS NOT NULL THEN E'\\nPurpose: ' || b."purchasePurpose" ELSE '' END ||
+                CASE WHEN b."purchaseTimeline" IS NOT NULL THEN E'\\nTimeline: ' || b."purchaseTimeline" ELSE '' END ||
                 E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided')
          FROM public."BuyerPropertyEnquiry" b
        ) SELECT all_enquiries."id", all_enquiries."name", all_enquiries."email", all_enquiries."phone", all_enquiries."interestedServiceLabel",
@@ -165,6 +167,28 @@ export async function listAdminEnquiries(filters: {
   });
 }
 
+export async function deleteAdminEnquiries(ids: string[]): Promise<number> {
+  const enquiryIds = ids.filter((id) => id.startsWith('e:')).map((id) => id.slice(2));
+  const buyerIds = ids.filter((id) => id.startsWith('b:')).map((id) => id.slice(2));
+
+  return withTransaction(async (client) => {
+    const regularRows = enquiryIds.length
+      ? await client.query<{ id: UUID }>(`SELECT "id" FROM "Enquiry" WHERE "id" = ANY($1::uuid[]) FOR UPDATE`, [enquiryIds])
+      : { rows: [] as { id: UUID }[] };
+    const buyerRows = buyerIds.length
+      ? await client.query<{ id: UUID }>(`SELECT "id" FROM public."BuyerPropertyEnquiry" WHERE "id" = ANY($1::uuid[]) FOR UPDATE`, [buyerIds])
+      : { rows: [] as { id: UUID }[] };
+
+    if (regularRows.rows.length !== enquiryIds.length || buyerRows.rows.length !== buyerIds.length) {
+      throw new Error('ENQUIRY_SELECTION_CHANGED');
+    }
+
+    if (enquiryIds.length) await client.query(`DELETE FROM "Enquiry" WHERE "id" = ANY($1::uuid[])`, [enquiryIds]);
+    if (buyerIds.length) await client.query(`DELETE FROM public."BuyerPropertyEnquiry" WHERE "id" = ANY($1::uuid[])`, [buyerIds]);
+    return ids.length;
+  });
+}
+
 export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | null> {
   const [source, rawId] = id.startsWith('b:') || id.startsWith('e:') ? [id.slice(0, 1), id.slice(2)] : ['e', id];
   if (source === 'b') {
@@ -178,7 +202,7 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
     if (!b) return null;
     const details = Object.entries(b.propertyRequirements as Record<string, string>).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${value}`).join('\n');
     return { id: `b:${b.id}`, name: b.name, email: b.email, phone: b.phone, interestedServiceId: null, interestedServiceLabel: 'Buyer Requirements', propertyId: null,
-      enquiryType: 'BUYER_REQUIREMENTS', message: `Property type: ${b.propertyType} / ${b.propertySubtype}\nPreferred location: ${b.preferredCity}\nPreferred locality: ${b.preferredLocality ?? 'Not provided'}\nBudget: INR ${b.budgetMin} to INR ${b.budgetMax}\nPurpose: ${b.purchasePurpose ?? 'Not provided'}\nTimeline: ${b.purchaseTimeline ?? 'Not provided'}\n${details}\nAdditional requirements: ${b.additionalRequirements ?? 'Not provided'}\nPreferred contact: ${b.preferredContactMethod}`,
+      enquiryType: 'BUYER_REQUIREMENTS', message: [`Property category: ${b.propertyType}`, `Property type: ${b.propertySubtype}`, `Preferred location: ${b.preferredCity}`, `Preferred locality: ${b.preferredLocality ?? 'Not provided'}`, `Budget: INR ${b.budgetMin} to INR ${b.budgetMax}`, b.purchasePurpose ? `Purpose: ${b.purchasePurpose}` : null, b.purchaseTimeline ? `Timeline: ${b.purchaseTimeline}` : null, details, `Additional requirements: ${b.additionalRequirements ?? 'Not provided'}`, `Preferred contact: ${b.preferredContactMethod}`].filter((line): line is string => Boolean(line)).join('\n'),
       status: b.status, createdAt: b.createdAt, updatedAt: b.updatedAt, interestedService: null, property: null };
   }
   const result = await pool.query<AdminEnquiryDetail & {
@@ -284,7 +308,7 @@ export async function listEnquiriesForExport(filters: { search?: string; status?
     `SELECT TO_CHAR(b."createdAt" AT TIME ZONE current_setting('TimeZone'), 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
             b."name", b."email", b."phone", 'Buyer Requirements' AS "interestedServiceLabel", 'BUYER_REQUIREMENTS' AS "enquiryType",
             NULL::text AS "propertyTitle",
-            'Property type: ' || b."propertyType" || ' / ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
+            'Property category: ' || b."propertyType" || ' / Property type: ' || b."propertySubtype" || E'\\nPreferred location: ' || b."preferredCity" ||
             E'\\nBudget: INR ' || b."budgetMin"::text || ' to INR ' || b."budgetMax"::text || E'\\nRequirements: ' || COALESCE(b."additionalRequirements", 'Not provided') AS "message",
             b."status"
      FROM public."BuyerPropertyEnquiry" b
