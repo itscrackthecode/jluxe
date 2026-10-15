@@ -23,7 +23,6 @@ type PortfolioWorkData = {
   year: number | null;
   featured: boolean;
   publicationStatus: PublicationStatus;
-  propertyId?: string | null;
   service: ServiceOption;
 };
 
@@ -36,7 +35,6 @@ type FormValues = {
   year: string;
   featured: boolean;
   publicationStatus: PublicationStatus;
-  propertyId: string;
 };
 
 type AttachedMediaItem = {
@@ -59,7 +57,6 @@ function toFormValues(work?: PortfolioWorkData, firstServiceId = ''): FormValues
     year: work?.year === null || work?.year === undefined ? '' : String(work.year),
     featured: work?.featured ?? false,
     publicationStatus: work?.publicationStatus ?? 'DRAFT',
-    propertyId: work?.propertyId ?? '',
   };
 }
 
@@ -91,7 +88,6 @@ export default function PortfolioForm({
     : services;
 
   const [values, setValues] = useState<FormValues>(() => toFormValues(work, work?.serviceId ?? filteredServices[0]?.id ?? ''));
-  const [properties, setProperties] = useState<Array<{ id: string; title: string; slug: string }>>([]);
   const [slugEdited, setSlugEdited] = useState(Boolean(work));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -114,14 +110,6 @@ export default function PortfolioForm({
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaActionPending, setMediaActionPending] = useState(false);
   const [mediaNotice, setMediaNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch('/admin/api/properties?publicationStatus=PUBLISHED&limit=50', { signal: controller.signal })
-      .then(async (response) => { const result = await response.json(); if (response.ok && result.success) setProperties(result.data.map((item: { id: string; title: string; slug: string }) => ({ id: item.id, title: item.title, slug: item.slug }))); })
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -283,7 +271,6 @@ export default function PortfolioForm({
       year: values.year.trim() ? Number(values.year) : null,
       featured: values.featured,
       publicationStatus: values.publicationStatus,
-      propertyId: values.propertyId || null,
     };
 
     try {
@@ -445,7 +432,6 @@ export default function PortfolioForm({
               className={inputClass}
             />
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Related property (optional)</span><select value={values.propertyId} onChange={(event) => setValues((current) => ({ ...current, propertyId: event.target.value }))} className={inputClass}><option value="">Standalone portfolio work</option>{properties.map((property) => <option key={property.id} value={property.id}>{property.title} · {property.slug}</option>)}</select><span className="mt-1 block text-[10px] text-[#9caaa4]">Published properties are listed for linking; existing property records remain separate.</span></label>
           <label className="flex min-h-11 items-center gap-3 text-sm font-medium text-[#f5f1e8]">
             <input
               type="checkbox"

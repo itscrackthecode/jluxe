@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "db:sql:migrate": "node --conditions=react-server --import tsx scripts/migrate.ts migrate",

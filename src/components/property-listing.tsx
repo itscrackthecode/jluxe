@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MediaGallerySlider, { type GalleryImage } from '@/components/media-gallery-slider';
-import { isPropertyOptionEnquirable } from '@/lib/property-availability';
 
 const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-base text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)] md:text-sm';
 const pageSize = 12;
@@ -20,16 +19,10 @@ type ApiProperty = {
   propertyType: string;
   priceAmount: string | null;
   priceCurrency: string | null;
-  priceMinimum?: string | null;
-  priceMaximum?: string | null;
   priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
   plotSize: string | null;
   plotSizeUnit: string | null;
   status: string;
-  availability?: string;
-  subtype?: string | null;
-  bedrooms?: number | null;
-  configurations?: Array<{ name: string; bedrooms: number | null; availability: string; priceMode: string; priceAmount: string | null; priceMinimum: string | null; priceMaximum: string | null; priceCurrency: string | null; priceBasis: string }>;
   representationType: 'CHANNEL_PARTNER' | 'AUTHORIZED_REPRESENTATIVE' | 'OTHER';
   createdAt: string;
   coverImage?: { storageKey: string; deliveryUrl?: string | null; altText: string | null } | null;
@@ -43,53 +36,6 @@ type PropertyApiResponse = {
 };
 
 function formatPropertyPrice(property: ApiProperty) {
-  if (property.configurations?.length) {
-    const applicable = property.configurations.filter((configuration) => isPropertyOptionEnquirable(configuration.availability));
-    if (!applicable.length) return null;
-    if (applicable.every((configuration) => configuration.priceMode === 'ON_REQUEST')) return 'Price on request';
-    if (applicable.some((configuration) => configuration.priceMode === 'ON_REQUEST' || (!configuration.priceAmount && !configuration.priceMinimum && !configuration.priceMaximum))) return null;
-    const currencies = new Set(applicable.map((configuration) => configuration.priceCurrency ?? 'INR'));
-    const bases = new Set(applicable.map((configuration) => configuration.priceBasis));
-    if (currencies.size !== 1 || bases.size !== 1) return null;
-
-    const ranges = applicable.map((configuration) => {
-      if (configuration.priceMode === 'RANGE') {
-        if (!configuration.priceMinimum || !configuration.priceMaximum) return null;
-        const minimum = Number(configuration.priceMinimum);
-        const maximum = Number(configuration.priceMaximum);
-        return Number.isFinite(minimum) && Number.isFinite(maximum) ? { minimum, maximum, isRange: true } : null;
-      }
-      const amount = Number(configuration.priceAmount);
-      return Number.isFinite(amount) ? { minimum: amount, maximum: amount, isRange: false } : null;
-    });
-    if (ranges.some((range) => range === null)) return null;
-    const priced = ranges.filter((range): range is NonNullable<typeof range> => range !== null);
-    const minimum = Math.min(...priced.map((range) => range.minimum));
-    const maximum = Math.max(...priced.map((range) => range.maximum));
-    const currency = currencies.values().next().value ?? 'INR';
-    let formattedMinimum: string;
-    let formattedMaximum: string;
-    try {
-      const formatter = new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 });
-      formattedMinimum = formatter.format(minimum);
-      formattedMaximum = formatter.format(maximum);
-    } catch {
-      formattedMinimum = `${new Intl.NumberFormat().format(minimum)} ${currency}`;
-      formattedMaximum = `${new Intl.NumberFormat().format(maximum)} ${currency}`;
-    }
-    const isRange = priced.some((range) => range.isRange);
-    const price = isRange && minimum !== maximum ? `${formattedMinimum} – ${formattedMaximum}` : minimum !== maximum ? `From ${formattedMinimum}` : formattedMinimum;
-    const basis = bases.values().next().value;
-    return basis && basis !== 'TOTAL' ? `${price} / ${basis.toLowerCase().replaceAll('_', ' ')}` : price;
-  }
-  if (property.priceMinimum || property.priceMaximum) {
-    const money = (value: string | null | undefined) => value ? new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency ?? 'INR', maximumFractionDigits: 2 }).format(Number(value)) : null;
-    const minimum = money(property.priceMinimum);
-    const maximum = money(property.priceMaximum);
-    if (minimum && maximum) return `${minimum} – ${maximum}`;
-    if (minimum) return `From ${minimum}`;
-    if (maximum) return `Up to ${maximum}`;
-  }
   if (!property.priceAmount) return property.priceMode === 'ON_REQUEST' ? 'On request' : null;
 
   const amount = Number(property.priceAmount);
@@ -131,13 +77,6 @@ function formatPlotSize(property: ApiProperty) {
 
 function PropertyCard({ property }: { property: ApiProperty }) {
   const price = formatPropertyPrice(property);
-  const configurationSummary = (() => {
-    const configurations = property.configurations ?? [];
-    const bedrooms = [...new Set(configurations.map((item) => item.bedrooms).filter((value): value is number => value !== null))].sort((a, b) => a - b);
-    if (bedrooms.length) return `${bedrooms.slice(0, -1).join(', ')}${bedrooms.length > 1 ? ' & ' : ''}${bedrooms.at(-1)} BHK`;
-    if (configurations.length) return configurations.length === 1 ? configurations[0].name : `${configurations.length} configurations`;
-    return null;
-  })();
   const plotSize = formatPlotSize(property);
   const images: GalleryImage[] = [
     ...(property.coverImage ? [{ ...property.coverImage, id: property.coverImage.storageKey }] : []),
@@ -166,17 +105,15 @@ function PropertyCard({ property }: { property: ApiProperty }) {
           {price && <p className="max-w-[48%] shrink-0 text-right text-sm font-semibold leading-5 text-[var(--viridian-950)]">{price}</p>}
         </div>
         {property.location && <p className="mt-1.5 truncate text-sm text-[var(--muted)]">{property.location}</p>}
-        {configurationSummary && <p className="mt-2 text-sm font-medium text-[var(--viridian-800)]">{configurationSummary}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--viridian-950)]/10 pt-3 text-xs text-[var(--muted)]">
-          <span>{formatPropertyType(property.propertyType)}{property.subtype ? ` · ${property.subtype}` : ''}</span>
+          <span>{formatPropertyType(property.propertyType)}</span>
           <span aria-hidden="true" className="text-[var(--viridian-950)]/30">•</span>
-          <span className="text-[var(--viridian-800)]">{formatPropertyType(property.availability ?? property.status)}</span>
+          <span className="text-[var(--viridian-800)]">{formatPropertyType(property.status)}</span>
           {plotSize && <><span aria-hidden="true" className="text-[var(--viridian-950)]/30">•</span><span>{plotSize}</span></>}
         </div>
         <Link href={`/properties/${property.slug}`} className="touch-press mt-3 inline-flex min-h-9 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
           View Property <ArrowRight className="h-4 w-4" />
         </Link>
-        <Link href={`/properties/${property.slug}#property-enquiry`} className="touch-press ml-5 mt-3 inline-flex min-h-9 items-center gap-2 text-sm font-semibold text-[var(--viridian-800)] transition-colors hover:text-[var(--gold)]">Enquire <ArrowRight className="h-4 w-4" /></Link>
       </div>
     </article>
   );
@@ -186,8 +123,6 @@ export default function PropertyListing() {
   const [location, setLocation] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [status, setStatus] = useState('');
-  const [availability, setAvailability] = useState('');
-  const [bedrooms, setBedrooms] = useState('');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [sort, setSort] = useState<'latest' | 'price_asc' | 'price_desc'>('latest');
@@ -205,8 +140,6 @@ export default function PropertyListing() {
     if (location.trim()) params.set('location', location.trim());
     if (propertyType) params.set('propertyType', propertyType);
     if (status) params.set('status', status);
-    if (availability) params.set('availability', availability);
-    if (bedrooms) params.set('bedrooms', bedrooms);
     if (/^\d+(\.\d+)?$/.test(priceMin.trim())) params.set('priceMin', priceMin.trim());
     if (/^\d+(\.\d+)?$/.test(priceMax.trim())) params.set('priceMax', priceMax.trim());
 
@@ -241,21 +174,19 @@ export default function PropertyListing() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [availability, bedrooms, location, page, priceMax, priceMin, propertyType, requestVersion, sort, status]);
+  }, [location, page, priceMax, priceMin, propertyType, requestVersion, sort, status]);
 
   const resetFilters = () => {
     setLocation('');
     setPropertyType('');
     setStatus('');
-    setAvailability('');
-    setBedrooms('');
     setPriceMin('');
     setPriceMax('');
     setSort('latest');
     setPage(1);
   };
 
-  const hasActiveFilters = Boolean(location.trim() || propertyType || status || availability || bedrooms || priceMin.trim() || priceMax.trim());
+  const hasActiveFilters = Boolean(location.trim() || propertyType || status || priceMin.trim() || priceMax.trim());
 
   return (
     <section className="bg-[var(--cream)] py-12 sm:py-16" data-reveal>
@@ -277,8 +208,6 @@ export default function PropertyListing() {
             <span className="mb-1.5 block">Location</span>
             <input value={location} onChange={(event) => { setLocation(event.target.value); setPage(1); }} className={fieldClassName} placeholder="Any location" />
           </label>
-          <label className="min-w-0 text-xs font-medium text-[var(--muted)]"><span className="mb-1.5 block">Availability</span><select value={availability} onChange={(event) => { setAvailability(event.target.value); setPage(1); }} className={fieldClassName}><option value="">Any availability</option>{['AVAILABLE','LIMITED','COMING_SOON','RESERVED','SOLD_OUT','UNAVAILABLE'].map((value)=><option key={value} value={value}>{formatPropertyType(value)}</option>)}</select></label>
-          <label className="min-w-0 text-xs font-medium text-[var(--muted)]"><span className="mb-1.5 block">Bedrooms / BHK</span><select value={bedrooms} onChange={(event) => { setBedrooms(event.target.value); setPage(1); }} className={fieldClassName}><option value="">Any</option>{[1,2,3,4,5,6].map((value)=><option key={value} value={value}>{value}+ BHK</option>)}</select></label>
           <label className="min-w-0 text-xs font-medium text-[var(--muted)]">
             <span className="mb-1.5 block">Property Type</span>
             <select value={propertyType} onChange={(event) => { setPropertyType(event.target.value); setPage(1); }} className={fieldClassName}>

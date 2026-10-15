@@ -16,8 +16,8 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
   }
 
   return {
-    title: property.seoTitle ?? property.title,
-    description: property.seoDescription ?? property.description ?? 'Property opportunities represented by JLUXE and its partners.',
+    title: property.title,
+    description: property.description ?? 'Property opportunities represented by JLUXE and its partners.',
     alternates: { canonical: `/properties/${property.slug}` },
   };
 }

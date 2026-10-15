@@ -7,26 +7,13 @@ import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnst
 type PropertySummary = {
   id: string; slug: string; title: string; location: string | null; propertyType: string;
   priceAmount: string | null; priceCurrency: string | null; priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
-  priceMinimum: string | null; priceMaximum: string | null; priceBasis: string;
   images: Array<{ id: string; deliveryUrl?: string | null; altText: string | null }>;
 };
-type ConfigurationSummary = { id: string; name: string; priceMode: string; priceAmount: string | null; priceMinimum: string | null; priceMaximum: string | null; priceCurrency: string | null; priceBasis: string; availability: string };
-type InventorySummary = { id: string; reference: string; priceAmount: string | null; priceCurrency: string | null; availability: string };
 
 const controlClass = 'min-h-12 w-full min-w-0 rounded-xl border border-[var(--viridian-950)]/15 bg-white px-4 py-3 text-[16px] text-[var(--viridian-950)] outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[var(--muted)]/80 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_rgba(197,164,109,0.18)] md:text-[15px]';
 const labelClass = 'mb-2 block text-sm font-medium text-[var(--viridian-950)]';
 
 function formatPrice(property: PropertySummary) {
-  if (property.priceMinimum || property.priceMaximum) {
-    const money = (value: string | null) => {
-      if (!value) return '—';
-      const amount = Number(value);
-      if (!Number.isFinite(amount)) return '—';
-      try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency ?? 'INR', maximumFractionDigits: 2 }).format(amount); }
-      catch { return `${new Intl.NumberFormat().format(amount)} ${property.priceCurrency ?? 'INR'}`; }
-    };
-    return `${money(property.priceMinimum)} – ${money(property.priceMaximum)}${property.priceBasis !== 'TOTAL' ? ` / ${property.priceBasis.toLowerCase().replaceAll('_', ' ')}` : ''}`;
-  }
   if (!property.priceAmount) return property.priceMode === 'ON_REQUEST' ? 'Price on request' : null;
   const amount = Number(property.priceAmount);
   if (!Number.isFinite(amount)) return null;
@@ -38,12 +25,12 @@ function formatPrice(property: PropertySummary) {
   return property.priceMode === 'STARTING_FROM' ? `From ${formatted}` : formatted;
 }
 
-export default function PropertyEnquiryForm({ property, configuration, inventory }: { property: PropertySummary; configuration?: ConfigurationSummary | null; inventory?: InventorySummary | null }) {
+export default function PropertyEnquiryForm({ property }: { property: PropertySummary }) {
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
   const [values, setValues] = useState({ name: '', phone: '', email: '', message: '' });
-  const price = configuration ? configuration.priceMode === 'ON_REQUEST' ? 'Price on request' : configuration.priceMode === 'RANGE' ? `${configuration.priceCurrency ?? 'INR'} ${configuration.priceMinimum ?? '—'} – ${configuration.priceMaximum ?? '—'}` : configuration.priceAmount ? `${configuration.priceCurrency ?? 'INR'} ${configuration.priceAmount}${configuration.priceBasis !== 'TOTAL' ? ` / ${configuration.priceBasis.toLowerCase()}` : ''}` : null : inventory ? inventory.priceAmount ? `${inventory.priceCurrency ?? 'INR'} ${inventory.priceAmount}` : null : formatPrice(property);
+  const price = formatPrice(property);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +41,7 @@ export default function PropertyEnquiryForm({ property, configuration, inventory
       const turnstileToken = await turnstileRef.current?.getToken();
       if (!turnstileToken) throw new Error('Security check unavailable.');
       const response = await fetch(`/api/properties/${encodeURIComponent(property.slug)}/enquiries`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...values, ...(configuration ? { configurationId: configuration.id } : {}), ...(inventory ? { inventoryId: inventory.id } : {}), turnstileToken }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...values, turnstileToken }),
       });
       const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
       if (!response.ok || result?.success !== true) {
@@ -82,8 +69,6 @@ export default function PropertyEnquiryForm({ property, configuration, inventory
             <div className="flex justify-between gap-4"><dt className="text-white/60">Reference</dt><dd className="break-all text-right">{property.slug}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-white/60">Property type</dt><dd className="text-right">{property.propertyType.replaceAll('_', ' ')}</dd></div>
             {price && <div className="flex justify-between gap-4"><dt className="text-white/60">Listed price</dt><dd className="text-right">{price}</dd></div>}
-            {configuration && <div className="flex justify-between gap-4"><dt className="text-white/60">Configuration</dt><dd className="text-right">{configuration.name}</dd></div>}
-            {inventory && <div className="flex justify-between gap-4"><dt className="text-white/60">Unit / plot</dt><dd className="text-right">{inventory.reference}</dd></div>}
           </dl>
         </aside>
         <form onSubmit={submit} className="min-w-0 space-y-5 p-5 sm:p-7">
