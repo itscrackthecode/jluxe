@@ -127,12 +127,12 @@ function TrainingSection({ section, isFirst }: { section: TrainingSection; isFir
       data-reveal
     >
       <div className="container-xl grid items-center gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-10 xl:gap-16">
-        <div className="h-fit border border-white/15 bg-white/[0.04] p-6 sm:p-7">
+        <div className="h-fit border border-[var(--viridian-950)]/15 bg-[var(--cream)] p-6 text-[var(--viridian-950)] sm:p-7">
           <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">{section.number}</p>
-          <h2 id={headingId} className="mt-4 font-display text-3xl leading-tight sm:text-4xl">
+          <h2 id={headingId} className="mt-4 font-display text-3xl leading-tight decoration-[var(--gold)] decoration-1 underline underline-offset-8 sm:text-4xl">
             {section.title}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-white/70">{section.description}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--viridian-950)]">{section.description}</p>
         </div>
 
         <div className="grid content-start gap-3" data-reveal-stagger>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Download, RotateCcw } from 'lucide-react';
+import { Download, RotateCcw, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { enquiryStatuses, type EnquiryStatus } from '@/lib/db/types';
 
@@ -47,6 +47,48 @@ export default function EnquiryList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function leaveSelectionMode() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setConfirmDelete(false);
+  }
+
+  async function deleteSelected() {
+    setDeleting(true);
+    setActionMessage('');
+    try {
+      const response = await fetch('/admin/api/enquiries', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      const result = await response.json() as { success?: boolean; error?: string; deleted?: number };
+      if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to delete selected enquiries.');
+      setActionMessage(`${result.deleted ?? selectedIds.size} ${result.deleted === 1 ? 'enquiry' : 'enquiries'} deleted.`);
+      leaveSelectionMode();
+      setRetry((current) => current + 1);
+    } catch (error) {
+      setConfirmDelete(false);
+      setActionMessage(error instanceof Error ? error.message : 'Unable to delete selected enquiries.');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,6 +137,30 @@ export default function EnquiryList() {
           <h1 className="mt-2 font-display text-4xl text-white">Enquiries</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {selectionMode ? (
+            <>
+              <span className="text-sm text-[#9caaa4]" aria-live="polite">{selectedIds.size} selected (up to 50 per deletion)</span>
+              <button
+                type="button"
+                disabled={selectedIds.size === 0}
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-red-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Trash2 className="h-4 w-4" /> Confirm delete
+              </button>
+              <button type="button" onClick={leaveSelectionMode} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 px-4 text-sm font-medium text-[#f5f1e8] hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setSelectionMode(true); setActionMessage(''); }}
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-red-400/50 px-4 text-sm font-medium text-red-200 transition-colors hover:bg-red-950/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300"
+            >
+              <Trash2 className="h-4 w-4" /> Delete enquiries
+            </button>
+          )}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Native navigation is required to download the API response. */}
           <a
             href="/admin/api/enquiries/export"
@@ -111,6 +177,8 @@ export default function EnquiryList() {
           <p className="text-sm text-[#9caaa4]">{total} total</p>
         </div>
       </div>
+
+      {actionMessage && <p role="status" className="border-b border-white/15 py-3 text-sm text-[#f5f1e8]">{actionMessage}</p>}
 
       <div className="grid gap-3 border-b border-white/15 py-4 sm:grid-cols-[minmax(0,1fr)_220px]">
         <label className="block text-xs font-medium text-[#9caaa4]">
@@ -171,6 +239,7 @@ export default function EnquiryList() {
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-white/15 bg-[#051714] text-xs font-medium text-[#9caaa4]">
+                {selectionMode && <th scope="col" className="w-12 px-3 py-3"><span className="sr-only">Select enquiry</span></th>}
                 <th scope="col" className="px-3 py-3">Name</th>
                 <th scope="col" className="px-3 py-3">Service</th>
                 <th scope="col" className="px-3 py-3">Property</th>
@@ -182,6 +251,7 @@ export default function EnquiryList() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-white/10 align-top transition-colors hover:bg-[#0c2b25]">
+                  {selectionMode && <td className="px-3 py-4"><input type="checkbox" checked={selectedIds.has(item.id)} disabled={!selectedIds.has(item.id) && selectedIds.size >= 50} onChange={() => toggleSelected(item.id)} aria-label={`Select enquiry from ${item.name}`} className="h-4 w-4 accent-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-40" /></td>}
                   <td className="px-3 py-4 font-medium text-white">
                     <Link href={`/admin/enquiries/${item.id}`} className="hover:text-[var(--gold)]">
                       {item.name}
@@ -210,6 +280,29 @@ export default function EnquiryList() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setConfirmDelete(false); }}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="delete-enquiries-title" aria-describedby="delete-enquiries-description" className="w-full max-w-lg border border-white/15 bg-[#08201b] p-6 text-[#f5f1e8] shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.18em] text-red-300">PERMANENT ACTION</p>
+                <h2 id="delete-enquiries-title" className="mt-2 font-display text-2xl text-white">Delete selected enquiries?</h2>
+              </div>
+              <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)} aria-label="Close confirmation" className="rounded-full p-2 text-[#9caaa4] hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><X className="h-5 w-5" /></button>
+            </div>
+            <p id="delete-enquiries-description" className="mt-4 text-sm leading-6 text-[#c6d0cb]">
+              You are about to permanently delete {selectedIds.size} {selectedIds.size === 1 ? 'enquiry' : 'enquiries'} and its stored enquiry details. This cannot be undone. The related property listings, if any, will not be deleted.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button type="button" disabled={deleting} onClick={() => setConfirmDelete(false)} className="min-h-10 rounded-full border border-white/20 px-4 text-sm font-medium hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] disabled:opacity-50">Keep enquiries</button>
+              <button type="button" disabled={deleting} onClick={deleteSelected} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300 disabled:opacity-50">
+                <Trash2 className="h-4 w-4" /> {deleting ? 'Deleting…' : 'Confirm delete'}
+              </button>
+            </div>
+          </section>
         </div>
       )}
 

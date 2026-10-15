@@ -7,6 +7,7 @@ import {
   buyerConditionOptions,
   buyerContactMethods,
   buyerLandUseOptions,
+  buyerAreaUnitLabel,
   buyerPropertyTypeLabels,
   buyerPurposeOptions,
   buyerReadinessOptions,
@@ -19,6 +20,15 @@ import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/publi
 import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
 import { readJsonBody } from '@/lib/read-json-body';
 import { findPublishedPropertyBySlug } from '@/lib/db/queries/properties';
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -106,7 +116,18 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
   z.object({
     ...commonFields,
     propertyType: z.literal('OTHER'),
-    details: z.object({ additionalDetails: optionalText(1000) }).strict(),
+    details: z.object({
+      additionalDetails: optionalText(1000),
+      preferredArea: nullableAmount,
+      areaUnit: z.preprocess(
+        (value) => value === '' ? null : value,
+        z.enum(buyerAreaUnits).nullable().optional().transform((value) => value ?? null),
+      ),
+    }).strict().superRefine((details, context) => {
+      if (details.preferredArea !== null && !details.areaUnit) {
+        context.addIssue({ code: 'custom', path: ['areaUnit'], message: 'Choose a unit for the preferred area.' });
+      }
+    }),
   }),
 ]).superRefine((input, context) => {
   const validSubtypes = input.propertyType === 'RESIDENTIAL'
@@ -114,9 +135,9 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
     : input.propertyType === 'COMMERCIAL'
       ? ['Office', 'Retail space', 'Commercial building', 'Other']
       : input.propertyType === 'LAND_PLOT'
-        ? ['Residential plot', 'Commercial plot', 'Agricultural land', 'Other']
-        : ['Other'];
-  if (!validSubtypes.includes(input.propertySubtype)) {
+      ? ['Residential plot', 'Commercial plot', 'Agricultural land', 'Other']
+      : [];
+  if (input.propertyType !== 'OTHER' && !validSubtypes.includes(input.propertySubtype)) {
     context.addIssue({ code: 'custom', path: ['propertySubtype'], message: 'Choose a valid property subtype.' });
   }
   if (Number(input.budgetMax) < Number(input.budgetMin)) {
@@ -127,7 +148,7 @@ const buyerEnquirySchema = z.discriminatedUnion('propertyType', [
 export const runtime = 'nodejs';
 
 function titleCase(value: string) {
-  return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replaceAll('_', ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export async function POST(request: Request) {
@@ -184,6 +205,32 @@ export async function POST(request: Request) {
 
     const { enquiry } = created;
 
+    const detailLines = Object.entries(details).map(([key, value]) => `${titleCase(key)}: ${key === 'areaUnit' ? buyerAreaUnitLabel(value) : value}`);
+    const plainText = [
+      'New JLUXE Buyer Property Enquiry',
+      `Reference: ${enquiry.id}`,
+      `Submitted: ${new Date(enquiry.createdAt).toISOString()}`,
+      '',
+      'Enquiry type: General buyer requirements',
+      '',
+      'Property preferences',
+      `Property category: ${buyerPropertyTypeLabels[propertyType]}`,
+      `Property type: ${input.propertySubtype}`,
+      `Preferred city / location: ${input.preferredCity}`,
+      `Preferred locality: ${input.preferredLocality ?? 'Not provided'}`,
+      `Budget: INR ${input.budgetMin} to INR ${input.budgetMax}`,
+      ...detailLines,
+      '',
+      'Customer contact',
+      `Name: ${input.name}`,
+      `Email: ${input.email}`,
+      `Phone / WhatsApp: ${input.phone}`,
+      `Preferred contact method: ${input.preferredContactMethod}`,
+      '',
+      'Additional requirements:',
+      input.additionalRequirements ?? 'Not provided',
+    ].join('\n');
+    const html = `<h1>New JLUXE General Buyer Requirements Enquiry</h1><p><strong>Reference:</strong> ${escapeHtml(enquiry.id)}<br><strong>Submitted:</strong> ${escapeHtml(new Date(enquiry.createdAt).toISOString())}</p><h2>Property preferences</h2><dl><dt>Property category</dt><dd>${escapeHtml(buyerPropertyTypeLabels[propertyType])}</dd><dt>Property type</dt><dd>${escapeHtml(input.propertySubtype)}</dd><dt>Preferred city / location</dt><dd>${escapeHtml(input.preferredCity)}</dd><dt>Preferred locality</dt><dd>${escapeHtml(input.preferredLocality ?? 'Not provided')}</dd><dt>Budget</dt><dd>INR ${escapeHtml(input.budgetMin)} to INR ${escapeHtml(input.budgetMax)}</dd>${detailLines.map((line) => { const [label, ...value] = line.split(': '); return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value.join(': '))}</dd>`; }).join('')}</dl><h2>Customer contact</h2><dl><dt>Name</dt><dd>${escapeHtml(input.name)}</dd><dt>Email</dt><dd>${escapeHtml(input.email)}</dd><dt>Phone / WhatsApp</dt><dd>${escapeHtml(input.phone)}</dd><dt>Preferred contact method</dt><dd>${escapeHtml(input.preferredContactMethod)}</dd></dl><h2>Additional requirements</h2><p style="white-space:pre-wrap">${escapeHtml(input.additionalRequirements ?? 'Not provided')}</p>`;
     const rendered = renderJluxeEmail({
       title: 'Buyer requirements enquiry',
       summary: 'A customer has shared property requirements for the JLUXE team to review.',
