@@ -3,7 +3,6 @@ import { cloudinaryDeliveryUrl } from '@/lib/cloudinary';
 import type {
   PortfolioWork,
   PortfolioWorkMediaItem,
-  PortfolioWorkWithService,
   PublicationStatus,
   Service,
   ServiceCategory,
@@ -18,6 +17,7 @@ export type PublicPortfolioWork = Omit<Pick<
 >, 'createdAt'> & {
   createdAt: string;
   service: Pick<Service, 'id' | 'slug' | 'title'> & { categories: string[] };
+  linkedProperty: { slug: string; title: string } | null;
 };
 
 export type PortfolioServiceOption = Pick<Service, 'id' | 'slug' | 'title'> & {
@@ -34,12 +34,12 @@ export type AdminPortfolioWork = Omit<PortfolioWork, 'createdAt' | 'updatedAt'> 
 export type PortfolioWorkWrite = Pick<
   PortfolioWork,
   'title' | 'slug' | 'serviceId' | 'description' | 'location' | 'year' | 'featured' | 'publicationStatus'
->;
+> & { propertyId?: UUID | null };
 
 type PortfolioRow = Omit<Pick<
   PortfolioWork,
   'id' | 'slug' | 'title' | 'serviceId' | 'description' | 'location' | 'year' | 'featured' | 'createdAt'
->, 'createdAt'> & {
+> & { propertyId?: UUID | null; propertyTitle?: string | null; propertySlug?: string | null }, 'createdAt'> & {
   createdAt: string;
   serviceSlug: string;
   serviceTitle: string;
@@ -47,8 +47,8 @@ type PortfolioRow = Omit<Pick<
 };
 
 function withService(row: PortfolioRow): PublicPortfolioWork {
-  const { serviceId, serviceSlug, serviceTitle, serviceCategories, ...work } = row;
-  return { ...work, service: { id: serviceId, slug: serviceSlug, title: serviceTitle, categories: serviceCategories } };
+  const { serviceId, serviceSlug, serviceTitle, serviceCategories, propertyTitle, propertySlug, ...work } = row;
+  return { ...work, linkedProperty: propertySlug && propertyTitle ? { slug: propertySlug, title: propertyTitle } : null, service: { id: serviceId, slug: serviceSlug, title: serviceTitle, categories: serviceCategories } };
 }
 
 function escapeLikeValue(value: string) {
@@ -98,12 +98,12 @@ export async function listPublicPortfolio(filters: {
     pool.query<{ total: string }>(`SELECT COUNT(*) AS "total" ${from} WHERE ${conditions}`, values),
     pool.query<PortfolioRow>(
       `SELECT w."id", w."slug", w."title", w."serviceId", w."description",
-              w."location", w."year", w."featured",
+              w."location", w."year", w."featured", w."propertyId", p."title" AS "propertyTitle", p."slug" AS "propertySlug",
               TO_CHAR(w."createdAt" AT TIME ZONE current_setting('TimeZone'),
                 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
               s."slug" AS "serviceSlug", s."title" AS "serviceTitle",
               COALESCE((SELECT array_agg(sc."name" ORDER BY sc."sortOrder") FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId" WHERE scs."serviceId" = s."id"), ARRAY[]::text[]) AS "serviceCategories"
-       ${from} WHERE ${conditions}
+       ${from} LEFT JOIN "Property" p ON p."id" = w."propertyId" WHERE ${conditions}
        ORDER BY ${orderBy[filters.sort]} LIMIT $5 OFFSET $6`,
       [...values, filters.limit, filters.offset],
     ),
@@ -118,13 +118,14 @@ export async function listPublicPortfolio(filters: {
 export async function findPublishedPortfolioBySlug(slug: string): Promise<PublicPortfolioWork | null> {
   const result = await pool.query<PortfolioRow>(
     `SELECT w."id", w."slug", w."title", w."serviceId", w."description",
-            w."location", w."year", w."featured",
+            w."location", w."year", w."featured", w."propertyId", p."title" AS "propertyTitle", p."slug" AS "propertySlug",
             TO_CHAR(w."createdAt" AT TIME ZONE current_setting('TimeZone'),
               'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
             s."slug" AS "serviceSlug", s."title" AS "serviceTitle",
             COALESCE((SELECT array_agg(sc."name" ORDER BY sc."sortOrder") FROM "ServiceCategoryService" scs JOIN "ServiceCategory" sc ON sc."id" = scs."categoryId" WHERE scs."serviceId" = s."id"), ARRAY[]::text[]) AS "serviceCategories"
      FROM "PortfolioWork" w
      JOIN "Service" s ON s."id" = w."serviceId"
+     LEFT JOIN "Property" p ON p."id" = w."propertyId"
      WHERE w."slug" = $1 AND w."publicationStatus" = 'PUBLISHED'
      LIMIT 1`,
     [slug],
@@ -206,7 +207,7 @@ function withAdminService(row: AdminPortfolioRow): AdminPortfolioWork {
 
 const adminPortfolioColumns = `
   w."id", w."slug", w."title", w."serviceId", w."description", w."location",
-  w."year", w."featured", w."publicationStatus",
+  w."year", w."featured", w."publicationStatus", w."propertyId",
   TO_CHAR(w."createdAt" AT TIME ZONE current_setting('TimeZone'),
     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
   TO_CHAR(w."updatedAt" AT TIME ZONE current_setting('TimeZone'),
@@ -338,8 +339,8 @@ export async function createAdminPortfolioWork(input: PortfolioWorkWrite): Promi
     `WITH created AS (
        INSERT INTO "PortfolioWork" (
          "title", "slug", "serviceId", "description", "location", "year",
-         "featured", "publicationStatus", "updatedAt"
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+          "featured", "publicationStatus", "propertyId", "updatedAt"
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
        RETURNING *
      )
      SELECT ${adminPortfolioColumns}
@@ -347,7 +348,7 @@ export async function createAdminPortfolioWork(input: PortfolioWorkWrite): Promi
      JOIN "Service" s ON s."id" = w."serviceId"`,
     [
       input.title, input.slug, input.serviceId, input.description, input.location,
-      input.year, input.featured, input.publicationStatus,
+       input.year, input.featured, input.publicationStatus, input.propertyId ?? null,
     ],
   );
   return withAdminService(result.rows[0]);
@@ -368,6 +369,7 @@ export async function updateAdminPortfolioWork(
          "year" = $7,
          "featured" = $8,
          "publicationStatus" = $9,
+          "propertyId" = $10,
          "updatedAt" = NOW()
        WHERE "id" = $1
        RETURNING *
@@ -376,8 +378,8 @@ export async function updateAdminPortfolioWork(
      FROM updated w
      JOIN "Service" s ON s."id" = w."serviceId"`,
     [
-      id, input.title, input.slug, input.serviceId, input.description, input.location,
-      input.year, input.featured, input.publicationStatus,
+       id, input.title, input.slug, input.serviceId, input.description, input.location,
+       input.year, input.featured, input.publicationStatus, input.propertyId ?? null,
     ],
   );
   return result.rows[0] ? withAdminService(result.rows[0]) : null;

@@ -20,6 +20,7 @@ export const adminPortfolioSchema = z.object({
   year: optionalYear,
   featured: z.boolean(),
   publicationStatus: z.enum(publicationStatuses),
+  propertyId: z.string().uuid().nullable().optional(),
 }).strict();
 
 export function createPortfolioSlug(title: string) {

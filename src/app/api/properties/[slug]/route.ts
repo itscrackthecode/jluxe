@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { formatNumericValue } from '@/lib/db/numeric';
-import { findPublishedPropertyBySlug, listPropertyMedia } from '@/lib/db/queries/properties';
+import { findPublishedPropertyBySlug, listPropertyConfigurations, listPropertyDocuments, listPropertyInventory, listPropertyMedia, listPropertyPromotionalMedia } from '@/lib/db/queries/properties';
+import { applyConfigurationAvailability, getPropertyAvailability } from '@/lib/property-availability';
 
 export const runtime = 'nodejs';
 
@@ -27,12 +28,18 @@ export async function GET(
       );
     }
 
-    const media = await listPropertyMedia(property.id);
+    const [media, rawConfigurations, documents, inventory, promotionalMedia] = await Promise.all([listPropertyMedia(property.id), listPropertyConfigurations(property.id), listPropertyDocuments(property.id), listPropertyInventory(property.id), listPropertyPromotionalMedia(property.id)]);
+    const configurations = applyConfigurationAvailability(rawConfigurations, inventory);
 
     return NextResponse.json({
       success: true,
       data: {
         ...property,
+        availability: getPropertyAvailability(property.availability, configurations, inventory),
+        configurations,
+        documents,
+        inventory,
+        promotionalMedia,
         priceAmount: formatNumericValue(property.priceAmount),
         plotSize: formatNumericValue(property.plotSize),
         images: media.map(({ id, storageKey, deliveryUrl, mimeType, width, height, position, altText }) => ({

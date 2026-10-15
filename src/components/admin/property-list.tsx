@@ -17,7 +17,11 @@ type PropertyRow = {
   slug: string;
   title: string;
   location: string | null;
+  locality?: string | null;
+  city?: string | null;
   propertyType: PropertyType;
+  subtype?: string | null;
+  coverImage?: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
   priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
@@ -65,6 +69,11 @@ export default function PropertyList() {
   const [search, setSearch] = useState('');
   const [publicationStatus, setPublicationStatus] = useState('');
   const [status, setStatus] = useState('');
+  const [availability, setAvailability] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [sort, setSort] = useState('updated');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<PropertyRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -83,20 +92,8 @@ export default function PropertyList() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  async function removeProperty(property: PropertyRow) {
-    if (!window.confirm(`Delete “${property.title}”? Related enquiries will be preserved.`)) return;
-    const response = await fetch(`/admin/api/properties/${property.id}`, { method: 'DELETE' });
-    const result = (await response.json()) as { success?: boolean; error?: string };
-    if (!response.ok || !result.success) {
-      setSavedNotice(result.error ?? 'Unable to delete property.');
-      return;
-    }
-    setSavedNotice('Property deleted successfully.');
-    setRetry((value) => value + 1);
-  }
-
-  async function changePublication(property: PropertyRow, action: 'archive' | 'restore' | 'publish') {
-    const labels = { archive: 'archive', restore: 'restore and publish', publish: 'publish' };
+  async function changePublication(property: PropertyRow, action: 'archive' | 'restore' | 'publish' | 'unpublish') {
+    const labels = { archive: 'archive', restore: 'restore and publish', publish: 'publish', unpublish: 'unpublish' };
     if (action === 'archive' && !window.confirm(`Archive “${property.title}”? It will leave the public website, but its images and enquiries will remain.`)) return;
     const response = await fetch(`/admin/api/properties/${property.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
@@ -106,7 +103,7 @@ export default function PropertyList() {
       setSavedNotice(result.error ?? `Unable to ${labels[action]} this property.`);
       return;
     }
-    setSavedNotice(action === 'archive' ? 'Property archived successfully.' : action === 'restore' ? 'Property restored successfully.' : 'Property published successfully.');
+    setSavedNotice(action === 'archive' ? 'Property archived successfully.' : action === 'restore' ? 'Property restored successfully.' : action === 'unpublish' ? 'Property moved to drafts.' : 'Property published successfully.');
     setRetry((value) => value + 1);
   }
 
@@ -119,6 +116,11 @@ export default function PropertyList() {
       if (search.trim()) params.set('search', search.trim());
       if (publicationStatus) params.set('publicationStatus', publicationStatus);
       if (status) params.set('status', status);
+      if (availability) params.set('availability', availability);
+      if (propertyType) params.set('propertyType', propertyType);
+      if (/^\d+(?:\.\d{1,2})?$/.test(priceMin)) params.set('priceMin', priceMin);
+      if (/^\d+(?:\.\d{1,2})?$/.test(priceMax)) params.set('priceMax', priceMax);
+      params.set('sort', sort);
 
       try {
         const response = await fetch(`/admin/api/properties?${params.toString()}`, { signal: controller.signal });
@@ -143,7 +145,7 @@ export default function PropertyList() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [page, publicationStatus, retry, search, status]);
+  }, [availability, page, priceMax, priceMin, propertyType, publicationStatus, retry, search, sort, status]);
 
   return (
     <div className="text-[#f5f1e8]">
@@ -166,7 +168,7 @@ export default function PropertyList() {
         </div>
       )}
 
-      <div className="grid gap-3 border-b border-white/15 py-4 sm:grid-cols-[minmax(0,1fr)_200px_200px]">
+      <div className="grid gap-3 border-b border-white/15 py-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block text-xs font-medium text-[#9caaa4]">
           <span className="mb-1.5 block">Search</span>
           <input
@@ -181,6 +183,10 @@ export default function PropertyList() {
             className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] placeholder:text-white/30 outline-none focus:border-[var(--gold)]"
           />
         </label>
+        <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Availability</span><select value={availability} onChange={(event)=>{setAvailability(event.target.value);setPage(1);}} className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 text-sm text-white"><option value="">Any availability</option>{['AVAILABLE','LIMITED','COMING_SOON','RESERVED','SOLD_OUT','UNAVAILABLE'].map((value)=><option key={value} value={value}>{label(value)}</option>)}</select></label>
+        <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Property type</span><select value={propertyType} onChange={(event)=>{setPropertyType(event.target.value);setPage(1);}} className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 text-sm text-white"><option value="">All types</option>{propertyTypes.map((type)=><option key={type} value={type}>{label(type)}</option>)}</select></label>
+        <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Minimum price</span><input type="number" min="0" value={priceMin} onChange={(event)=>{setPriceMin(event.target.value);setPage(1);}} className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 text-sm text-white" /></label>
+        <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Maximum price</span><input type="number" min="0" value={priceMax} onChange={(event)=>{setPriceMax(event.target.value);setPage(1);}} className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 text-sm text-white" /></label>
         <label className="block text-xs font-medium text-[#9caaa4]">
           <span className="mb-1.5 block">Publication</span>
           <select
@@ -199,6 +205,7 @@ export default function PropertyList() {
             ))}
           </select>
         </label>
+        <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Sort</span><select value={sort} onChange={(event)=>setSort(event.target.value)} className="min-h-11 w-full border border-white/15 bg-[#09221c] px-3 text-sm text-white"><option value="updated">Recently updated</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option></select></label>
         <label className="block text-xs font-medium text-[#9caaa4]">
           <span className="mb-1.5 block">Property status</span>
           <select
@@ -246,7 +253,7 @@ export default function PropertyList() {
           <table className="w-full min-w-[850px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-white/15 bg-[#051714] text-xs font-medium text-[#9caaa4]">
-                <th scope="col" className="px-3 py-3">Title</th>
+                <th scope="col" className="px-3 py-3">Property</th>
                 <th scope="col" className="px-3 py-3">Location</th>
                 <th scope="col" className="px-3 py-3">Property type</th>
                 <th scope="col" className="px-3 py-3">Price</th>
@@ -260,11 +267,13 @@ export default function PropertyList() {
               {items.map((property) => (
                 <tr key={property.id} className="border-b border-white/10 align-top transition-colors hover:bg-[#0c2b25]">
                   <td className="px-3 py-4 font-medium text-white">
+                    {property.coverImage && <img src={property.coverImage} alt="" className="mb-2 h-16 w-24 object-cover" />}
                     <Link href={`/admin/properties/${property.id}`} className="hover:text-[var(--gold)]">
                       {property.title}
                     </Link>
+                    {property.subtype && <span className="mt-1 block text-xs font-normal text-[#9caaa4]">{property.subtype}</span>}
                   </td>
-                  <td className="px-3 py-4 text-[#9caaa4]">{property.location ?? '—'}</td>
+                  <td className="px-3 py-4 text-[#9caaa4]">{[property.location, property.locality, property.city].filter(Boolean).join(', ') || '—'}</td>
                   <td className="px-3 py-4 text-[#f5f1e8]">{label(property.propertyType)}</td>
                   <td className="whitespace-nowrap px-3 py-4 text-[#f5f1e8]">{priceLabel(property)}</td>
                   <td className="px-3 py-4 text-[#f5f1e8]">{label(property.status)}</td>
@@ -281,10 +290,12 @@ export default function PropertyList() {
                   <td className="px-3 py-4">
                     <div className="flex flex-wrap gap-x-3 gap-y-2">
                       <Link href={`/admin/properties/${property.id}`} className="text-xs font-medium text-[var(--gold)] hover:underline">Edit</Link>
+                      <Link href={`/admin/properties/new?duplicate=${property.id}`} className="text-xs font-medium text-[#9caaa4] hover:underline">Duplicate</Link>
+                      {property.publicationStatus === 'PUBLISHED' && <Link href={`/properties/${property.slug}`} target="_blank" className="text-xs font-medium text-[#9caaa4] hover:underline">Preview</Link>}
+                      {property.publicationStatus === 'PUBLISHED' && <button type="button" onClick={() => void changePublication(property, 'unpublish')} className="text-xs font-medium text-amber-300 hover:underline">Unpublish</button>}
                       {property.publicationStatus === 'PUBLISHED' && <button type="button" onClick={() => void changePublication(property, 'archive')} className="text-xs font-medium text-amber-300 hover:underline">Archive</button>}
                       {property.publicationStatus === 'ARCHIVED' && <button type="button" onClick={() => void changePublication(property, 'restore')} className="text-xs font-medium text-emerald-300 hover:underline">Restore / Publish</button>}
                       {property.publicationStatus === 'DRAFT' && <button type="button" onClick={() => void changePublication(property, 'publish')} className="text-xs font-medium text-emerald-300 hover:underline">Publish</button>}
-                      <button type="button" onClick={() => void removeProperty(property)} className="text-xs font-medium text-red-400 hover:text-red-300 hover:underline">Delete</button>
                     </div>
                   </td>
                 </tr>
