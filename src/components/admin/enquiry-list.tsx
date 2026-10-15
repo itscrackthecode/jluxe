@@ -16,8 +16,6 @@ type EnquiryRow = {
   status: EnquiryStatusValue;
   createdAt: string;
   property: { title: string; slug: string; location: string | null } | null;
-  configurationName: string | null;
-  inventoryReference: string | null;
 };
 type ListResponse = {
   success: true;
@@ -242,7 +240,6 @@ export default function EnquiryList() {
                 {selectionMode && <th scope="col" className="w-12 px-3 py-3"><span className="sr-only">Select enquiry</span></th>}
                 <th scope="col" className="px-3 py-3">Name</th>
                 <th scope="col" className="px-3 py-3">Service</th>
-                <th scope="col" className="px-3 py-3">Property</th>
                 <th scope="col" className="px-3 py-3">Contact</th>
                 <th scope="col" className="px-3 py-3">Status</th>
                 <th scope="col" className="px-3 py-3">Submitted</th>
@@ -258,7 +255,6 @@ export default function EnquiryList() {
                     </Link>
                   </td>
                   <td className="px-3 py-4 text-[#f5f1e8]">{item.interestedServiceLabel}<span className="mt-1 block text-[10px] text-[#9caaa4]">{item.enquiryType.replaceAll('_', ' ')}</span></td>
-                  <td className="px-3 py-4 text-[#f5f1e8]">{item.property ? <Link href={`/properties/${item.property.slug}`} target="_blank" className="text-[var(--gold)] hover:underline">{item.property.title}</Link> : <span className="text-[#9caaa4]">—</span>}{item.configurationName && <span className="mt-1 block text-xs text-[#9caaa4]">{item.configurationName}</span>}{item.inventoryReference && <span className="mt-1 block text-xs text-[#9caaa4]">Unit / plot {item.inventoryReference}</span>}</td>
                   <td className="px-3 py-4">
                     <a href={`mailto:${item.email}`} className="block text-white hover:text-[var(--gold)]">
                       {item.email}

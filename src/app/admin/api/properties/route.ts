@@ -1,21 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { propertyStatuses, propertyTypes, propertyAvailabilityValues, publicationStatuses } from '@/lib/db/types';
+import { propertyStatuses, publicationStatuses } from '@/lib/db/types';
 import { getAdminSession } from '@/lib/admin-session';
 import { hasSameOrigin } from '@/lib/admin-request';
 import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
-import { createProperty, listAdminProperties, listPropertiesMedia } from '@/lib/db/queries/properties';
+import { createProperty, listAdminProperties } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
   publicationStatus: z.enum(publicationStatuses).optional(),
   status: z.enum(propertyStatuses).optional(),
-  propertyType: z.enum(propertyTypes).optional(),
-  availability: z.enum(propertyAvailabilityValues).optional(),
-  priceMin: z.string().regex(/^\d+(?:\.\d{1,2})?$/).optional(),
-  priceMax: z.string().regex(/^\d+(?:\.\d{1,2})?$/).optional(),
-  sort: z.enum(['updated', 'price_asc', 'price_desc']).default('updated'),
   page: z.string().regex(/^[1-9]\d*$/).default('1'),
   limit: z.string().regex(/^[1-9]\d*$/).default('20'),
 });
@@ -31,11 +26,6 @@ export async function GET(request: Request) {
     search: searchParams.get('search') ?? undefined,
     publicationStatus: searchParams.get('publicationStatus') ?? undefined,
     status: searchParams.get('status') ?? undefined,
-    propertyType: searchParams.get('propertyType') ?? undefined,
-    availability: searchParams.get('availability') ?? undefined,
-    priceMin: searchParams.get('priceMin') ?? undefined,
-    priceMax: searchParams.get('priceMax') ?? undefined,
-    sort: searchParams.get('sort') ?? undefined,
     page: searchParams.get('page') ?? undefined,
     limit: searchParams.get('limit') ?? undefined,
   });
@@ -53,20 +43,13 @@ export async function GET(request: Request) {
       search: parsed.data.search,
       publicationStatus: parsed.data.publicationStatus,
       status: parsed.data.status,
-      propertyType: parsed.data.propertyType,
-      availability: parsed.data.availability,
-      priceMin: parsed.data.priceMin === undefined ? undefined : Number(parsed.data.priceMin),
-      priceMax: parsed.data.priceMax === undefined ? undefined : Number(parsed.data.priceMax),
-      sort: parsed.data.sort,
       limit,
       offset: skip,
     });
 
-    const media = await listPropertiesMedia(properties.map((property) => property.id));
-    const covers = new Map(media.filter((item) => item.position === 0).map((item) => [item.propertyId, item.deliveryUrl]));
     return NextResponse.json({
       success: true,
-      data: properties.map((property) => ({ ...serializeProperty(property), coverImage: covers.get(property.id) ?? null })),
+      data: properties.map(serializeProperty),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {

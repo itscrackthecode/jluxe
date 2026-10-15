@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { isConfiguredContact, siteConfig } from '@/lib/data';
 import PropertyImageGallery from '@/components/property-image-gallery';
 import PropertyEnquiryForm from '@/components/property-enquiry-form';
-import { isPropertyOptionEnquirable } from '@/lib/property-availability';
 
 type PropertyImage = {
   id: string;
@@ -32,33 +31,9 @@ type ApiProperty = {
   plotSize: string | null;
   plotSizeUnit: string | null;
   status: string;
-  availability: string;
-  subtype: string | null;
-  projectName: string | null;
-  address: string | null;
-  locality: string | null;
-  city: string | null;
-  state: string | null;
-  locationUrl: string | null;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  builtUpArea: string | null;
-  builtUpAreaUnit: string | null;
-  floorCount: number | null;
-  parkingSpaces: number | null;
-  roadAccess: string | null;
-  approvalInfo: string | null;
-  features: string[];
-  priceMinimum: string | null;
-  priceMaximum: string | null;
-  priceBasis: string;
   representationType: 'CHANNEL_PARTNER' | 'AUTHORIZED_REPRESENTATIVE' | 'OTHER';
   createdAt: string;
   images: PropertyImage[];
-  documents: Array<{ id: string; title: string; kind: string; url: string }>;
-  inventory: Array<{ id: string; reference: string; configurationId: string | null; availability: string; priceAmount: string | null; priceCurrency: string | null; area: string | null; areaUnit: string | null }>;
-  promotionalMedia: Array<{ id: string; storageKey: string; kind: string; width: number | null; height: number | null; altText: string | null; url: string | null }>;
-  configurations: Array<{ id: string; name: string; area: string | null; areaUnit: string | null; bedrooms: number | null; bathrooms: number | null; floor: string | null; block: string | null; priceMode: string; priceAmount: string | null; priceMinimum: string | null; priceMaximum: string | null; priceCurrency: string | null; priceBasis: string; availability: string; availableUnits: number | null; features: string[]; media: PropertyImage[] }>;
 };
 
 function formatLabel(value: string) {
@@ -66,10 +41,6 @@ function formatLabel(value: string) {
 }
 
 function getPrice(property: ApiProperty) {
-  if (property.priceMinimum || property.priceMaximum) {
-    const money = (value: string | null) => value ? new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency ?? 'INR', maximumFractionDigits: 2 }).format(Number(value)) : '—';
-    return `${money(property.priceMinimum)} – ${money(property.priceMaximum)}${property.priceBasis !== 'TOTAL' ? ` / ${property.priceBasis.toLowerCase()}` : ''}`;
-  }
   if (!property.priceAmount) return property.priceMode === 'ON_REQUEST' ? 'On request' : null;
 
   const amount = Number(property.priceAmount);
@@ -92,13 +63,6 @@ function getPrice(property: ApiProperty) {
 }
 
 function getWhatsAppPrice(property: ApiProperty) {
-  if (property.priceMinimum || property.priceMaximum) {
-    const money = (value: string | null) => value ? `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(value))}` : null;
-    const minimum = money(property.priceMinimum);
-    const maximum = money(property.priceMaximum);
-    if (minimum && maximum) return `${minimum} – ${maximum}`;
-    return minimum ? `starting from ${minimum}` : maximum ? `up to ${maximum}` : null;
-  }
   if (!property.priceAmount) return property.priceMode === 'ON_REQUEST' ? 'price on request' : null;
   const amount = Number(property.priceAmount);
   if (!Number.isFinite(amount)) return null;
@@ -131,8 +95,6 @@ export default function PropertyDetail({ slug }: { slug: string }) {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState(false);
   const [requestVersion, setRequestVersion] = useState(0);
-  const [selectedConfigurationId, setSelectedConfigurationId] = useState('');
-  const [selectedInventoryId, setSelectedInventoryId] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -153,8 +115,6 @@ export default function PropertyDetail({ slug }: { slug: string }) {
         if (!response.ok || result.success !== true) throw new Error('Unable to load property.');
 
         setProperty(result.data as ApiProperty);
-        setSelectedConfigurationId('');
-        setSelectedInventoryId('');
       } catch {
         if (!controller.signal.aborted) setError(true);
       } finally {
@@ -198,13 +158,9 @@ export default function PropertyDetail({ slug }: { slug: string }) {
     );
   }
 
-  const selectedConfiguration = property.configurations?.find((item) => item.id === selectedConfigurationId) ?? null;
-  const selectedInventory = property.inventory?.find((item) => item.id === selectedInventoryId) ?? null;
-  const price = selectedConfiguration ? configurationPrice(selectedConfiguration) : selectedInventory ? inventoryPrice(selectedInventory) : getPrice(property);
+  const price = getPrice(property);
   const plotSize = getPlotSize(property);
-  const configCanEnquire = selectedConfiguration && isPropertyOptionEnquirable(selectedConfiguration.availability);
-  const inventoryCanEnquire = selectedInventory && isPropertyOptionEnquirable(selectedInventory.availability);
-  const canEnquire = selectedConfiguration ? Boolean(configCanEnquire) : selectedInventory ? Boolean(inventoryCanEnquire) : isPropertyOptionEnquirable(property.availability);
+  const canEnquire = property.status === 'AVAILABLE' || property.status === 'UNDER_OFFER';
   const hasWhatsApp = isConfiguredContact(siteConfig.contact.whatsapp);
   const propertyWhatsAppPrice = getWhatsAppPrice(property);
   const propertyPublicUrl = `${siteConfig.url}/properties/${encodeURIComponent(property.slug)}`;
@@ -215,10 +171,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
     '',
     `Property: ${property.title}`,
     ...(property.location ? [`Location: ${property.location}`] : []),
-    ...(property.projectName ? [`Project: ${property.projectName}`] : []),
-    ...(selectedConfiguration ? [`Configuration: ${selectedConfiguration.name}`] : []),
-    ...(selectedInventory ? [`Unit / plot: ${selectedInventory.reference}`] : []),
-    ...((selectedConfiguration ? configurationPrice(selectedConfiguration) : selectedInventory ? inventoryPrice(selectedInventory) : propertyWhatsAppPrice) ? [`Price: ${selectedConfiguration ? configurationPrice(selectedConfiguration) : selectedInventory ? inventoryPrice(selectedInventory) : propertyWhatsAppPrice}`] : []),
+    ...(propertyWhatsAppPrice ? [`Price: ${propertyWhatsAppPrice}`] : []),
     `Property Link: ${propertyPublicUrl}`,
     '',
     'I would like to know more about its availability, plot details, pricing, and site visit options.',
@@ -245,7 +198,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
                 <span>{formatLabel(property.propertyType)}</span>
               </div>
             </div>
-              <p className="w-fit border border-white/20 px-2.5 py-1.5 text-xs text-white/80">{formatLabel(property.availability || property.status)}</p>
+            <p className="w-fit border border-white/20 px-2.5 py-1.5 text-xs text-white/80">{formatLabel(property.status)}</p>
           </div>
         </div>
       </header>
@@ -254,31 +207,17 @@ export default function PropertyDetail({ slug }: { slug: string }) {
         <div className="container-xl">
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:gap-8">
             <section aria-label="Property images" className="min-w-0">
-              <PropertyImageGallery images={selectedConfiguration?.media?.length ? selectedConfiguration.media : property.images} />
+              <PropertyImageGallery images={property.images} />
             </section>
 
             <aside className="min-w-0 border border-[var(--viridian-950)]/12 bg-white p-4 sm:p-5">
               <h2 className="text-xs font-semibold tracking-[0.16em] text-[var(--viridian-800)]">PROPERTY FACTS</h2>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
                 <div><dt className="text-[11px] text-[var(--muted)]">Property type</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.propertyType)}</dd></div>
-                <div><dt className="text-[11px] text-[var(--muted)]">Availability</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.availability)}</dd></div>
-                {property.projectName && <div><dt className="text-[11px] text-[var(--muted)]">Project</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.projectName}</dd></div>}
-                {property.subtype && <div><dt className="text-[11px] text-[var(--muted)]">Subtype</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.subtype}</dd></div>}
-                {(property.address || property.locality || property.city || property.state) && <div className="col-span-2"><dt className="text-[11px] text-[var(--muted)]">Address</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{[property.address, property.locality, property.city, property.state].filter(Boolean).join(', ')}</dd></div>}
-                {property.bedrooms !== null && <div><dt className="text-[11px] text-[var(--muted)]">Bedrooms / BHK</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.bedrooms}</dd></div>}
-                {property.bathrooms !== null && <div><dt className="text-[11px] text-[var(--muted)]">Bathrooms</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.bathrooms}</dd></div>}
-                {property.builtUpArea && <div><dt className="text-[11px] text-[var(--muted)]">Built-up area</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.builtUpArea} {property.builtUpAreaUnit?.toLowerCase()}</dd></div>}
-                {property.floorCount !== null && <div><dt className="text-[11px] text-[var(--muted)]">Floors</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.floorCount}</dd></div>}
-                {property.parkingSpaces !== null && <div><dt className="text-[11px] text-[var(--muted)]">Parking spaces</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.parkingSpaces}</dd></div>}
+                <div><dt className="text-[11px] text-[var(--muted)]">Status</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.status)}</dd></div>
                 {plotSize && <div><dt className="text-[11px] text-[var(--muted)]">Plot size</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{plotSize}</dd></div>}
                 <div className="col-span-2 border-t border-[var(--viridian-950)]/10 pt-3"><dt className="text-[11px] text-[var(--muted)]">Representation</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{formatLabel(property.representationType)}</dd></div>
               </dl>
-              {property.locationUrl && <a href={property.locationUrl} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm font-medium text-[var(--viridian-800)] underline">Open location map</a>}
-              {property.roadAccess && <p className="mt-3 text-xs text-[var(--muted)]">Road access: {property.roadAccess}</p>}
-              {property.approvalInfo && <p className="mt-2 text-xs text-[var(--muted)]">Approvals: {property.approvalInfo}</p>}
-
-              {property.configurations?.length > 0 && <div className="mt-5 border-t border-[var(--viridian-950)]/10 pt-4"><label className="text-xs font-semibold tracking-[0.14em] text-[var(--muted)]" htmlFor="property-configuration">CONFIGURATION</label><select id="property-configuration" value={selectedConfigurationId} onChange={(event) => {setSelectedConfigurationId(event.target.value);setSelectedInventoryId('');}} className="mt-2 min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 text-sm text-[var(--viridian-950)]"><option value="">Select an option</option>{property.configurations.map((configuration) => <option key={configuration.id} value={configuration.id} disabled={!isPropertyOptionEnquirable(configuration.availability)}>{configuration.name}{configuration.area ? ` · ${configuration.area} ${configuration.areaUnit?.toLowerCase() ?? ''}` : ''} · {formatLabel(configuration.availability)}</option>)}</select>{selectedConfiguration && <p className="mt-2 text-xs text-[var(--muted)]">{[selectedConfiguration.bedrooms !== null ? `${selectedConfiguration.bedrooms} BHK` : null, selectedConfiguration.bathrooms !== null ? `${selectedConfiguration.bathrooms} bath` : null, selectedConfiguration.floor, selectedConfiguration.block, selectedConfiguration.availableUnits !== null ? `${selectedConfiguration.availableUnits} units` : null].filter(Boolean).join(' · ')}</p>}</div>}
-              {property.inventory?.length > 0 && <div className="mt-5 border-t border-[var(--viridian-950)]/10 pt-4"><label className="text-xs font-semibold tracking-[0.14em] text-[var(--muted)]" htmlFor="property-inventory">AVAILABLE UNITS / PLOTS</label><select id="property-inventory" value={selectedInventoryId} onChange={(event)=>{setSelectedInventoryId(event.target.value);setSelectedConfigurationId('');}} className="mt-2 min-h-11 w-full border border-[var(--viridian-950)]/15 bg-white px-3 text-sm text-[var(--viridian-950)]"><option value="">Select a unit or plot</option>{property.inventory.map((unit)=><option key={unit.id} value={unit.id} disabled={!isPropertyOptionEnquirable(unit.availability)}>{unit.reference} · {formatLabel(unit.availability)}{unit.area ? ` · ${unit.area} ${unit.areaUnit?.toLowerCase() ?? ''}` : ''}{unit.priceAmount ? ` · ${inventoryPrice(unit)}` : ''}</option>)}</select></div>}
 
               <div className="mt-5 border-t border-[var(--viridian-950)]/10 pt-4">
                 <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--muted)]">PRICE</p>
@@ -296,9 +235,6 @@ export default function PropertyDetail({ slug }: { slug: string }) {
             <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-base sm:leading-7">{property.description}</p>
             <p className="mt-4 text-xs leading-5 text-[var(--muted)]">{representationCopy(property.representationType)}</p>
           </section>}
-          {property.features?.length > 0 && <section className="mt-7 max-w-4xl border-t border-[var(--viridian-950)]/15 pt-5"><h2 className="font-display text-2xl text-[var(--viridian-950)]">Features &amp; amenities</h2><ul className="mt-3 flex flex-wrap gap-2">{property.features.map((feature) => <li key={feature} className="border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)]">{feature}</li>)}</ul></section>}
-          {property.documents?.length > 0 && <section className="mt-7 max-w-4xl border-t border-[var(--viridian-950)]/15 pt-5"><h2 className="font-display text-2xl text-[var(--viridian-950)]">Property documents</h2><ul className="mt-3 flex flex-wrap gap-3">{property.documents.map((document) => <li key={document.id}><a href={document.url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center border border-[var(--viridian-950)]/15 bg-white px-3 text-sm font-medium text-[var(--viridian-950)] hover:border-[var(--gold)]">{formatLabel(document.kind)} · PDF</a></li>)}</ul></section>}
-          {property.promotionalMedia?.length > 0 && <section className="mt-7 max-w-5xl border-t border-[var(--viridian-950)]/15 pt-5"><h2 className="font-display text-2xl text-[var(--viridian-950)]">Property highlights</h2><div className="mt-4 grid gap-4 sm:grid-cols-2">{property.promotionalMedia.map((asset)=><figure key={asset.id} className={`overflow-hidden border border-[var(--viridian-950)]/10 bg-white ${asset.kind==='PROMO_PORTRAIT'?'sm:row-span-2':''}`}><img src={asset.url ?? ''} alt={asset.altText || `${property.title} promotional image`} loading="lazy" className={`w-full ${asset.kind==='PROMO_PORTRAIT'?'aspect-[3/4] object-contain':'aspect-[16/9] object-cover'}`} /></figure>)}</div></section>}
         </div>
       </section>
       {canEnquire && <section id="property-enquiry" className="scroll-mt-24 border-t border-[var(--viridian-950)]/10 bg-[var(--cream)] py-10 sm:py-14" data-reveal>
@@ -308,30 +244,9 @@ export default function PropertyDetail({ slug }: { slug: string }) {
             <h2 className="mt-3 font-display text-3xl text-[var(--viridian-950)] sm:text-4xl">Interested in this property?</h2>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Share a few details and the JLUXE team will follow up about this opportunity.</p>
           </div>
-          <PropertyEnquiryForm key={property.id} property={property} configuration={selectedConfiguration} inventory={selectedInventory} />
+          <PropertyEnquiryForm key={property.id} property={property} />
         </div>
       </section>}
     </>
   );
-}
-
-function configurationPrice(configuration: ApiProperty['configurations'][number]) {
-  const money = (value: string) => {
-    const amount = Number(value);
-    if (!Number.isFinite(amount)) return null;
-    try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: configuration.priceCurrency ?? 'INR', maximumFractionDigits: 2 }).format(amount); }
-    catch { return `${amount} ${configuration.priceCurrency ?? 'INR'}`; }
-  };
-  if (configuration.priceMode === 'ON_REQUEST') return 'Price on request';
-  if (configuration.priceMode === 'RANGE' && (configuration.priceMinimum || configuration.priceMaximum)) return `${configuration.priceMinimum ? money(configuration.priceMinimum) : '—'} – ${configuration.priceMaximum ? money(configuration.priceMaximum) : '—'}${configuration.priceBasis !== 'TOTAL' ? ` / ${configuration.priceBasis.toLowerCase()}` : ''}`;
-  if (!configuration.priceAmount) return null;
-  return `${money(configuration.priceAmount)}${configuration.priceMode === 'PER_UNIT' || configuration.priceBasis !== 'TOTAL' ? ` / ${configuration.priceBasis.toLowerCase()}` : ''}`;
-}
-
-function inventoryPrice(unit: ApiProperty['inventory'][number]) {
-  if (!unit.priceAmount) return null;
-  const amount = Number(unit.priceAmount);
-  if (!Number.isFinite(amount)) return null;
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: unit.priceCurrency ?? 'INR', maximumFractionDigits: 2 }).format(amount); }
-  catch { return `${amount} ${unit.priceCurrency ?? 'INR'}`; }
 }

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getAdminSession, hasAdminPermission } from '@/lib/admin-session';
 import { hasSameOrigin } from '@/lib/admin-request';
 import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
-import { deleteProperty, findPropertyById, listPropertyConfigurations, listPropertyInventory, transitionPropertyPublication, updateProperty } from '@/lib/db/queries/properties';
+import { deleteProperty, findPropertyById, transitionPropertyPublication, updateProperty } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
 
 const idSchema = z.string().uuid();
@@ -12,14 +12,12 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
-  const session = await getAdminSession();
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
-  if (!hasAdminPermission(session.role, 'edit-content')) return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
+  if (!await getAdminSession()) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
   const { id } = await params;
   if (!idSchema.safeParse(id).success) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: 'Invalid request body.' }, { status: 400 }); }
-  const parsed = z.object({ action: z.enum(['archive', 'restore', 'publish', 'unpublish']) }).strict().safeParse(body);
+  const parsed = z.object({ action: z.enum(['archive', 'restore', 'publish']) }).strict().safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Invalid property action.' }, { status: 400 });
   try {
     const result = await transitionPropertyPublication(id, parsed.data.action);
@@ -42,8 +40,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   try {
     const property = await findPropertyById(id);
     if (!property) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
-    const [configurations, inventory] = await Promise.all([listPropertyConfigurations(id), listPropertyInventory(id)]);
-    return NextResponse.json({ success: true, data: { ...serializeProperty(property), configurations, inventory } });
+    return NextResponse.json({ success: true, data: serializeProperty(property) });
   } catch (error) {
     console.error('Failed to retrieve admin property.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
     return NextResponse.json({ success: false, error: 'Unable to retrieve property right now.' }, { status: 500 });

@@ -21,7 +21,7 @@ import {
 } from '@/lib/db/types';
 import { createPropertySlug } from '@/lib/admin-property';
 import { getMediaImageUrl } from '@/lib/media';
-import { uploadAdminImage, uploadAdminPropertyDocument, type PropertyDocumentKind } from '@/lib/cloudinary-client';
+import { uploadAdminImage } from '@/lib/cloudinary-client';
 
 type PropertyData = {
   id: string;
@@ -37,18 +37,7 @@ type PropertyData = {
   status: PropertyStatus;
   representationType: RepresentationType;
   publicationStatus: PublicationStatus;
-  subtype?: string | null; projectName?: string | null; address?: string | null; locality?: string | null;
-  city?: string | null; state?: string | null; locationUrl?: string | null; bedrooms?: number | null;
-  bathrooms?: number | null; builtUpArea?: string | null; builtUpAreaUnit?: PlotSizeUnit | null;
-  floorCount?: number | null; parkingSpaces?: number | null; roadAccess?: string | null; approvalInfo?: string | null;
-  seoTitle?: string | null; seoDescription?: string | null; availability?: string;
-  priceMinimum?: string | null; priceMaximum?: string | null; priceBasis?: string;
-  features?: string[]; configurations?: Configuration[];
-  inventory?: InventoryItem[];
 };
-
-type Configuration = { id?: string; name: string; area: string | null; areaUnit: string | null; bedrooms: number | null; bathrooms: number | null; floor: string | null; block: string | null; priceMode: 'EXACT' | 'RANGE' | 'PER_UNIT' | 'ON_REQUEST'; priceAmount: string | null; priceMinimum: string | null; priceMaximum: string | null; priceCurrency: string | null; priceBasis: string; availability: string; availableUnits: number | null; features: string[]; media?: Array<{ id: string }> };
-type InventoryItem = { id?: string; reference: string; configurationId: string | null; availability: string; priceAmount: string | null; priceCurrency: string | null; area: string | null; areaUnit: string | null };
 
 type FormValues = {
   title: string;
@@ -63,10 +52,6 @@ type FormValues = {
   status: string;
   representationType: string;
   publicationStatus: PublicationStatus;
-  subtype: string; projectName: string; address: string; locality: string; city: string; state: string; locationUrl: string;
-  bedrooms: string; bathrooms: string; builtUpArea: string; builtUpAreaUnit: string; floorCount: string; parkingSpaces: string;
-  roadAccess: string; approvalInfo: string; seoTitle: string; seoDescription: string; availability: string;
-  priceMinimum: string; priceMaximum: string; priceBasis: string; featuresText: string;
 };
 
 type MediaOption = { id: string; storageKey: string; mimeType: string; deliveryUrl?: string | null; byteSize?: string; width?: number | null; height?: number | null };
@@ -95,11 +80,6 @@ function toFormValues(property?: PropertyData): FormValues {
     status: property?.status ?? '',
     representationType: property?.representationType ?? '',
     publicationStatus: property?.publicationStatus ?? 'DRAFT',
-    subtype: property?.subtype ?? '', projectName: property?.projectName ?? '', address: property?.address ?? '', locality: property?.locality ?? '',
-    city: property?.city ?? '', state: property?.state ?? '', locationUrl: property?.locationUrl ?? '', bedrooms: property?.bedrooms?.toString() ?? '', bathrooms: property?.bathrooms?.toString() ?? '',
-    builtUpArea: property?.builtUpArea ?? '', builtUpAreaUnit: property?.builtUpAreaUnit ?? '', floorCount: property?.floorCount?.toString() ?? '', parkingSpaces: property?.parkingSpaces?.toString() ?? '',
-    roadAccess: property?.roadAccess ?? '', approvalInfo: property?.approvalInfo ?? '', seoTitle: property?.seoTitle ?? '', seoDescription: property?.seoDescription ?? '', availability: property?.availability ?? 'AVAILABLE',
-    priceMinimum: property?.priceMinimum ?? '', priceMaximum: property?.priceMaximum ?? '', priceBasis: property?.priceBasis ?? 'TOTAL', featuresText: (property?.features ?? []).join(', '),
   };
 }
 
@@ -110,19 +90,12 @@ function formatLabel(value: string) {
 export default function PropertyForm({
   property,
   initialMedia = [],
-  duplicate = false,
 }: {
   property?: PropertyData;
   initialMedia?: PropertyMediaItem[];
-  duplicate?: boolean;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<FormValues>(() => toFormValues(property));
-  const [configurations, setConfigurations] = useState<Configuration[]>(property?.configurations ?? []);
-  const [configurationMediaIds, setConfigurationMediaIds] = useState<Record<string, string[]>>(() => Object.fromEntries((property?.configurations ?? []).filter((item) => item.id).map((item) => [item.id!, (item.media ?? []).map((media) => media.id)])));
-  const [inventory, setInventory] = useState<InventoryItem[]>(property?.inventory ?? []);
-  const isEditing = Boolean(property && !duplicate);
-  const showTypeField = (appliesToType: boolean, currentValue: string) => appliesToType || Boolean(currentValue);
   const [slugEdited, setSlugEdited] = useState(Boolean(property));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -145,13 +118,6 @@ export default function PropertyForm({
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaActionPending, setMediaActionPending] = useState(false);
   const [mediaNotice, setMediaNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-  const [documents, setDocuments] = useState<Array<{ id: string; title: string; kind: PropertyDocumentKind; url: string; byteSize: string }>>([]);
-  const [documentKind, setDocumentKind] = useState<PropertyDocumentKind>('FLOOR_PLAN');
-  const [documentMessage, setDocumentMessage] = useState('');
-  const [documentBusy, setDocumentBusy] = useState(false);
-  const [promoKind, setPromoKind] = useState<'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT'>('PROMO_LANDSCAPE');
-  const [promoSelection, setPromoSelection] = useState<Array<{ mediaId: string; kind: 'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT' }>>([]);
-  const [promoMessage, setPromoMessage] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,69 +148,12 @@ export default function PropertyForm({
     return () => controller.abort();
   }, [property?.id]);
 
-  useEffect(() => {
-    if (!property?.id) return;
-    const controller = new AbortController();
-    fetch(`/admin/api/properties/${property.id}/assets`, { signal: controller.signal })
-      .then(async (response) => { const result = await response.json(); if (response.ok && result.success) setPromoSelection(result.data.map((item: { id: string; kind: 'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT' }) => ({ mediaId: item.id, kind: item.kind }))); })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [property?.id]);
-
-  useEffect(() => {
-    if (!property?.id) return;
-    const controller = new AbortController();
-    fetch(`/admin/api/properties/${property.id}/documents`, { signal: controller.signal })
-      .then(async (response) => { const result = await response.json(); if (response.ok && result.success) setDocuments(result.data); })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [property?.id]);
-
-  async function uploadDocument(file: File | undefined) {
-    if (!file || !property?.id || documentBusy) return;
-    setDocumentBusy(true); setDocumentMessage('');
-    try {
-      await uploadAdminPropertyDocument(file, property.id, documentKind);
-      const response = await fetch(`/admin/api/properties/${property.id}/documents`, { cache: 'no-store' });
-      const result = await response.json();
-      if (response.ok && result.success) setDocuments(result.data);
-      setDocumentMessage('PDF added to this property.');
-    } catch (reason) {
-      setDocumentMessage(reason instanceof Error ? reason.message : 'Unable to upload this PDF.');
-    } finally { setDocumentBusy(false); }
-  }
-
-  async function removeDocument(mediaId: string) {
-    if (!property?.id || documentBusy || !window.confirm('Remove this document from the property? The media file remains in the library.')) return;
-    setDocumentBusy(true); setDocumentMessage('');
-    try {
-      const response = await fetch(`/admin/api/properties/${property.id}/documents`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mediaId }) });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to remove document.');
-      setDocuments((current) => current.filter((document) => document.id !== mediaId));
-    } catch (reason) { setDocumentMessage(reason instanceof Error ? reason.message : 'Unable to remove document.'); }
-    finally { setDocumentBusy(false); }
-  }
-
-  async function savePromotionalAssets() {
-    if (!property?.id || mediaActionPending) return;
-    setMediaActionPending(true); setPromoMessage('');
-    try {
-      const response = await fetch(`/admin/api/properties/${property.id}/assets`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ media: promoSelection }) });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to save promotional assets.');
-      setPromoSelection(result.data.map((item: { id: string; kind: 'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT' }) => ({ mediaId: item.id, kind: item.kind })));
-      setPromoMessage('Promotional images saved.');
-    } catch (reason) { setPromoMessage(reason instanceof Error ? reason.message : 'Unable to save promotional assets.'); }
-    finally { setMediaActionPending(false); }
-  }
-
   function update<K extends keyof FormValues>(field: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }));
   }
 
   async function persistMediaList(newList: AttachedMediaItem[]) {
-    const entityId = isEditing ? property?.id ?? createdPropertyId : createdPropertyId;
+    const entityId = property?.id ?? createdPropertyId;
     if (!entityId) {
       setMediaList(newList);
       return;
@@ -371,41 +280,13 @@ export default function PropertyForm({
       description: values.description || null,
       location: values.location || null,
       priceAmount: values.priceAmount || null,
-      priceCurrency: values.priceAmount || values.priceMinimum || values.priceMaximum ? 'INR' : null,
-      priceMinimum: values.priceMinimum || null,
-      priceMaximum: values.priceMaximum || null,
-      priceBasis: values.priceBasis,
-      availability: values.availability,
-      subtype: values.subtype || null,
-      projectName: values.projectName || null,
-      address: values.address || null,
-      locality: values.locality || null,
-      city: values.city || null,
-      state: values.state || null,
-      locationUrl: values.locationUrl || null,
-      bedrooms: values.bedrooms || null,
-      bathrooms: values.bathrooms || null,
-      builtUpArea: values.builtUpArea || null,
-      builtUpAreaUnit: values.builtUpAreaUnit || null,
-      floorCount: values.floorCount || null,
-      parkingSpaces: values.parkingSpaces || null,
-      roadAccess: values.roadAccess || null,
-      approvalInfo: values.approvalInfo || null,
-      features: values.featuresText.split(',').map((item) => item.trim()).filter(Boolean),
-      configurations: configurations.map((configuration) => {
-        const savedConfiguration = { ...configuration };
-        delete savedConfiguration.media;
-        return savedConfiguration;
-      }),
-      inventory,
-      seoTitle: values.seoTitle || null,
-      seoDescription: values.seoDescription || null,
+      priceCurrency: values.priceAmount ? 'INR' : null,
       plotSize: values.plotSize || null,
       plotSizeUnit: values.plotSizeUnit || null,
     };
 
     try {
-      const entityId = isEditing ? property?.id ?? createdPropertyId : createdPropertyId;
+      const entityId = property?.id ?? createdPropertyId;
       const response = await fetch(entityId ? `/admin/api/properties/${entityId}` : '/admin/api/properties', {
         method: entityId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -418,18 +299,8 @@ export default function PropertyForm({
       }
 
       const savedId = entityId ?? result.data.id as string;
-      {
-        for (const configuration of configurations) {
-          if (!configuration.id) continue;
-          const mediaResponse = await fetch(`/admin/api/properties/${savedId}/configurations/${configuration.id}/media`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mediaIds: configurationMediaIds[configuration.id] ?? [] }),
-          });
-          if (!mediaResponse.ok) throw new Error('Property saved, but configuration images could not be updated. Save again to retry.');
-        }
-      }
       if (!entityId) setCreatedPropertyId(savedId);
-      if (!entityId && mediaList.length > 0) {
+      if (!property && mediaList.length > 0) {
         const linked = await fetch(`/admin/api/properties/${savedId}/media`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ media: mediaList.map((item) => ({ mediaId: item.mediaId, altText: item.altText })) }),
@@ -440,7 +311,7 @@ export default function PropertyForm({
 
       const notice = values.publicationStatus === 'DRAFT' ? 'Property saved as draft.'
         : values.publicationStatus === 'ARCHIVED' ? 'Property archived successfully.'
-          : entityId ? 'Property updated successfully.' : 'Property published successfully.';
+          : property || entityId ? 'Property updated successfully.' : 'Property published successfully.';
       router.push(`/admin/properties?notice=${encodeURIComponent(notice)}`);
       router.refresh();
     } catch {
@@ -457,12 +328,11 @@ export default function PropertyForm({
       </Link>
       <div className="mt-5 border-b border-white/15 pb-6">
         <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY LISTING</p>
-        <h1 className="mt-2 font-display text-4xl text-white">{isEditing ? 'Edit property' : duplicate ? 'Duplicate property' : 'Add property'}</h1>
+        <h1 className="mt-2 font-display text-4xl text-white">{property ? 'Edit property' : 'Add property'}</h1>
       </div>
 
       <form onSubmit={submit} className="mt-6 space-y-8">
         <section className="grid gap-5 sm:grid-cols-2">
-          <h2 className="font-display text-2xl text-white sm:col-span-2">Basic information &amp; property details</h2>
           <label className="block text-xs font-medium text-[#9caaa4]">
             <span className="mb-1.5 block">Title *</span>
             <input
@@ -501,8 +371,6 @@ export default function PropertyForm({
               className={`${inputClass} py-3`}
             />
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Subtype</span><input maxLength={100} value={values.subtype} onChange={(event) => update('subtype', event.target.value)} placeholder={values.propertyType === 'APARTMENT' ? 'Flat, studio, penthouse' : values.propertyType === 'PLOT' ? 'Residential plot, commercial plot' : 'Independent house, office…'} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Project / development name</span><input maxLength={200} value={values.projectName} onChange={(event) => update('projectName', event.target.value)} className={inputClass} /></label>
           <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
             <span className="mb-1.5 block">Location</span>
             <input
@@ -512,18 +380,6 @@ export default function PropertyForm({
               className={inputClass}
             />
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Street address</span><input maxLength={500} value={values.address} onChange={(event) => update('address', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Locality</span><input maxLength={150} value={values.locality} onChange={(event) => update('locality', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">City</span><input maxLength={150} value={values.city} onChange={(event) => update('city', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">State</span><input maxLength={150} value={values.state} onChange={(event) => update('state', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Map or location link</span><input type="url" maxLength={1000} value={values.locationUrl} onChange={(event) => update('locationUrl', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Availability</span><select value={values.availability} onChange={(event) => update('availability', event.target.value)} className={inputClass}>{['AVAILABLE','LIMITED','COMING_SOON','RESERVED','SOLD_OUT','UNAVAILABLE'].map((option) => <option key={option} value={option}>{formatLabel(option)}</option>)}</select></label>
-           {(showTypeField(['APARTMENT', 'VILLA', 'OTHER'].includes(values.propertyType), values.bedrooms) || showTypeField(['APARTMENT', 'VILLA', 'OTHER'].includes(values.propertyType), values.bathrooms)) && <><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Bedrooms / BHK</span><input type="number" min="0" max="100" value={values.bedrooms} onChange={(event) => update('bedrooms', event.target.value)} className={inputClass} /></label><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Bathrooms</span><input type="number" min="0" max="100" value={values.bathrooms} onChange={(event) => update('bathrooms', event.target.value)} className={inputClass} /></label></>}
-           {showTypeField(!['PLOT','LAND'].includes(values.propertyType), values.builtUpArea) && <><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Built-up area</span><input type="number" min="0.01" step="0.01" value={values.builtUpArea} onChange={(event) => update('builtUpArea', event.target.value)} className={inputClass} /></label><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Area unit</span><select value={values.builtUpAreaUnit} onChange={(event) => update('builtUpAreaUnit', event.target.value)} className={inputClass}><option value="">Select unit</option>{plotSizeUnits.map((unit) => <option key={unit} value={unit}>{formatLabel(unit)}</option>)}</select></label></>}
-           {showTypeField(['APARTMENT', 'VILLA', 'COMMERCIAL', 'OTHER'].includes(values.propertyType), values.floorCount) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Floors</span><input type="number" min="0" max="500" value={values.floorCount} onChange={(event) => update('floorCount', event.target.value)} className={inputClass} /></label>}
-           {showTypeField(['APARTMENT', 'VILLA', 'COMMERCIAL', 'OTHER'].includes(values.propertyType), values.parkingSpaces) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Parking spaces</span><input type="number" min="0" max="1000" value={values.parkingSpaces} onChange={(event) => update('parkingSpaces', event.target.value)} className={inputClass} /></label>}
-           {showTypeField(['PLOT','LAND','COMMERCIAL','OTHER'].includes(values.propertyType), values.roadAccess) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Road access</span><input maxLength={255} value={values.roadAccess} onChange={(event) => update('roadAccess', event.target.value)} className={inputClass} /></label>}
-           {showTypeField(['PLOT','LAND','COMMERCIAL','OTHER'].includes(values.propertyType), values.approvalInfo) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Approval details</span><input maxLength={500} value={values.approvalInfo} onChange={(event) => update('approvalInfo', event.target.value)} className={inputClass} /></label>}
           <label className="block text-xs font-medium text-[#9caaa4]">
             <span className="mb-1.5 block">Property type *</span>
             <select
@@ -561,7 +417,7 @@ export default function PropertyForm({
         <section className="border-t border-white/15 pt-6">
           <h2 className="font-display text-2xl text-white">Price and size</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            {showTypeField(['PLOT', 'LAND', 'VILLA'].includes(values.propertyType), values.plotSize) && <label className="block text-xs font-medium text-[#9caaa4]">
+            <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">Price amount (INR)</span>
               <input
                 type="number"
@@ -571,8 +427,8 @@ export default function PropertyForm({
                 onChange={(event) => update('priceAmount', event.target.value)}
                 className={inputClass}
               />
-            </label>}
-            {showTypeField(['PLOT', 'LAND', 'VILLA'].includes(values.propertyType), values.plotSize) && <label className="block text-xs font-medium text-[#9caaa4]">
+            </label>
+            <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">Price mode *</span>
               <select
                 value={values.priceMode}
@@ -585,7 +441,7 @@ export default function PropertyForm({
                   </option>
                 ))}
               </select>
-            </label>}
+            </label>
             <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">Plot size</span>
               <input
@@ -612,52 +468,11 @@ export default function PropertyForm({
                 ))}
               </select>
             </label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Minimum price (INR)</span><input type="number" min="0" step="0.01" value={values.priceMinimum} onChange={(event) => update('priceMinimum', event.target.value)} className={inputClass} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Maximum price (INR)</span><input type="number" min="0" step="0.01" value={values.priceMaximum} onChange={(event) => update('priceMaximum', event.target.value)} className={inputClass} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Price basis</span><select value={values.priceBasis} onChange={(event) => update('priceBasis', event.target.value)} className={inputClass}>{[['TOTAL','Total'],['PER_UNIT','Per unit'],['PER_SQFT','Per sq ft'],['PER_SQM','Per sq m'],['PER_ACRE','Per acre']].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           </div>
-        </section>
-
-        <section className="border-t border-white/15 pt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-display text-2xl text-white">Availability &amp; configurations</h2><p className="mt-1 text-xs text-[#9caaa4]">Add independently priced options such as BHK plans, units, or plot groups.</p></div><button type="button" onClick={() => setConfigurations((current) => [...current, { id: crypto.randomUUID(), name: '', area: null, areaUnit: null, bedrooms: null, bathrooms: null, floor: null, block: null, priceMode: 'ON_REQUEST', priceAmount: null, priceMinimum: null, priceMaximum: null, priceCurrency: null, priceBasis: 'TOTAL', availability: 'AVAILABLE', availableUnits: null, features: [] }])} className="inline-flex min-h-10 items-center gap-2 border border-white/20 px-3 text-sm text-white hover:border-[var(--gold)]"><Plus className="h-4 w-4" /> Add configuration</button></div>
-          <div className="mt-4 space-y-4">{configurations.map((configuration, index) => <fieldset key={configuration.id ?? index} className="grid gap-3 border border-white/15 bg-[#08201b] p-4 sm:grid-cols-2"><legend className="px-2 text-xs text-[var(--gold)]">Configuration {index + 1}</legend>
-            <label className="text-xs text-[#9caaa4]">Name / BHK<input value={configuration.name} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,name:e.target.value} : item))} maxLength={150} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Area<input type="number" min="0.01" step="0.01" value={configuration.area ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,area:e.target.value || null, areaUnit:e.target.value ? item.areaUnit : null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Area unit<select value={configuration.areaUnit ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,areaUnit:e.target.value || null} : item))} className={`${inputClass} mt-1`}><option value="">Select unit</option>{plotSizeUnits.map((unit)=><option key={unit} value={unit}>{formatLabel(unit)}</option>)}</select></label>
-            <label className="text-xs text-[#9caaa4]">Bedrooms / BHK<input type="number" min="0" max="100" value={configuration.bedrooms ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,bedrooms:e.target.value ? Number(e.target.value) : null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Bathrooms<input type="number" min="0" max="100" value={configuration.bathrooms ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,bathrooms:e.target.value ? Number(e.target.value) : null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Floor<input value={configuration.floor ?? ''} maxLength={80} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,floor:e.target.value || null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Block / tower<input value={configuration.block ?? ''} maxLength={100} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,block:e.target.value || null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Pricing mode<select value={configuration.priceMode} onChange={(e) => setConfigurations((all) => all.map((item,i) => { if (i !== index) return item; const priceMode = e.target.value as Configuration['priceMode']; return priceMode === 'RANGE' ? {...item,priceMode,priceAmount:null} : priceMode === 'ON_REQUEST' ? {...item,priceMode,priceAmount:null,priceMinimum:null,priceMaximum:null,priceCurrency:null} : {...item,priceMode,priceMinimum:null,priceMaximum:null,priceBasis:priceMode === 'PER_UNIT' && item.priceBasis === 'TOTAL' ? 'PER_UNIT' : item.priceBasis}; }))} className={`${inputClass} mt-1`}>{['EXACT','RANGE','PER_UNIT','ON_REQUEST'].map((mode)=><option key={mode} value={mode}>{formatLabel(mode)}</option>)}</select></label>
-            <label className="text-xs text-[#9caaa4]">Fixed price (INR)<input type="number" min="0" step="0.01" value={configuration.priceAmount ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,priceAmount:e.target.value || null,priceCurrency:e.target.value ? 'INR' : null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">From (INR)<input type="number" min="0" step="0.01" value={configuration.priceMinimum ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,priceMinimum:e.target.value || null,priceCurrency:e.target.value ? 'INR' : item.priceCurrency} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">To (INR)<input type="number" min="0" step="0.01" value={configuration.priceMaximum ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,priceMaximum:e.target.value || null,priceCurrency:e.target.value ? 'INR' : item.priceCurrency} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Availability<select value={configuration.availability} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,availability:e.target.value} : item))} className={`${inputClass} mt-1`}>{['AVAILABLE','LIMITED','COMING_SOON','RESERVED','SOLD_OUT','UNAVAILABLE'].map((value)=><option key={value} value={value}>{formatLabel(value)}</option>)}</select></label>
-            <label className="text-xs text-[#9caaa4]">Price basis<select value={configuration.priceBasis} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,priceBasis:e.target.value} : item))} className={`${inputClass} mt-1`}>{[['TOTAL','Total'],['PER_UNIT','Per unit'],['PER_SQFT','Per sq ft'],['PER_SQM','Per sq m'],['PER_ACRE','Per acre']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-            <label className="text-xs text-[#9caaa4]">Available unit count<input type="number" min="0" value={configuration.availableUnits ?? ''} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,availableUnits:e.target.value ? Number(e.target.value) : null} : item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4] sm:col-span-2">Configuration features (comma-separated)<input value={configuration.features.join(', ')} onChange={(e) => setConfigurations((all) => all.map((item,i) => i===index ? {...item,features:e.target.value.split(',').map((feature)=>feature.trim()).filter(Boolean).slice(0,50)} : item))} className={`${inputClass} mt-1`} /></label>
-            <div className="sm:col-span-2"><p className="text-xs text-[#9caaa4]">Configuration images {configuration.id ? '(choose up to 12)' : '(save the property, then reopen to assign images)'}</p>{configuration.id && <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{mediaOptions.filter((media)=>media.mimeType.startsWith('image/')).map((media)=><label key={`${configuration.id}-${media.id}`} className="flex min-w-0 items-center gap-2 border border-white/10 p-2 text-[10px] text-[#f5f1e8]"><input type="checkbox" checked={(configurationMediaIds[configuration.id!] ?? []).includes(media.id)} disabled={!(configurationMediaIds[configuration.id!] ?? []).includes(media.id) && (configurationMediaIds[configuration.id!] ?? []).length >= 12} onChange={()=>setConfigurationMediaIds((current)=>{const selected=current[configuration.id!] ?? [];return {...current,[configuration.id!]:selected.includes(media.id)?selected.filter((id)=>id!==media.id):[...selected,media.id]};})} /><span className="truncate">{media.storageKey.split('/').pop()}</span></label>)}</div>}</div>
-            <div className="flex items-end justify-end"><button type="button" onClick={() => { const removedId = configuration.id; setConfigurations((all)=>all.filter((_,i)=>i!==index)); if (removedId) setInventory((all)=>all.map((unit)=>unit.configurationId === removedId ? {...unit,configurationId:null} : unit)); }} className="inline-flex min-h-10 items-center gap-2 text-xs text-red-300 hover:underline"><Trash2 className="h-4 w-4" /> Remove configuration</button></div>
-          </fieldset>)}</div>
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-display text-xl text-white">Individual units / plots</h3><p className="mt-1 text-xs text-[#9caaa4]">Use these records when each unit or plot has its own reference, price, area, or availability.</p></div><button type="button" onClick={() => setInventory((current) => [...current, { reference: '', configurationId: null, availability: 'AVAILABLE', priceAmount: null, priceCurrency: null, area: null, areaUnit: null }])} className="min-h-10 border border-white/20 px-3 text-sm text-white hover:border-[var(--gold)]"><Plus className="mr-1 inline h-4 w-4" /> Add unit / plot</button></div>
-          <div className="mt-4 space-y-3">{inventory.map((unit,index)=><fieldset key={unit.id ?? `new-${index}`} className="grid gap-3 border border-white/10 bg-[#061a16] p-4 sm:grid-cols-2"><legend className="px-2 text-xs text-[#9caaa4]">Inventory {index+1}</legend>
-            <label className="text-xs text-[#9caaa4]">Reference / plot number<input required value={unit.reference} maxLength={120} onChange={(e)=>setInventory((all)=>all.map((item,i)=>i===index?{...item,reference:e.target.value}:item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Configuration<select value={unit.configurationId ?? ''} onChange={(e)=>setInventory((all)=>all.map((item,i)=>i===index?{...item,configurationId:e.target.value || null}:item))} className={`${inputClass} mt-1`}><option value="">Project-wide / ungrouped</option>{configurations.filter((configuration)=>configuration.id).map((configuration)=><option key={configuration.id} value={configuration.id}>{configuration.name}</option>)}</select></label>
-            <label className="text-xs text-[#9caaa4]">Availability<select value={unit.availability} onChange={(e)=>setInventory((all)=>all.map((item,i)=>i===index?{...item,availability:e.target.value}:item))} className={`${inputClass} mt-1`}>{['AVAILABLE','LIMITED','COMING_SOON','RESERVED','SOLD_OUT','UNAVAILABLE'].map((value)=><option key={value} value={value}>{formatLabel(value)}</option>)}</select></label>
-            <label className="text-xs text-[#9caaa4]">Price (INR)<input type="number" min="0" step="0.01" value={unit.priceAmount ?? ''} onChange={(e)=>setInventory((all)=>all.map((item,i)=>i===index?{...item,priceAmount:e.target.value || null,priceCurrency:e.target.value?'INR':null}:item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Area<input type="number" min="0.01" step="0.01" value={unit.area ?? ''} onChange={(e)=>setInventory((all)=>all.map((item,i)=>i===index?{...item,area:e.target.value || null,areaUnit:e.target.value?item.areaUnit:null}:item))} className={`${inputClass} mt-1`} /></label>
-            <label className="text-xs text-[#9caaa4]">Area unit<select value={unit.areaUnit ?? ''} onChange={(e)=>setInventory((all)=>all.map((item,i)=>i===index?{...item,areaUnit:e.target.value || null}:item))} className={`${inputClass} mt-1`}><option value="">Select unit</option>{plotSizeUnits.map((value)=><option key={value} value={value}>{formatLabel(value)}</option>)}</select></label>
-            <div className="flex items-end justify-end"><button type="button" onClick={()=>setInventory((all)=>all.filter((_,i)=>i!==index))} className="min-h-10 text-xs text-red-300 hover:underline"><Trash2 className="mr-1 inline h-4 w-4" /> Remove record</button></div>
-          </fieldset>)}</div>
         </section>
 
         <section className="border-t border-white/15 pt-6">
           <h2 className="font-display text-2xl text-white">Representation and publication</h2>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Features &amp; amenities (comma-separated)</span><textarea rows={3} maxLength={5000} value={values.featuresText} onChange={(event)=>update('featuresText',event.target.value)} placeholder="Only enter verified features" className={`${inputClass} py-3`} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">SEO title</span><input maxLength={200} value={values.seoTitle} onChange={(event)=>update('seoTitle',event.target.value)} className={inputClass} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">SEO description</span><textarea rows={2} maxLength={320} value={values.seoDescription} onChange={(event)=>update('seoDescription',event.target.value)} className={`${inputClass} py-3`} /></label>
-          </div>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">JLUXE representation *</span>
@@ -704,7 +519,7 @@ export default function PropertyForm({
             disabled={saving}
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--gold)] px-6 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-[var(--gold)]/90 disabled:opacity-60"
           >
-            {saving ? 'Saving...' : isEditing ? 'Save changes' : duplicate ? 'Create duplicate' : 'Create property'}
+            {saving ? 'Saving...' : property ? 'Save changes' : 'Create property'}
           </button>
           <Link
             href="/admin/properties"
@@ -862,26 +677,6 @@ export default function PropertyForm({
           </div>
         </section>
       )}
-
-      <section className="mt-10 border-t border-white/15 pt-7">
-        <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">DOCUMENTS</p>
-        <h2 className="mt-1 font-display text-2xl text-white">Plans &amp; property documents</h2>
-        <p className="mt-1 text-xs text-[#9caaa4]">PDF uploads are restricted to 25 MB and verified in the property documents folder.</p>
-        {property ? <div className="mt-4 flex flex-wrap items-end gap-3">
-          <label className="text-xs text-[#9caaa4]">Document type<select value={documentKind} onChange={(event)=>setDocumentKind(event.target.value as PropertyDocumentKind)} className={`${inputClass} mt-1`}><option value="FLOOR_PLAN">Floor plan</option><option value="BROCHURE">Brochure</option><option value="PRICE_DOCUMENT">Pricing document</option></select></label>
-          <label className={`inline-flex min-h-11 cursor-pointer items-center border border-white/20 px-4 text-sm text-white hover:border-[var(--gold)] ${documentBusy ? 'pointer-events-none opacity-50' : ''}`}>{documentBusy ? 'Working…' : 'Upload PDF'}<input type="file" accept="application/pdf,.pdf" disabled={documentBusy} className="sr-only" onChange={(event)=>{void uploadDocument(event.currentTarget.files?.[0]);event.currentTarget.value='';}} /></label>
-        </div> : <p className="mt-4 text-sm text-[#9caaa4]">Save this property first to attach supporting documents.</p>}
-        {documentMessage && <p role="status" className="mt-3 text-sm text-[#f5f1e8]">{documentMessage}</p>}
-        {documents.length > 0 && <ul className="mt-4 divide-y divide-white/10 border-y border-white/10">{documents.map((document)=><li key={document.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><span><span className="text-white">{formatLabel(document.kind)}</span><span className="ml-2 text-xs text-[#9caaa4]">{document.title} · {(Number(document.byteSize)/1024).toFixed(0)} KB</span></span><span className="flex gap-4"><a href={document.url} target="_blank" rel="noreferrer" className="text-[var(--gold)] hover:underline">Open</a><button type="button" onClick={()=>void removeDocument(document.id)} disabled={documentBusy} className="text-red-300 hover:underline disabled:opacity-50">Remove</button></span></li>)}</ul>}
-      </section>
-
-      <section className="mt-10 border-t border-white/15 pt-7">
-        <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROMOTIONAL MEDIA</p><h2 className="mt-1 font-display text-2xl text-white">Banners &amp; creatives</h2><p className="mt-1 text-xs text-[#9caaa4]">Choose existing property images. Landscape and portrait assignments are validated from the stored image dimensions and remain separate from the gallery.</p>
-        {property ? <><label className="mt-4 block max-w-xs text-xs text-[#9caaa4]">Asset orientation<select value={promoKind} onChange={(event)=>setPromoKind(event.target.value as typeof promoKind)} className={`${inputClass} mt-1`}><option value="PROMO_LANDSCAPE">Landscape banner</option><option value="PROMO_PORTRAIT">Portrait creative</option></select></label>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{mediaOptions.filter((media)=>media.mimeType.startsWith('image/') && (promoKind === 'PROMO_LANDSCAPE' ? !media.width || !media.height || media.width > media.height : !media.width || !media.height || media.height > media.width)).map((media)=>{const selected=promoSelection.some((item)=>item.mediaId===media.id&&item.kind===promoKind);return <label key={`${promoKind}-${media.id}`} className={`cursor-pointer overflow-hidden border ${selected?'border-[var(--gold)]':'border-white/15'}`}><img src={media.deliveryUrl ?? getMediaImageUrl(media.storageKey,'property')} alt="" className="aspect-[4/3] w-full object-cover"/><span className="flex items-center gap-2 p-2 text-xs text-white"><input type="checkbox" checked={selected} onChange={()=>setPromoSelection((current)=>selected?current.filter((item)=>item.mediaId!==media.id||item.kind!==promoKind):[...current,{mediaId:media.id,kind:promoKind}])} />{media.storageKey.split('/').pop()}</span></label>;})}</div>
-          {promoMessage && <p role="status" className="mt-3 text-sm text-[#f5f1e8]">{promoMessage}</p>}<button type="button" disabled={mediaActionPending} onClick={()=>void savePromotionalAssets()} className="mt-4 min-h-10 border border-[var(--gold)] px-4 text-sm font-semibold text-[var(--gold)] disabled:opacity-50">{mediaActionPending?'Saving…':'Save promotional selections'}</button>
-        </> : <p className="mt-4 text-sm text-[#9caaa4]">Save this property first to assign promotional images.</p>}
-      </section>
     </div>
   );
 }
