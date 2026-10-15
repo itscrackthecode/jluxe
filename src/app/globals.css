@@ -56,10 +56,10 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .real-estate-capability-scroll::-webkit-scrollbar-track { background:transparent; }
 .real-estate-capability-scroll::-webkit-scrollbar-thumb { border-radius:4px; background:var(--gold); }
 @media (hover:hover) and (pointer:fine) {
-  .premium-card:hover { z-index:5; transform:translateY(-8px) scale(1.045); box-shadow:0 22px 44px rgba(6,47,41,.2),0 0 0 1px rgba(245,240,225,.12),0 0 24px rgba(245,240,225,.12); }
+  .premium-card:hover { z-index:5; transform:translateY(-8px); box-shadow:0 22px 44px rgba(6,47,41,.2),0 0 0 1px rgba(245,240,225,.12),0 0 24px rgba(245,240,225,.12); }
   .premium-card:hover::before { border-color:rgba(230,219,200,.42); opacity:1; }
   .premium-card:hover::after { opacity:1; transform:skewX(-18deg) translateX(520%); }
-  .premium-card:hover .premium-card-media > * { transform:scale(1.03); }
+  .premium-card:hover .premium-card-media > * { transform:none; }
 }
 @media (prefers-reduced-motion:reduce) {
   .premium-card,.premium-card::before,.premium-card::after,.premium-card-media > * { transition:none; animation:none; }
