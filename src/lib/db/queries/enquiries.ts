@@ -302,7 +302,8 @@ export async function findEnquiryById(id: UUID): Promise<AdminEnquiryDetail | nu
        configurationName: b.configurationName, configurationPriceSnapshot: null, inventoryReference: b.inventoryReference, inventoryPriceSnapshot: null };
     return { id: `b:${b.id}`, name: b.name, email: b.email, phone: b.phone, interestedServiceId: null, interestedServiceLabel: 'Buyer Requirements', propertyId: null,
       enquiryType: 'BUYER_REQUIREMENTS', message: [`Property category: ${b.propertyType}`, `Property type: ${b.propertySubtype}`, `Preferred location: ${b.preferredCity}`, `Preferred locality: ${b.preferredLocality ?? 'Not provided'}`, `Budget: INR ${b.budgetMin} to INR ${b.budgetMax}`, b.purchasePurpose ? `Purpose: ${b.purchasePurpose}` : null, b.purchaseTimeline ? `Timeline: ${b.purchaseTimeline}` : null, details, `Additional requirements: ${b.additionalRequirements ?? 'Not provided'}`, `Preferred contact: ${b.preferredContactMethod}`].filter((line): line is string => Boolean(line)).join('\n'),
-      status: b.status, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString(), interestedService: null, property: null };
+      status: b.status, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString(), interestedService: null, property: null,
+      configurationName: null, configurationPriceSnapshot: null, inventoryReference: null, inventoryPriceSnapshot: null };
   }
   const result = await pool.query<AdminEnquiryDetail & {
     serviceTitle: string | null;
