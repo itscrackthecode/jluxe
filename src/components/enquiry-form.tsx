@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2, 'Please enter your full name.').max(150),
@@ -28,6 +29,7 @@ export default function EnquiryForm() {
   const [submissionState, setSubmissionState] = useState<'idle' | 'success' | 'error'>('idle');
   const [submissionError, setSubmissionError] = useState('');
   const submissionLock = useRef(false);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const {
     register,
@@ -58,6 +60,8 @@ export default function EnquiryForm() {
     setSubmissionError('');
 
     try {
+      const turnstileToken = await turnstileRef.current?.getToken();
+      if (!turnstileToken) throw new Error('Security check unavailable.');
       const response = await fetch('/api/enquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,6 +71,7 @@ export default function EnquiryForm() {
           phone: values.phone,
           interestedServiceLabel: values.interest,
           message: values.message,
+          turnstileToken,
         }),
       });
 
@@ -160,6 +165,8 @@ export default function EnquiryForm() {
           />
           {errors.message && <span className="form-status mt-2 block text-sm text-red-600">{errors.message.message}</span>}
         </label>
+
+        <TurnstileWidget ref={turnstileRef} action="public_enquiry" />
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <button

@@ -23,13 +23,13 @@ export function validateImageFile(file: File) {
   return null;
 }
 
-export async function uploadImage(file: File, signerPath: string, purpose?: AdminImagePurpose): Promise<UploadedCloudinaryImage> {
+export async function uploadImage(file: File, signerPath: string, purpose?: AdminImagePurpose, turnstileToken?: string): Promise<UploadedCloudinaryImage> {
   const issue = validateImageFile(file);
   if (issue) throw new Error(issue);
   const signedResponse = await fetch(signerPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ intent: 'sign', ...(purpose ? { purpose } : {}) }),
+    body: JSON.stringify({ intent: 'sign', ...(purpose ? { purpose } : {}), ...(turnstileToken ? { turnstileToken } : {}) }),
   });
   const signed = await signedResponse.json();
   if (!signedResponse.ok || !signed.success) throw new Error(signed.error ?? 'Unable to prepare image upload.');
@@ -39,12 +39,15 @@ export async function uploadImage(file: File, signerPath: string, purpose?: Admi
   form.set('api_key', signed.apiKey);
   form.set('timestamp', String(signed.timestamp));
   form.set('upload_preset', signed.uploadPreset);
+  form.set('public_id', signed.publicId);
+  form.set('overwrite', String(signed.overwrite));
+  form.set('allowed_formats', signed.allowedFormats);
   form.set('signature', signed.signature);
   if (signed.assetFolder) form.set('asset_folder', signed.assetFolder);
   const response = await fetch(`https://api.cloudinary.com/v1_1/${signed.cloudName}/image/upload`, { method: 'POST', body: form });
   const uploaded = await response.json();
   if (!response.ok) throw new Error('Cloudinary rejected this image upload.');
-  if (!uploaded || uploaded.resource_type !== 'image' || typeof uploaded.public_id !== 'string'
+  if (!uploaded || uploaded.resource_type !== 'image' || typeof uploaded.public_id !== 'string' || uploaded.public_id !== signed.publicId
     || !Number.isInteger(uploaded.version) || !/^[a-f0-9]{40}$/i.test(uploaded.signature ?? '')
     || typeof uploaded.secure_url !== 'string' || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(uploaded.format)
     || !Number.isInteger(uploaded.bytes) || !Number.isInteger(uploaded.width) || !Number.isInteger(uploaded.height)
@@ -68,7 +71,7 @@ export async function uploadAdminImage(file: File, purpose: AdminImagePurpose = 
   const image = await uploadImage(file, '/admin/api/media', purpose);
   const response = await fetch('/admin/api/media', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ intent: 'complete', ...image }),
+    body: JSON.stringify({ intent: 'complete', purpose, ...image }),
   });
   const result = await response.json();
   if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to save uploaded media.');

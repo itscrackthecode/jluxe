@@ -1,7 +1,8 @@
 'use client';
 
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
 import { plotSizeUnits, propertyTypes } from '@/lib/db/types';
 import { MAX_IMAGE_COUNT, uploadImage, validateImageFile, type UploadedCloudinaryImage } from '@/lib/cloudinary-client';
 
@@ -32,6 +33,8 @@ const initialValues: FormValues = {
 const formatLabel = (value: string) => value.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export default function SellPropertyForm() {
+  const mediaTurnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const submissionTurnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [values, setValues] = useState(initialValues);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -55,10 +58,14 @@ export default function SellPropertyForm() {
     setUploading(true);
     try {
       for (const file of selected) {
-        const image = await uploadImage(file, '/api/properties/sell/media');
+        const signToken = await mediaTurnstileRef.current?.getToken();
+        if (!signToken) throw new Error('Security check unavailable.');
+        const image = await uploadImage(file, '/api/properties/sell/media', undefined, signToken);
+        const verifyToken = await mediaTurnstileRef.current?.getToken();
+        if (!verifyToken) throw new Error('Security check unavailable.');
         const verify = await fetch('/api/properties/sell/media', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ intent: 'verify', ...image }),
+          body: JSON.stringify({ intent: 'verify', turnstileToken: verifyToken, ...image }),
         });
         const result = await verify.json();
         if (!verify.ok || !result.success) throw new Error(result.error ?? 'Unable to verify this photo.');
@@ -76,9 +83,11 @@ export default function SellPropertyForm() {
     if (!photo) return;
     setUploading(true);
     try {
+      const turnstileToken = await mediaTurnstileRef.current?.getToken();
+      if (!turnstileToken) throw new Error('Security check unavailable.');
       const response = await fetch('/api/properties/sell/media', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent: 'discard', ...photo.image }),
+        body: JSON.stringify({ intent: 'discard', turnstileToken, ...photo.image }),
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to remove this photo.');
@@ -97,6 +106,8 @@ export default function SellPropertyForm() {
     setError('');
 
     try {
+      const turnstileToken = await submissionTurnstileRef.current?.getToken();
+      if (!turnstileToken) throw new Error('Security check unavailable.');
       const response = await fetch('/api/properties/sell', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,6 +122,7 @@ export default function SellPropertyForm() {
           plotSizeUnit: values.plotSizeUnit,
           description: values.description.trim(),
           images: photos.map(({ image }) => image),
+          turnstileToken,
         }),
       });
       const result = await response.json().catch(() => null) as { success?: boolean } | null;
@@ -206,6 +218,9 @@ export default function SellPropertyForm() {
             <p className="truncate px-2 py-1 text-xs text-[var(--muted)]">{photo.name}</p>
           </div>)}</div>}
         </section>
+
+        <TurnstileWidget ref={mediaTurnstileRef} action="seller_media" />
+        <TurnstileWidget ref={submissionTurnstileRef} action="seller_submission" />
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <button type="submit" disabled={status === 'submitting' || uploading} className="touch-press inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--viridian-950)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--viridian-950)] disabled:cursor-not-allowed disabled:opacity-70">

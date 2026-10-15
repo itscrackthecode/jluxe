@@ -8,6 +8,8 @@ import { cloudinaryDeliveryUrl, getCloudinaryImageDetails, verifySellerCloudinar
 import { sendJluxeNotification } from '@/lib/email-notifications';
 import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -15,6 +17,7 @@ const optionalText = (maxLength: number) => z.preprocess(
 );
 
 const sellerPropertySchema = z.object({
+  turnstileToken: z.string().min(1).max(2048),
   name: z.string().trim().min(2).max(150),
   email: z.string().trim().email().max(320),
   phone: z.string().trim().min(6).max(32),
@@ -93,14 +96,10 @@ export async function POST(request: Request) {
   const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
   if (rateLimitResponse) return rateLimitResponse;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 });
-  }
+  const bodyResult = await readJsonBody(request, 128 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
 
-  const parsed = sellerPropertySchema.safeParse(body);
+  const parsed = sellerPropertySchema.safeParse(bodyResult.value);
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Please review the required details and try again.' },
@@ -109,6 +108,8 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+  const verification = await verifyTurnstileToken(input.turnstileToken, 'seller_submission', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
   const title = `${formatLabel(input.propertyType)} in ${input.location}`.slice(0, 200);
   const baseSlug = createPropertySlug(title).slice(0, 176);
   if (!baseSlug) {
@@ -134,7 +135,8 @@ export async function POST(request: Request) {
         || verified.asset_folder !== 'jluxe/seller-submissions'
         || !['jpg', 'jpeg', 'png', 'webp', 'avif'].includes(verified.format)
         || !Number.isSafeInteger(verified.bytes) || verified.bytes <= 0 || verified.bytes > 10 * 1024 * 1024
-        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)) {
+        || !Number.isSafeInteger(verified.width) || !Number.isSafeInteger(verified.height)
+        || verified.width <= 0 || verified.height <= 0 || verified.width > 30_000 || verified.height > 30_000) {
         return NextResponse.json({ success: false, error: 'Photos must be supported images no larger than 10 MB.' }, { status: 400 });
       }
       media.push({

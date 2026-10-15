@@ -4,6 +4,8 @@ import { createEnquiry, findServiceById } from '@/lib/db/queries/enquiries';
 import { sendJluxeNotification } from '@/lib/email-notifications';
 import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2).max(150),
@@ -12,6 +14,7 @@ const enquirySchema = z.object({
   interestedServiceId: z.string().trim().uuid().optional(),
   interestedServiceLabel: z.string().trim().min(1).max(150),
   message: z.string().trim().min(12).max(10_000),
+  turnstileToken: z.string().min(1).max(2048),
 }).strict();
 
 export const runtime = 'nodejs';
@@ -56,18 +59,10 @@ export async function POST(request: Request) {
   const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
   if (rateLimitResponse) return rateLimitResponse;
 
-  let body: unknown;
+  const bodyResult = await readJsonBody(request, 32 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
 
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Invalid JSON body.' },
-      { status: 400 },
-    );
-  }
-
-  const parsed = enquirySchema.safeParse(body);
+  const parsed = enquirySchema.safeParse(bodyResult.value);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -77,6 +72,8 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+  const verification = await verifyTurnstileToken(input.turnstileToken, 'public_enquiry', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
 
   try {
     if (input.interestedServiceId) {

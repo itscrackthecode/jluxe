@@ -16,6 +16,8 @@ import { createBuyerPropertyEnquiry } from '@/lib/db/queries/buyer-property-enqu
 import { sendJluxeNotification } from '@/lib/email-notifications';
 import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 const optionalText = (maxLength: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -31,6 +33,7 @@ const nullableAmount = z.preprocess(
 );
 
 const commonFields = {
+  turnstileToken: z.string().min(1).max(2048),
   propertySubtype: z.string().trim().min(2).max(150),
   preferredCity: z.string().trim().min(2).max(255),
   preferredLocality: optionalText(255),
@@ -134,14 +137,10 @@ export async function POST(request: Request) {
   const rateLimitResponse = publicApiRateLimitResponse(rateLimit);
   if (rateLimitResponse) return rateLimitResponse;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 });
-  }
+  const bodyResult = await readJsonBody(request, 64 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
 
-  const parsed = buyerEnquirySchema.safeParse(body);
+  const parsed = buyerEnquirySchema.safeParse(bodyResult.value);
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: 'Please review the required details and try again.' },
@@ -150,6 +149,8 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
+  const verification = await verifyTurnstileToken(input.turnstileToken, 'buyer_requirements', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
   const propertyType = input.propertyType;
   const details = Object.fromEntries(
     Object.entries(input.details).filter(([, value]) => typeof value === 'string' && value.length > 0),

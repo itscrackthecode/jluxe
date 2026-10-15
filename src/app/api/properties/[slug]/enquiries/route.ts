@@ -5,12 +5,15 @@ import { sendJluxeNotification } from '@/lib/email-notifications';
 import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { siteConfig } from '@/lib/data';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
+import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
+import { readJsonBody } from '@/lib/read-json-body';
 
 const enquirySchema = z.object({
   name: z.string().trim().min(2).max(150),
   phone: z.string().trim().min(6).max(32),
   email: z.string().trim().email().max(320),
   message: z.string().trim().min(5).max(5000),
+  turnstileToken: z.string().min(1).max(2048),
 }).strict();
 
 type RouteContext = { params: Promise<{ slug: string }> };
@@ -31,13 +34,16 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const { slug } = await params;
   if (!slug || slug.length > 180) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
-  let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 }); }
-  const parsed = enquirySchema.safeParse(body);
+  const bodyResult = await readJsonBody(request, 16 * 1024);
+  if (!bodyResult.ok) return NextResponse.json({ success: false, error: bodyResult.error }, { status: bodyResult.status });
+  const parsed = enquirySchema.safeParse(bodyResult.value);
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Please review the required details and try again.' }, { status: 400 });
+  const verification = await verifyTurnstileToken(parsed.data.turnstileToken, 'property_enquiry', request.url);
+  if (verification !== 'verified') return turnstileResponse(verification);
 
   try {
-    const created = await createPropertyEnquiry({ slug, ...parsed.data });
+    const { turnstileToken: _turnstileToken, ...enquiryInput } = parsed.data;
+    const created = await createPropertyEnquiry({ slug, ...enquiryInput });
     if (created.kind === 'unavailable') return NextResponse.json({ success: false, error: 'This property is no longer available for enquiry.' }, { status: 409 });
 
     const { property, enquiry } = created;
