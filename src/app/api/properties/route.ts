@@ -155,13 +155,17 @@ export async function GET(request: Request) {
     const databaseError = error as Error & {
       code?: unknown;
       column?: unknown;
+      message?: unknown;
       table?: unknown;
     };
+    const missingColumn = typeof databaseError.message === 'string'
+      ? databaseError.message.match(/column "([^"]+)" does not exist/i)?.[1]
+      : undefined;
     console.error('Failed to list public properties.', {
       errorName: error instanceof Error ? error.name : 'UnknownError',
       errorCode: typeof databaseError.code === 'string' ? databaseError.code : undefined,
       errorTable: typeof databaseError.table === 'string' ? databaseError.table : undefined,
-      errorColumn: typeof databaseError.column === 'string' ? databaseError.column : undefined,
+      errorColumn: typeof databaseError.column === 'string' ? databaseError.column : missingColumn,
     });
 
     return NextResponse.json(
