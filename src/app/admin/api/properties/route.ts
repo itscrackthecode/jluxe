@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { propertyStatuses, publicationStatuses } from '@/lib/db/types';
 import { getAdminSession } from '@/lib/admin-session';
 import { hasSameOrigin } from '@/lib/admin-request';
-import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
+import { adminPropertySchema, createPropertySlug, getPublicPropertyAddress, serializeProperty } from '@/lib/admin-property';
 import { createProperty, listAdminProperties } from '@/lib/db/queries/properties';
-import { hasPostgresErrorCode } from '@/lib/db/errors';
+import { getPostgresErrorContext, hasPostgresErrorCode } from '@/lib/db/errors';
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
@@ -71,7 +71,11 @@ export async function POST(request: Request) {
   }
 
   const parsed = adminPropertySchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ success: false, error: 'Invalid property details.' }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({
+    success: false,
+    error: 'Invalid property details.',
+    issues: parsed.error.issues.map((issue) => ({ path: issue.path.map(String), message: issue.message })),
+  }, { status: 400 });
 
   const slug = parsed.data.slug || createPropertySlug(parsed.data.title);
   if (!slug) return NextResponse.json({ success: false, error: 'Enter a title that can form a URL slug.' }, { status: 400 });
@@ -80,13 +84,18 @@ export async function POST(request: Request) {
     const property = await createProperty({
       ...parsed.data,
       slug,
+      location: getPublicPropertyAddress({ ...parsed.data, title: parsed.data.title }),
     });
     return NextResponse.json({ success: true, data: serializeProperty(property) }, { status: 201 });
   } catch (error) {
     if (hasPostgresErrorCode(error, '23505')) {
       return NextResponse.json({ success: false, error: 'A property with this slug already exists.' }, { status: 409 });
     }
-    console.error('Failed to create admin property.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
-    return NextResponse.json({ success: false, error: 'Unable to create property right now.' }, { status: 500 });
+    console.error('Failed to create admin property.', getPostgresErrorContext(error));
+    return NextResponse.json({
+      success: false,
+      error: 'Unable to create property right now.',
+      ...(process.env.NODE_ENV === 'development' ? { diagnostics: getPostgresErrorContext(error) } : {}),
+    }, { status: 500 });
   }
 }

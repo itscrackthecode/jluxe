@@ -3,54 +3,221 @@
 import { ArrowLeft, ArrowUp, ArrowDown, Trash2, Star, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  plotSizeUnits,
-  priceModes,
   propertyStatuses,
-  propertyTypes,
+  propertySubtypes,
+  publicAddressModes,
   publicationStatuses,
   representationTypes,
   type PlotSizeUnit,
   type PriceMode,
+  type PriceBasis,
   type PropertyStatus,
   type PropertyType,
   type PublicationStatus,
   type RepresentationType,
   type PropertyMediaItem,
+  type PropertyConfiguration,
+  authorityVerificationStatuses,
+  propertySourceCategories,
+  propertySubmitterRelationships,
 } from '@/lib/db/types';
 import { createPropertySlug } from '@/lib/admin-property';
 import { getMediaImageUrl } from '@/lib/media';
 import { uploadAdminImage } from '@/lib/cloudinary-client';
+import PrivateNotesEditor from '@/components/admin/private-notes-editor';
+import PropertyVerificationDocuments from '@/components/admin/property-verification-documents';
+import PropertyLayoutDocuments from '@/components/admin/property-layout-documents';
 
 type PropertyData = {
   id: string;
   title: string;
   slug: string;
   description: string | null;
+  shortSummary?: string | null;
   location: string | null;
   propertyType: PropertyType;
+  propertyTypeOther?: string | null;
+  propertySubtype?: string | null;
+  propertySubtypeOther?: string | null;
+  locality?: string | null;
+  city?: string | null;
+  nearbyLandmark?: string | null;
+  district?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  publicAddressMode?: typeof publicAddressModes[number];
+  manualPublicAddress?: string | null;
+  mapLocation?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
   priceAmount: string | null;
   priceMode: PriceMode;
+  priceBasis?: PriceBasis;
+  customPriceBasis?: string | null;
+  additionalCharges?: Array<{ label: string; amount: string }>;
+  offerDetails?: string | null;
   plotSize: string | null;
   plotSizeUnit: PlotSizeUnit | null;
   status: PropertyStatus;
+  availabilityOther?: string | null;
+  enquiryEnabled?: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   representationType: RepresentationType;
+  sourceCategory?: PropertyDataSourceCategory | null;
+  sourceCategoryOther?: string | null;
+  sellerOrganizationName?: string | null;
+  submitterRelationship?: PropertySubmitterRelationship | null;
+  submitterRelationshipOther?: string | null;
+  representationRoleOther?: string | null;
+  authorityVerificationStatus?: AuthorityVerificationStatus;
+  internalContactName?: string | null;
+  internalContactPhone?: string | null;
+  internalContactEmail?: string | null;
+  privateNotesMarkdown?: string | null;
+  roadAccess?: string | null;
+  proximityMarkdown?: string | null;
+  landApprovedFor?: 'RESIDENTIAL' | 'COMMERCIAL' | 'MIXED_USE' | null;
+  statutoryApprovals?: string[];
+  otherStatutoryApprovals?: string | null;
+  approvalReference?: string | null;
+  approvalAuthority?: string | null;
+  projectPhase?: number | null;
+  constructionStatus?: string | null;
+  handoverDate?: string | null;
+  waterSources?: string[];
+  otherWaterSource?: string | null;
+  electricitySources?: string[];
+  otherElectricitySource?: string | null;
+  drainageOptions?: string[];
+  otherDrainageOption?: string | null;
+  furnishingStatus?: 'FULLY_FURNISHED' | 'SEMI_FURNISHED' | 'UNFURNISHED' | 'OTHER' | null;
+  furnishingStatusOther?: string | null;
+  amenitiesMarkdown?: string | null;
+  facingDirection?: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'NORTH_EAST' | 'NORTH_WEST' | 'SOUTH_EAST' | 'SOUTH_WEST' | 'OTHER' | null;
+  facingOther?: string | null;
+  sunlightOrientation?: string | null;
+  neighborhoodType?: 'STANDALONE' | 'GATED_COMMUNITY' | 'OTHER' | null;
+  neighborhoodTypeOther?: string | null;
+  floorCount?: number | null;
+  publicComplianceSummary?: string | null;
+  commercialUse?: 'RETAIL' | 'OFFICE' | 'INDUSTRIAL' | 'WAREHOUSE' | 'MIXED_USE' | 'OTHER' | null;
+  commercialUseOther?: string | null;
+  yearBuilt?: number | null;
+  recentUpgradesMarkdown?: string | null;
+  transactionType?: 'SALE' | 'LEASE' | 'RENT' | null;
+  leaseStructureMarkdown?: string | null;
+  occupancyStatus?: 'VACANT' | 'PARTIALLY_OCCUPIED' | 'OCCUPIED' | 'NOT_DISCLOSED' | null;
+  leaseExpiryDate?: string | null;
+  tenantProfileMarkdown?: string | null;
   publicationStatus: PublicationStatus;
 };
+
+type PropertyDataSourceCategory = typeof propertySourceCategories[number];
+type PropertySubmitterRelationship = typeof propertySubmitterRelationships[number];
+type AuthorityVerificationStatus = typeof authorityVerificationStatuses[number];
 
 type FormValues = {
   title: string;
   slug: string;
   description: string;
+  shortSummary: string;
   location: string;
   propertyType: string;
+  propertyTypeOther: string;
+  propertySubtype: string;
+  propertySubtypeOther: string;
+  locality: string;
+  city: string;
+  nearbyLandmark: string;
+  district: string;
+  state: string;
+  pincode: string;
+  publicAddressMode: 'FALLBACK' | 'MANUAL';
+  manualPublicAddress: string;
+  mapLocation: string;
+  latitude: string;
+  longitude: string;
   priceAmount: string;
   priceMode: PriceMode;
+  priceBasis: PriceBasis;
+  customPriceBasis: string;
+  additionalCharges: Array<{ label: string; amount: string }>;
+  offerDetails: string;
   plotSize: string;
   plotSizeUnit: string;
   status: string;
+  availabilityOther: string;
+  enquiryEnabled: boolean;
+  seoTitle: string;
+  seoDescription: string;
   representationType: string;
+  sourceCategory: string;
+  sourceCategoryOther: string;
+  sellerOrganizationName: string;
+  submitterRelationship: string;
+  submitterRelationshipOther: string;
+  representationRoleOther: string;
+  authorityVerificationStatus: AuthorityVerificationStatus;
+  internalContactName: string;
+  internalContactPhone: string;
+  internalContactEmail: string;
+  privateNotesMarkdown: string;
+  roadAccess: string;
+  proximityMarkdown: string;
+  landApprovedFor: string;
+  statutoryApprovals: string[];
+  otherStatutoryApprovals: string;
+  approvalReference: string;
+  approvalAuthority: string;
+  projectPhase: string;
+  constructionStatus: string;
+  handoverDate: string;
+  waterSources: string[];
+  otherWaterSource: string;
+  electricitySources: string[];
+  otherElectricitySource: string;
+  drainageOptions: string[];
+  otherDrainageOption: string;
+  furnishingStatus: string;
+  furnishingStatusOther: string;
+  amenitiesMarkdown: string;
+  facingDirection: string;
+  facingOther: string;
+  sunlightOrientation: string;
+  neighborhoodType: string;
+  neighborhoodTypeOther: string;
+  floorCount: string;
+  publicComplianceSummary: string;
+  commercialUse: string;
+  commercialUseOther: string;
+  yearBuilt: string;
+  recentUpgradesMarkdown: string;
+  transactionType: string;
+  leaseStructureMarkdown: string;
+  occupancyStatus: string;
+  leaseExpiryDate: string;
+  tenantProfileMarkdown: string;
+  configurations: Array<{
+    optionName: string;
+    areaValue: string;
+    areaUnit: string;
+    customAreaUnit: string;
+    areaBasis: string;
+    customAreaBasis: string;
+    dimensionLength: string;
+    dimensionWidth: string;
+    notesMarkdown: string;
+    plotNumber: string;
+    bedroomCount: string;
+    bathroomCount: string;
+    floorNumber: string;
+    carpetArea: string;
+    superBuiltUpArea: string;
+    roomConfiguration: Array<{ name: string; count: string }>;
+  }>;
   publicationStatus: PublicationStatus;
 };
 
@@ -64,21 +231,106 @@ type AttachedMediaItem = {
   altText: string | null;
 };
 
-const inputClass = 'min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] placeholder:text-white/30 outline-none focus:border-[var(--gold)]';
+type PropertyFormIssue = { label: string; message?: string; index?: number };
 
-function toFormValues(property?: PropertyData): FormValues {
+const propertyFieldLabels: Record<string, string> = {
+  title: 'Title', slug: 'URL slug', propertyType: 'Property type', propertyTypeOther: 'Enter the type of Property',
+  propertySubtype: 'Property subtype', propertySubtypeOther: 'Enter the subtype of Property',
+  status: 'Property availability', availabilityOther: 'Describe availability status', publicationStatus: 'Publication status',
+  priceMode: 'Price mode', priceBasis: 'Price basis', priceAmount: 'Price amount', plotSize: 'Plot size',
+  plotSizeUnit: 'Plot size unit', customPriceBasis: 'Price basis',
+  publicAddressMode: 'Public address', manualPublicAddress: 'Public address', representationType: 'JLUXE role',
+  sourceCategoryOther: 'Enter the source category', submitterRelationshipOther: 'Submitter relationship',
+  representationRoleOther: 'JLUXE representation role', otherStatutoryApprovals: 'Other statutory approvals',
+  otherWaterSource: 'Other water source', otherElectricitySource: 'Other electricity source',
+  otherDrainageOption: 'Other drainage or sewage option', furnishingStatusOther: 'Other furnishing status',
+  facingOther: 'Other facing direction', neighborhoodTypeOther: 'Other neighborhood type', commercialUseOther: 'Other commercial use',
+};
+
+const inputClass = 'min-h-11 w-full border border-white/15 bg-[#09221c] px-3 py-2 text-sm text-[#f5f1e8] placeholder:text-white/30 outline-none focus:border-[var(--gold)]';
+const propertyCategories = ['RESIDENTIAL', 'COMMERCIAL', 'LAND_PLOT', 'OTHER'] as const;
+
+function toFormValues(property?: PropertyData, configurations: PropertyConfiguration[] = []): FormValues {
+  const legacyType = property?.propertyType;
+  const propertyType = legacyType === 'APARTMENT' || legacyType === 'VILLA' ? 'RESIDENTIAL'
+    : legacyType === 'PLOT' || legacyType === 'LAND' ? 'LAND_PLOT'
+      : legacyType ?? '';
+  const legacySubtype = legacyType === 'APARTMENT' ? 'Apartment'
+    : legacyType === 'VILLA' ? 'Villa'
+      : legacyType === 'LAND' ? 'Agricultural Plot' : '';
   return {
     title: property?.title ?? '',
     slug: property?.slug ?? '',
     description: property?.description ?? '',
+    shortSummary: property?.shortSummary ?? '',
     location: property?.location ?? '',
-    propertyType: property?.propertyType ?? '',
+    propertyType,
+    propertyTypeOther: property?.propertyTypeOther ?? '',
+    propertySubtype: property?.propertySubtype ?? legacySubtype,
+    propertySubtypeOther: property?.propertySubtypeOther ?? '',
+    locality: property?.locality ?? '',
+    city: property?.city ?? '',
+    nearbyLandmark: property?.nearbyLandmark ?? '',
+    district: property?.district ?? '',
+    state: property?.state ?? '',
+    pincode: property?.pincode ?? '',
+    publicAddressMode: property?.publicAddressMode ?? (property?.location ? 'MANUAL' : 'FALLBACK'),
+    manualPublicAddress: property?.manualPublicAddress ?? property?.location ?? '',
+    mapLocation: property?.mapLocation ?? '',
+    latitude: property?.latitude ?? '',
+    longitude: property?.longitude ?? '',
     priceAmount: property?.priceAmount ?? '',
     priceMode: property?.priceMode ?? 'EXACT',
+    priceBasis: property?.priceBasis ?? 'TOTAL_PRICE',
+    customPriceBasis: property?.customPriceBasis ?? '',
+    additionalCharges: property?.additionalCharges ?? [],
+    offerDetails: property?.offerDetails ?? '',
     plotSize: property?.plotSize ?? '',
     plotSizeUnit: property?.plotSizeUnit ?? '',
-    status: property?.status ?? '',
+    status: property?.status ?? 'AVAILABLE',
+    availabilityOther: property?.availabilityOther ?? '',
+    enquiryEnabled: property?.enquiryEnabled ?? true,
+    seoTitle: property?.seoTitle ?? '',
+    seoDescription: property?.seoDescription ?? '',
     representationType: property?.representationType ?? '',
+    sourceCategory: property?.sourceCategory ?? '',
+    sourceCategoryOther: property?.sourceCategoryOther ?? '',
+    sellerOrganizationName: property?.sellerOrganizationName ?? '',
+    submitterRelationship: property?.submitterRelationship ?? '',
+    submitterRelationshipOther: property?.submitterRelationshipOther ?? '',
+    representationRoleOther: property?.representationRoleOther ?? '',
+    authorityVerificationStatus: property?.authorityVerificationStatus ?? 'NOT_CHECKED',
+    internalContactName: property?.internalContactName ?? '',
+    internalContactPhone: property?.internalContactPhone ?? '',
+    internalContactEmail: property?.internalContactEmail ?? '',
+    privateNotesMarkdown: property?.privateNotesMarkdown ?? '',
+    roadAccess: property?.roadAccess ?? '', proximityMarkdown: property?.proximityMarkdown ?? '',
+    landApprovedFor: property?.landApprovedFor ?? '', statutoryApprovals: property?.statutoryApprovals ?? [],
+    otherStatutoryApprovals: property?.otherStatutoryApprovals ?? '', approvalReference: property?.approvalReference ?? '',
+    approvalAuthority: property?.approvalAuthority ?? '', projectPhase: property?.projectPhase == null ? '' : String(property.projectPhase),
+    constructionStatus: property?.constructionStatus ?? '', handoverDate: property?.handoverDate ?? '',
+    waterSources: property?.waterSources ?? [], otherWaterSource: property?.otherWaterSource ?? '',
+    electricitySources: property?.electricitySources ?? [], otherElectricitySource: property?.otherElectricitySource ?? '',
+    drainageOptions: property?.drainageOptions ?? [], otherDrainageOption: property?.otherDrainageOption ?? '',
+    furnishingStatus: property?.furnishingStatus ?? '', furnishingStatusOther: property?.furnishingStatusOther ?? '',
+    amenitiesMarkdown: property?.amenitiesMarkdown ?? '',
+    facingDirection: property?.facingDirection ?? '', facingOther: property?.facingOther ?? '',
+    sunlightOrientation: property?.sunlightOrientation ?? '', neighborhoodType: property?.neighborhoodType ?? '',
+    neighborhoodTypeOther: property?.neighborhoodTypeOther ?? '', floorCount: property?.floorCount == null ? '' : String(property.floorCount),
+    publicComplianceSummary: property?.publicComplianceSummary ?? '',
+    commercialUse: property?.commercialUse ?? '', commercialUseOther: property?.commercialUseOther ?? '',
+    yearBuilt: property?.yearBuilt == null ? '' : String(property.yearBuilt), recentUpgradesMarkdown: property?.recentUpgradesMarkdown ?? '',
+    transactionType: property?.transactionType ?? '', leaseStructureMarkdown: property?.leaseStructureMarkdown ?? '',
+    occupancyStatus: property?.occupancyStatus ?? '', leaseExpiryDate: property?.leaseExpiryDate ?? '',
+    tenantProfileMarkdown: property?.tenantProfileMarkdown ?? '',
+    configurations: configurations.length > 0 ? configurations.map((item) => ({
+      optionName: item.optionName ?? '', areaValue: item.areaValue ?? '', areaUnit: item.areaUnit ?? '',
+      customAreaUnit: item.customAreaUnit ?? '', areaBasis: item.areaBasis ?? '', customAreaBasis: item.customAreaBasis ?? '',
+      dimensionLength: item.dimensionLength ?? '', dimensionWidth: item.dimensionWidth ?? '', notesMarkdown: item.notesMarkdown ?? '', plotNumber: item.plotNumber ?? '',
+      bedroomCount: item.bedroomCount == null ? '' : String(item.bedroomCount), bathroomCount: item.bathroomCount == null ? '' : String(item.bathroomCount), floorNumber: item.floorNumber ?? '',
+      carpetArea: item.carpetArea ?? '', superBuiltUpArea: item.superBuiltUpArea ?? '',
+      roomConfiguration: item.roomConfiguration?.map((room) => ({ name: room.name ?? '', count: room.count == null ? '' : String(room.count) })) ?? [],
+    })) : property ? [] : [{ optionName: '', areaValue: '', areaUnit: '', customAreaUnit: '', areaBasis: '', customAreaBasis: '', dimensionLength: '', dimensionWidth: '', notesMarkdown: '', plotNumber: '', bedroomCount: '', bathroomCount: '', floorNumber: '', carpetArea: '', superBuiltUpArea: '', roomConfiguration: [] }],
     publicationStatus: property?.publicationStatus ?? 'DRAFT',
   };
 }
@@ -87,20 +339,43 @@ function formatLabel(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function cleanMoneyInput(value: string) {
+  const cleaned = value.replace(/[^\d.]/g, '');
+  const [integer = '', ...fractionParts] = cleaned.split('.');
+  const fraction = fractionParts.join('').slice(0, 2);
+  return fractionParts.length ? `${integer}.${fraction}` : integer;
+}
+
+function formatMoneyInput(value: string) {
+  if (!value) return '';
+  const [integer, fraction] = value.split('.');
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return fraction !== undefined ? `${grouped}.${fraction}` : grouped;
+}
+
 export default function PropertyForm({
   property,
   initialMedia = [],
+  initialConfigurations = [],
 }: {
   property?: PropertyData;
   initialMedia?: PropertyMediaItem[];
+  initialConfigurations?: PropertyConfiguration[];
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<FormValues>(() => toFormValues(property));
-  const [slugEdited, setSlugEdited] = useState(Boolean(property));
+  const [values, setValues] = useState<FormValues>(() => toFormValues(property, initialConfigurations));
+  const [slugEdited, setSlugEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<PropertyFormIssue[]>([]);
+  const formRef = useRef<HTMLFormElement | null>(null);
   const [createdPropertyId, setCreatedPropertyId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [sourceDetailView, setSourceDetailView] = useState<'notes' | 'documents'>('notes');
+  const fallbackPublicAddress = [values.title, values.locality, values.city, values.district, values.state].filter(Boolean).join(', ')
+    + (values.pincode ? ` - ${values.pincode}` : '')
+    + (values.nearbyLandmark ? ` (near ${values.nearbyLandmark})` : '');
+  const publicAddressPreview = values.publicAddressMode === 'MANUAL' ? values.manualPublicAddress : fallbackPublicAddress;
 
   // Media gallery state
   const [mediaList, setMediaList] = useState<AttachedMediaItem[]>(() =>
@@ -150,6 +425,57 @@ export default function PropertyForm({
 
   function update<K extends keyof FormValues>(field: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }));
+    setFieldErrors([]);
+    setError('');
+  }
+
+  function focusFieldIssue(issue: PropertyFormIssue) {
+    if (issue.index !== undefined) {
+      formRef.current?.querySelectorAll<HTMLElement>(':invalid')[issue.index]?.focus();
+      formRef.current?.querySelectorAll<HTMLElement>(':invalid')[issue.index]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    const labels = Array.from(formRef.current?.querySelectorAll('label') ?? []);
+    const matchingLabel = labels.find((label) => {
+      const caption = label.querySelector('span')?.textContent?.trim() ?? label.textContent?.trim() ?? '';
+      return caption.toLocaleLowerCase().startsWith(issue.label.toLocaleLowerCase());
+    });
+    const control = matchingLabel?.querySelector<HTMLElement>('input, select, textarea, button');
+    control?.focus();
+    control?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function handleInvalidFields(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const invalidFields = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(':invalid'));
+    const issues = invalidFields.map((element, index) => {
+      const label = element.closest('label');
+      const caption = label?.querySelector('span')?.textContent?.trim()
+        ?? element.getAttribute('aria-label')
+        ?? element.getAttribute('placeholder')
+        ?? 'Required field';
+      return { label: caption.replace(/\s*\(.*?\)/, '').replace(/\s*\*$/, ''), index };
+    });
+    setError('Some required information is missing. Select a field below to go directly to it.');
+    setFieldErrors(issues);
+    invalidFields[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    invalidFields[0]?.focus();
+  }
+
+  function updateConfiguration(index: number, field: keyof FormValues['configurations'][number], value: string) {
+    setValues((current) => ({
+      ...current,
+      configurations: current.configurations.map((configuration, configurationIndex) =>
+        configurationIndex === index ? { ...configuration, [field]: value } : configuration),
+    }));
+  }
+
+  function addConfiguration() {
+    setValues((current) => ({ ...current, configurations: [...current.configurations, {
+      optionName: '', areaValue: '', areaUnit: '', customAreaUnit: '', areaBasis: '', customAreaBasis: '',
+      dimensionLength: '', dimensionWidth: '', notesMarkdown: '', plotNumber: '', bedroomCount: '', bathroomCount: '', floorNumber: '',
+      carpetArea: '', superBuiltUpArea: '', roomConfiguration: [],
+    }] }));
   }
 
   async function persistMediaList(newList: AttachedMediaItem[]) {
@@ -274,15 +600,110 @@ export default function PropertyForm({
 
     setSaving(true);
     setError('');
+    setFieldErrors([]);
+    const isResidential = values.propertyType === 'RESIDENTIAL';
+    const isApartment = isResidential && values.propertySubtype === 'Apartment';
+    const isHouse = isResidential && ['Villa', 'Independent House'].includes(values.propertySubtype);
+    const isVilla = isResidential && values.propertySubtype === 'Villa';
+    const isIndependentHouse = isResidential && values.propertySubtype === 'Independent House';
     const payload = {
       ...values,
+      availabilityOther: values.status === 'OTHER' ? values.availabilityOther || null : null,
+      seoTitle: values.seoTitle || null,
+      seoDescription: values.seoDescription || null,
+      propertyType: values.propertyType === 'RESIDENTIAL' ? 'RESIDENTIAL'
+        : values.propertyType === 'COMMERCIAL' ? 'COMMERCIAL'
+          : values.propertyType === 'LAND_PLOT' ? 'LAND_PLOT' : 'OTHER',
+      location: publicAddressPreview || null,
       slug: values.slug || undefined,
       description: values.description || null,
-      location: values.location || null,
+      shortSummary: values.shortSummary || null,
+      propertyTypeOther: values.propertyTypeOther || null,
+      propertySubtype: values.propertySubtype || null,
+      propertySubtypeOther: values.propertySubtypeOther || null,
+      locality: values.locality || null,
+      city: values.city || null,
+      nearbyLandmark: values.nearbyLandmark || null,
+      district: values.district || null,
+      state: values.state || null,
+      pincode: values.pincode || null,
+      manualPublicAddress: values.manualPublicAddress || null,
+      mapLocation: values.mapLocation || null,
+      latitude: values.latitude || null,
+      longitude: values.longitude || null,
       priceAmount: values.priceAmount || null,
       priceCurrency: values.priceAmount ? 'INR' : null,
+      priceBasis: values.priceBasis,
+      customPriceBasis: values.priceBasis === 'OTHER' ? values.customPriceBasis : null,
+      additionalCharges: values.additionalCharges.filter((charge) => charge.label.trim() || charge.amount.trim()).map((charge) => ({ ...charge, amount: cleanMoneyInput(charge.amount) })),
+      offerDetails: values.offerDetails || null,
+      configurations: values.configurations.filter((item) => Object.entries(item).some(([key, value]) => key === 'roomConfiguration'
+        ? (value as Array<{ name: string; count: string }>).some((room) => room.name.trim() || room.count.trim())
+        : Boolean((value as string).trim()))).map((item) => ({
+        optionName: item.optionName || null,
+        areaValue: item.areaValue ? cleanMoneyInput(item.areaValue) : null,
+        areaUnit: item.areaUnit || null,
+        customAreaUnit: item.customAreaUnit || null,
+        areaBasis: isHouse ? 'BUILT_UP_AREA' : item.areaBasis || null,
+        customAreaBasis: isHouse ? null : item.customAreaBasis || null,
+        dimensionLength: item.dimensionLength ? cleanMoneyInput(item.dimensionLength) : null,
+        dimensionWidth: item.dimensionWidth ? cleanMoneyInput(item.dimensionWidth) : null,
+        notesMarkdown: item.notesMarkdown || null,
+        plotNumber: values.propertyType === 'LAND_PLOT' ? item.plotNumber || null : null,
+        bedroomCount: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && item.bedroomCount !== '' ? Number(item.bedroomCount) : null,
+        bathroomCount: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && item.bathroomCount !== '' ? Number(item.bathroomCount) : null,
+        floorNumber: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' ? item.floorNumber || null : null,
+        carpetArea: isHouse && item.carpetArea ? cleanMoneyInput(item.carpetArea) : null,
+        superBuiltUpArea: isVilla && item.superBuiltUpArea ? cleanMoneyInput(item.superBuiltUpArea) : null,
+        roomConfiguration: isHouse ? item.roomConfiguration.filter((room) => room.name.trim() || room.count.trim()).map((room) => ({ name: room.name.trim() || null, count: room.count.trim() ? Number(room.count) : null })) : [],
+      })),
+      roadAccess: values.propertyType === 'LAND_PLOT' ? values.roadAccess || null : null,
+      proximityMarkdown: values.propertyType === 'LAND_PLOT' || values.propertyType === 'COMMERCIAL' || isApartment || isHouse ? values.proximityMarkdown || null : null,
+      landApprovedFor: values.propertyType === 'LAND_PLOT' ? values.landApprovedFor || null : null,
+      statutoryApprovals: values.propertyType === 'LAND_PLOT' ? values.statutoryApprovals : [],
+      otherStatutoryApprovals: values.propertyType === 'LAND_PLOT' ? values.otherStatutoryApprovals || null : null,
+      approvalReference: values.approvalReference || null,
+      approvalAuthority: values.approvalAuthority || null,
+      projectPhase: values.projectPhase ? Number(values.projectPhase) : null,
+      constructionStatus: values.constructionStatus || null,
+      handoverDate: values.handoverDate || null,
+      waterSources: values.propertyType === 'LAND_PLOT' ? values.waterSources : [],
+      otherWaterSource: values.propertyType === 'LAND_PLOT' ? values.otherWaterSource || null : null,
+      electricitySources: values.propertyType === 'LAND_PLOT' ? values.electricitySources : [],
+      otherElectricitySource: values.propertyType === 'LAND_PLOT' ? values.otherElectricitySource || null : null,
+      drainageOptions: values.propertyType === 'LAND_PLOT' ? values.drainageOptions : [],
+      otherDrainageOption: values.propertyType === 'LAND_PLOT' ? values.otherDrainageOption || null : null,
+      furnishingStatus: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' ? values.furnishingStatus || null : null,
+      furnishingStatusOther: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && values.furnishingStatus === 'OTHER' ? values.furnishingStatusOther || null : null,
+      amenitiesMarkdown: values.amenitiesMarkdown || null,
+      facingDirection: isHouse ? values.facingDirection || null : null,
+      facingOther: isHouse && values.facingDirection === 'OTHER' ? values.facingOther || null : null,
+      sunlightOrientation: isHouse ? values.sunlightOrientation || null : null,
+      neighborhoodType: isHouse ? values.neighborhoodType || null : null,
+      neighborhoodTypeOther: isHouse && values.neighborhoodType === 'OTHER' ? values.neighborhoodTypeOther || null : null,
+      floorCount: isIndependentHouse && values.floorCount ? Number(values.floorCount) : null,
+      publicComplianceSummary: isHouse ? values.publicComplianceSummary || null : null,
+      commercialUse: values.propertyType === 'COMMERCIAL' ? values.commercialUse || null : null,
+      commercialUseOther: values.propertyType === 'COMMERCIAL' && values.commercialUse === 'OTHER' ? values.commercialUseOther || null : null,
+      yearBuilt: values.propertyType === 'COMMERCIAL' && values.yearBuilt ? Number(values.yearBuilt) : null,
+      recentUpgradesMarkdown: values.propertyType === 'COMMERCIAL' ? values.recentUpgradesMarkdown || null : null,
+      transactionType: values.propertyType === 'COMMERCIAL' ? values.transactionType || null : null,
+      leaseStructureMarkdown: values.propertyType === 'COMMERCIAL' && ['LEASE', 'RENT'].includes(values.transactionType) ? values.leaseStructureMarkdown || null : null,
+      occupancyStatus: values.propertyType === 'COMMERCIAL' ? values.occupancyStatus || null : null,
+      leaseExpiryDate: values.propertyType === 'COMMERCIAL' && ['LEASE', 'RENT'].includes(values.transactionType) ? values.leaseExpiryDate || null : null,
+      tenantProfileMarkdown: values.propertyType === 'COMMERCIAL' ? values.tenantProfileMarkdown || null : null,
       plotSize: values.plotSize || null,
       plotSizeUnit: values.plotSizeUnit || null,
+      sourceCategory: values.sourceCategory || null,
+      sourceCategoryOther: values.sourceCategoryOther || null,
+      sellerOrganizationName: values.sellerOrganizationName || null,
+      submitterRelationship: values.submitterRelationship || null,
+      submitterRelationshipOther: values.submitterRelationshipOther || null,
+      representationRoleOther: values.representationRoleOther || null,
+      internalContactName: values.internalContactName || null,
+      internalContactPhone: values.internalContactPhone || null,
+      internalContactEmail: values.internalContactEmail || null,
+      privateNotesMarkdown: values.privateNotesMarkdown || null,
     };
 
     try {
@@ -294,6 +715,23 @@ export default function PropertyForm({
       });
       const result = await response.json();
       if (!response.ok || result.success !== true) {
+        if (Array.isArray(result.issues) && result.issues.length > 0) {
+          const issues: PropertyFormIssue[] = result.issues.map((issue: { path?: string[]; message?: string }) => {
+            const path = Array.isArray(issue.path) ? issue.path : [];
+            const field = path.at(-1) ?? '';
+            const baseLabel = propertyFieldLabels[field] ?? (field ? formatLabel(field) : 'Property details');
+            const configurationIndex = path[0] === 'configurations' ? Number(path[1]) : Number.NaN;
+            const label = Number.isInteger(configurationIndex)
+              ? `Configuration ${configurationIndex + 1}: ${baseLabel}`
+              : baseLabel;
+            const message = issue.message && !issue.message.startsWith('Invalid input') && !issue.message.startsWith('Invalid option')
+              ? issue.message : 'Enter or select a valid value.';
+            return { label, message };
+          });
+          setFieldErrors(issues);
+          setError('Please review the following property fields. Select a field to jump to it.');
+          return;
+        }
         setError(result.error ?? 'Unable to save property. Please review the form and try again.');
         return;
       }
@@ -327,12 +765,14 @@ export default function PropertyForm({
         <ArrowLeft className="h-4 w-4" /> All properties
       </Link>
       <div className="mt-5 border-b border-white/15 pb-6">
-        <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY LISTING</p>
-        <h1 className="mt-2 font-display text-4xl text-white">{property ? 'Edit property' : 'Add property'}</h1>
+        <h1 className="font-display text-4xl text-white">{property ? 'Edit property' : 'Add property'}</h1>
       </div>
 
-      <form onSubmit={submit} className="mt-6 space-y-8">
-        <section className="grid gap-5 sm:grid-cols-2">
+      <form ref={formRef} onSubmit={submit} onInvalidCapture={handleInvalidFields} className="mt-6 space-y-8">
+        <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">BASIC INFORMATION</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Property details</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
           <label className="block text-xs font-medium text-[#9caaa4]">
             <span className="mb-1.5 block">Title *</span>
             <input
@@ -361,156 +801,430 @@ export default function PropertyForm({
               className={inputClass}
             />
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
-            <span className="mb-1.5 block">Description</span>
-            <textarea
-              maxLength={20000}
-              rows={5}
-              value={values.description}
-              onChange={(event) => update('description', event.target.value)}
-              className={`${inputClass} py-3`}
-            />
-          </label>
-          <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
-            <span className="mb-1.5 block">Location</span>
-            <input
-              maxLength={255}
-              value={values.location}
-              onChange={(event) => update('location', event.target.value)}
-              className={inputClass}
-            />
-          </label>
           <label className="block text-xs font-medium text-[#9caaa4]">
             <span className="mb-1.5 block">Property type *</span>
             <select
               required
               value={values.propertyType}
-              onChange={(event) => update('propertyType', event.target.value)}
+              onChange={(event) => {
+                update('propertyType', event.target.value);
+                update('propertySubtype', '');
+                update('propertySubtypeOther', '');
+                update('propertyTypeOther', '');
+              }}
               className={inputClass}
             >
               <option value="">Select type</option>
-              {propertyTypes.map((value) => (
+              {propertyCategories.map((value) => (
                 <option key={value} value={value}>
-                  {formatLabel(value)}
+                  {value === 'LAND_PLOT' ? 'Land / Plot' : formatLabel(value)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4]">
-            <span className="mb-1.5 block">Property status *</span>
-            <select
-              required
-              value={values.status}
-              onChange={(event) => update('status', event.target.value)}
-              className={inputClass}
-            >
-              <option value="">Select status</option>
-              {propertyStatuses.map((value) => (
-                <option key={value} value={value}>
-                  {formatLabel(value)}
-                </option>
-              ))}
+          {values.propertyType === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+            <span className="mb-1.5 block">Enter the type of Property *</span>
+            <input required maxLength={120} value={values.propertyTypeOther} onChange={(event) => update('propertyTypeOther', event.target.value)} className={inputClass} />
+          </label>}
+          {values.propertyType && values.propertyType !== 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+            <span className="mb-1.5 block">Property subtype *</span>
+            <select required value={values.propertySubtype} onChange={(event) => { update('propertySubtype', event.target.value); update('propertySubtypeOther', ''); }} className={inputClass}>
+              <option value="">Select subtype</option>
+              {propertySubtypes[values.propertyType as keyof typeof propertySubtypes]?.map((subtype) => <option key={subtype} value={subtype}>{subtype}</option>)}
             </select>
-          </label>
+          </label>}
+          {(values.propertyType === 'OTHER' || values.propertySubtype === 'Other') && <label className="block text-xs font-medium text-[#9caaa4]">
+            <span className="mb-1.5 block">{values.propertyType === 'OTHER' ? 'Enter the subtype of Property *' : 'Enter the subtype of Property *'}</span>
+            <input required maxLength={120} value={values.propertyType === 'OTHER' ? values.propertySubtype : values.propertySubtypeOther} onChange={(event) => values.propertyType === 'OTHER' ? update('propertySubtype', event.target.value) : update('propertySubtypeOther', event.target.value)} className={inputClass} />
+          </label>}
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 className="text-sm font-semibold text-white">Short summary</h3>
+            <p className="mb-3 mt-1 text-xs text-[#9caaa4]">A concise introduction shown near the top of the public property page.</p>
+            <PrivateNotesEditor id="property-short-summary" label="Short summary in Markdown" placeholder="Add a concise overview. Markdown is supported." maxLength={5000} value={values.shortSummary} onChange={(value) => update('shortSummary', value)} />
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 className="text-sm font-semibold text-white">Detailed summary</h3>
+            <p className="mb-3 mt-1 text-xs text-[#9caaa4]">Describe the property in more detail for customers.</p>
+            <PrivateNotesEditor id="property-detailed-summary" label="Detailed summary in Markdown" placeholder="Add property details. Markdown is supported." value={values.description} onChange={(value) => update('description', value)} />
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 className="text-sm font-semibold text-white">Location details</h3>
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              {([
+                ['locality', 'Locality'], ['city', 'City'], ['nearbyLandmark', 'Nearby landmark'],
+                ['district', 'District'], ['state', 'State'], ['pincode', 'Pincode'],
+              ] as const).map(([field, label]) => <label key={field} className="block text-xs font-medium text-[#9caaa4]">
+                <span className="mb-1.5 block">{label}</span>
+                <input maxLength={field === 'pincode' ? 12 : 180} inputMode={field === 'pincode' ? 'numeric' : undefined} value={values[field]} onChange={(event) => update(field, event.target.value)} className={inputClass} />
+              </label>)}
+            </div>
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold text-white">Public address</h4>
+              <fieldset className="mt-3">
+                <legend className="sr-only">Choose how the public address is entered</legend>
+                <div className="flex flex-wrap gap-5 text-sm text-[#d8dfdb]">
+                  {(['FALLBACK', 'MANUAL'] as const).map((mode) => <label key={mode} className="inline-flex min-h-10 cursor-pointer items-center gap-2">
+                    <input type="radio" name="public-address-mode" value={mode} checked={values.publicAddressMode === mode} onChange={() => update('publicAddressMode', mode)} className="accent-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" />
+                    {mode === 'FALLBACK' ? 'Fallback Entry' : 'Manual Entry'}
+                  </label>)}
+                </div>
+              </fieldset>
+              {values.publicAddressMode === 'MANUAL' ? <label className="mt-3 block text-xs font-medium text-[#9caaa4]">
+                <span className="mb-1.5 block">Public address *</span>
+                <textarea required maxLength={500} rows={3} value={values.manualPublicAddress} onChange={(event) => update('manualPublicAddress', event.target.value)} className={inputClass} />
+              </label> : <p className="mt-3 border border-white/10 bg-[#09221c] px-3 py-3 text-sm leading-6 text-[#d8dfdb]" aria-live="polite">{publicAddressPreview || 'The address preview will appear here as location details are entered.'}</p>}
+              <p className="mt-2 text-xs leading-5 text-[#82918b]">Fallback Entry combines the property title and available location details, including the nearby landmark when provided.</p>
+            </div>
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <h4 className="text-sm font-semibold text-white">Map location and coordinates <span className="font-normal text-[#9caaa4]">(optional)</span></h4>
+              <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Map location link or place</span><input maxLength={500} value={values.mapLocation} onChange={(event) => update('mapLocation', event.target.value)} className={inputClass} placeholder="Google Maps link or place reference" /></label>
+                <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Latitude</span><input inputMode="decimal" maxLength={16} value={values.latitude} onChange={(event) => update('latitude', event.target.value)} className={inputClass} placeholder="e.g. 13.0827" /></label>
+                <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Longitude</span><input inputMode="decimal" maxLength={16} value={values.longitude} onChange={(event) => update('longitude', event.target.value)} className={inputClass} placeholder="e.g. 80.2707" /></label>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="border-t border-white/15 pt-6">
-          <h2 className="font-display text-2xl text-white">Price and size</h2>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">AVAILABILITY AND PUBLICATION</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Availability and visibility</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[#9caaa4]">
-              <span className="mb-1.5 block">Price amount (INR)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={values.priceAmount}
-                onChange={(event) => update('priceAmount', event.target.value)}
-                className={inputClass}
-              />
+              <span className="mb-1.5 block">Property availability *</span>
+              <select required value={values.status} onChange={(event) => update('status', event.target.value)} className={inputClass}>
+                {propertyStatuses.map((value) => <option key={value} value={value}>{value === 'OTHER' ? 'Other' : formatLabel(value)}</option>)}
+              </select>
             </label>
+            {values.status === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Describe availability status *</span>
+              <input required maxLength={120} value={values.availabilityOther} onChange={(event) => update('availabilityOther', event.target.value)} className={inputClass} />
+            </label>}
             <label className="block text-xs font-medium text-[#9caaa4]">
-              <span className="mb-1.5 block">Price mode *</span>
-              <select
-                value={values.priceMode}
-                onChange={(event) => update('priceMode', event.target.value as FormValues['priceMode'])}
-                className={inputClass}
-              >
-                {priceModes.map((value) => (
-                  <option key={value} value={value}>
-                    {formatLabel(value)}
-                  </option>
-                ))}
+              <span className="mb-1.5 block">Publication status *</span>
+              <select value={values.publicationStatus} onChange={(event) => update('publicationStatus', event.target.value as FormValues['publicationStatus'])} className={inputClass}>
+                {publicationStatuses.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
             </label>
             <label className="block text-xs font-medium text-[#9caaa4]">
-              <span className="mb-1.5 block">Plot size</span>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={values.plotSize}
-                onChange={(event) => update('plotSize', event.target.value)}
-                className={inputClass}
-              />
+              <span className="mb-1.5 block">Enquiry enabled *</span>
+              <select value={values.enquiryEnabled ? 'true' : 'false'} onChange={(event) => update('enquiryEnabled', event.target.value === 'true')} className={inputClass}>
+                <option value="true">Yes</option><option value="false">No</option>
+              </select>
+              <span className="mt-1.5 block font-normal leading-5 text-[#82918b]">Sold, leased, and withdrawn listings never accept enquiries.</span>
             </label>
             <label className="block text-xs font-medium text-[#9caaa4]">
-              <span className="mb-1.5 block">Plot size unit</span>
-              <select
-                value={values.plotSizeUnit}
-                onChange={(event) => update('plotSizeUnit', event.target.value)}
-                className={inputClass}
-              >
-                <option value="">No plot size</option>
-                {plotSizeUnits.map((value) => (
-                  <option key={value} value={value}>
-                    {formatLabel(value)}
-                  </option>
-                ))}
-              </select>
+              <span className="mb-1.5 block">SEO title <span className="font-normal">(optional)</span></span>
+              <input maxLength={200} value={values.seoTitle} onChange={(event) => update('seoTitle', event.target.value)} className={inputClass} />
+            </label>
+            <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
+              <span className="mb-1.5 block">SEO description <span className="font-normal">(optional)</span></span>
+              <textarea maxLength={320} rows={3} value={values.seoDescription} onChange={(event) => update('seoDescription', event.target.value)} className={inputClass} />
             </label>
           </div>
         </section>
 
         <section className="border-t border-white/15 pt-6">
-          <h2 className="font-display text-2xl text-white">Representation and publication</h2>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">PRICING</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Pricing and charges</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[#9caaa4]">
-              <span className="mb-1.5 block">JLUXE representation *</span>
-              <select
-                required
-                value={values.representationType}
-                onChange={(event) => update('representationType', event.target.value)}
-                className={inputClass}
-              >
+              <span className="mb-1.5 block">Price mode *</span>
+              <select required value={values.priceMode} onChange={(event) => update('priceMode', event.target.value as PriceMode)} className={inputClass}>
+                <option value="EXACT">Exact price</option><option value="STARTING_FROM">Starting from</option><option value="ON_REQUEST">On request</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Price amount (INR)</span>
+              <span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]">
+                <span className="px-3 text-sm text-[#f5f1e8]" aria-hidden="true">₹</span>
+                <input aria-label="Price amount in Indian rupees" inputMode="decimal" value={formatMoneyInput(values.priceAmount)} onChange={(event) => update('priceAmount', cleanMoneyInput(event.target.value))} className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-[#f5f1e8] outline-none" placeholder="Enter amount" />
+              </span>
+            </label>
+            <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Price basis *</span>
+              <select required value={values.priceBasis} onChange={(event) => update('priceBasis', event.target.value as PriceBasis)} className={inputClass}>
+                <option value="TOTAL_PRICE">Total price</option><option value="PER_SQFT">Per sq. ft.</option><option value="PER_CENT">Per cent</option><option value="OTHER">Other</option>
+              </select>
+            </label>
+            {values.priceBasis === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Price basis unit *</span>
+              <span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]"><span className="px-3 text-sm text-[#9caaa4]">per</span><input required maxLength={80} value={values.customPriceBasis} onChange={(event) => update('customPriceBasis', event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-[#f5f1e8] outline-none" placeholder="e.g. acre" /></span>
+            </label>}
+          </div>
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h3 className="text-sm font-semibold text-white">Additional charges <span className="font-normal text-[#9caaa4]">(optional)</span></h3><p className="mt-1 text-xs text-[#9caaa4]">Add charges such as registration or maintenance only when the details are known.</p></div>
+              <button type="button" onClick={() => setValues((current) => ({ ...current, additionalCharges: [...current.additionalCharges, { label: '', amount: '' }] }))} className="inline-flex min-h-10 items-center gap-2 border border-white/20 px-3 text-xs font-semibold text-white transition-colors hover:border-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><Plus className="h-4 w-4" /> Add charge</button>
+            </div>
+            {values.additionalCharges.length > 0 && <div className="mt-4 space-y-3">{values.additionalCharges.map((charge, index) => <div key={index} className="grid gap-3 border border-white/10 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Charge name</span><input maxLength={120} value={charge.label} onChange={(event) => setValues((current) => ({ ...current, additionalCharges: current.additionalCharges.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item) }))} className={inputClass} placeholder="e.g. Registration charges" /></label>
+              <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Amount (INR)</span><span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]"><span className="px-3 text-sm text-[#f5f1e8]" aria-hidden="true">₹</span><input aria-label={`Charge ${index + 1} amount in Indian rupees`} inputMode="decimal" value={formatMoneyInput(charge.amount)} onChange={(event) => setValues((current) => ({ ...current, additionalCharges: current.additionalCharges.map((item, itemIndex) => itemIndex === index ? { ...item, amount: cleanMoneyInput(event.target.value) } : item) }))} className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-[#f5f1e8] outline-none" placeholder="Enter amount" /></span></label>
+              <button type="button" aria-label={`Remove charge ${index + 1}`} onClick={() => setValues((current) => ({ ...current, additionalCharges: current.additionalCharges.filter((_, itemIndex) => itemIndex !== index) }))} className="inline-flex min-h-11 items-center justify-center gap-2 border border-white/15 px-3 text-xs text-[#d7b3a9] hover:border-red-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><Trash2 className="h-4 w-4" /><span className="sm:sr-only">Remove</span></button>
+            </div>)}</div>}
+          </div>
+          <label className="mt-6 block border-t border-white/10 pt-5 text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Offer details <span className="font-normal">(optional)</span></span><textarea maxLength={2000} rows={3} value={values.offerDetails} onChange={(event) => update('offerDetails', event.target.value)} className={inputClass} placeholder="Add any current offer or pricing note." /></label>
+        </section>
+
+        <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">AREA &amp; CONFIGURATION</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Areas and options</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Add one or more customer-facing options. Every field is optional; leave a card blank to skip it.</p>
+          <div className="mt-5 space-y-4">
+            {values.configurations.map((configuration, index) => <fieldset key={index} className="min-w-0 border border-white/15 bg-[#08201b] p-4 sm:p-5">
+              <legend className="px-2 text-sm font-semibold text-white">Option {index + 1}</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
+                  <span className="mb-1.5 block">Option name <span className="font-normal">(optional)</span></span>
+                  <input maxLength={160} value={configuration.optionName} onChange={(event) => updateConfiguration(index, 'optionName', event.target.value)} className={inputClass} placeholder="e.g. 2 BHK, 30 × 40 plot, Corner plot" />
+                </label>
+                {values.propertyType === 'LAND_PLOT' && <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
+                  <span className="mb-1.5 block">Plot number <span className="font-normal">(optional)</span></span>
+                  <input maxLength={80} value={configuration.plotNumber} onChange={(event) => updateConfiguration(index, 'plotNumber', event.target.value)} className={inputClass} placeholder="e.g. A-12" />
+                </label>}
+                <label className="block text-xs font-medium text-[#9caaa4]">
+                  <span className="mb-1.5 block">{values.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(values.propertySubtype) ? 'Built-up area' : 'Area value'} <span className="font-normal">(optional)</span></span>
+                  <span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]"><input aria-label={`Option ${index + 1} area value`} inputMode="decimal" value={formatMoneyInput(configuration.areaValue)} onChange={(event) => updateConfiguration(index, 'areaValue', cleanMoneyInput(event.target.value))} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-[#f5f1e8] outline-none" placeholder="Enter area" /></span>
+                </label>
+                <label className="block text-xs font-medium text-[#9caaa4]">
+                  <span className="mb-1.5 block">Area unit <span className="font-normal">(optional)</span></span>
+                  <select value={configuration.areaUnit} onChange={(event) => updateConfiguration(index, 'areaUnit', event.target.value)} className={inputClass}>
+                    <option value="">Select unit</option><option value="SQ_FT">sq. ft.</option><option value="SQ_M">sq. m.</option><option value="CENT">cent</option><option value="ACRE">acre</option><option value="OTHER">Other</option>
+                  </select>
+                  {values.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(values.propertySubtype) && <span className="mt-1 block text-[11px] leading-5 text-[#82918b]">This unit applies to the built-up, carpet, and super built-up area values for this option.</span>}
+                </label>
+                {configuration.areaUnit === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+                  <span className="mb-1.5 block">Mention the unit <span className="font-normal">(optional)</span></span>
+                  <input maxLength={80} value={configuration.customAreaUnit} onChange={(event) => updateConfiguration(index, 'customAreaUnit', event.target.value)} className={inputClass} />
+                </label>}
+                {!(['Villa', 'Independent House'].includes(values.propertySubtype) && values.propertyType === 'RESIDENTIAL') && <label className="block text-xs font-medium text-[#9caaa4]">
+                  <span className="mb-1.5 block">Area basis <span className="font-normal">(optional)</span></span>
+                  <select value={configuration.areaBasis} onChange={(event) => updateConfiguration(index, 'areaBasis', event.target.value)} className={inputClass}>
+                    <option value="">Select area basis</option><option value="PLOT_AREA">Plot area</option><option value="BUILT_UP_AREA">Built-up area</option><option value="CARPET_AREA">Carpet area</option><option value="OTHER">Other</option>
+                  </select>
+                </label>}
+                {!(['Villa', 'Independent House'].includes(values.propertySubtype) && values.propertyType === 'RESIDENTIAL') && configuration.areaBasis === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+                  <span className="mb-1.5 block">Mention the basis of area <span className="font-normal">(optional)</span></span>
+                  <input maxLength={100} value={configuration.customAreaBasis} onChange={(event) => updateConfiguration(index, 'customAreaBasis', event.target.value)} className={inputClass} />
+                </label>}
+                {values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && <>
+                  <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Number of bedrooms <span className="font-normal">(optional)</span></span><input type="number" min="0" max="100" step="1" inputMode="numeric" value={configuration.bedroomCount} onChange={(event) => updateConfiguration(index, 'bedroomCount', event.target.value)} className={inputClass} placeholder="e.g. 2" /></label>
+                  <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Number of bathrooms <span className="font-normal">(optional)</span></span><input type="number" min="0" max="100" step="1" inputMode="numeric" value={configuration.bathroomCount} onChange={(event) => updateConfiguration(index, 'bathroomCount', event.target.value)} className={inputClass} placeholder="e.g. 2" /></label>
+                  <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Floor number <span className="font-normal">(optional)</span></span><input maxLength={60} value={configuration.floorNumber} onChange={(event) => updateConfiguration(index, 'floorNumber', event.target.value)} className={inputClass} placeholder="e.g. 5, Ground, 2–4" /></label>
+                </>}
+                {values.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(values.propertySubtype) && <>
+                  <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Carpet area <span className="font-normal">(optional)</span></span><input inputMode="decimal" value={formatMoneyInput(configuration.carpetArea)} onChange={(event) => updateConfiguration(index, 'carpetArea', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="Enter carpet area" /></label>
+                  {values.propertySubtype === 'Villa' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Super built-up area <span className="font-normal">(optional, if applicable)</span></span><input inputMode="decimal" value={formatMoneyInput(configuration.superBuiltUpArea)} onChange={(event) => updateConfiguration(index, 'superBuiltUpArea', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="Enter super built-up area" /></label>}
+                  <div className="sm:col-span-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-xs font-medium text-[#9caaa4]">Room configuration <span className="font-normal">(optional)</span></h3><button type="button" disabled={configuration.roomConfiguration.length >= 30} onClick={() => setValues((current) => ({ ...current, configurations: current.configurations.map((item, itemIndex) => itemIndex === index ? { ...item, roomConfiguration: [...item.roomConfiguration, { name: '', count: '' }] } : item) }))} className="inline-flex min-h-9 items-center gap-2 border border-white/20 px-3 text-xs font-semibold text-white hover:border-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-3.5 w-3.5" /> Add room</button></div>
+                    {configuration.roomConfiguration.length > 0 && <div className="mt-3 space-y-2">{configuration.roomConfiguration.map((room, roomIndex) => <div key={roomIndex} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Room name</span><input maxLength={100} value={room.name} onChange={(event) => setValues((current) => ({ ...current, configurations: current.configurations.map((item, itemIndex) => itemIndex === index ? { ...item, roomConfiguration: item.roomConfiguration.map((row, rowIndex) => rowIndex === roomIndex ? { ...row, name: event.target.value } : row) } : item) }))} className={inputClass} placeholder="e.g. Bedroom" /></label><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Count</span><input type="number" min="0" max="100" step="1" inputMode="numeric" value={room.count} onChange={(event) => setValues((current) => ({ ...current, configurations: current.configurations.map((item, itemIndex) => itemIndex === index ? { ...item, roomConfiguration: item.roomConfiguration.map((row, rowIndex) => rowIndex === roomIndex ? { ...row, count: event.target.value } : row) } : item) }))} className={inputClass} placeholder="e.g. 3" /></label><button type="button" aria-label={`Remove room ${roomIndex + 1} from option ${index + 1}`} onClick={() => setValues((current) => ({ ...current, configurations: current.configurations.map((item, itemIndex) => itemIndex === index ? { ...item, roomConfiguration: item.roomConfiguration.filter((_, rowIndex) => rowIndex !== roomIndex) } : item) }))} className="inline-flex min-h-11 items-center justify-center border border-white/15 px-3 text-xs text-[#d7b3a9] hover:border-red-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><Trash2 className="h-4 w-4" /><span className="sr-only">Remove room</span></button></div>)}</div>}
+                  </div>
+                </>}
+                <div className="sm:col-span-2">
+                  <h3 className="text-xs font-medium text-[#9caaa4]">Dimensions <span className="font-normal">(optional)</span></h3>
+                  <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Length</span><input inputMode="decimal" value={formatMoneyInput(configuration.dimensionLength)} onChange={(event) => updateConfiguration(index, 'dimensionLength', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="Length" /></label>
+                    <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Width</span><input inputMode="decimal" value={formatMoneyInput(configuration.dimensionWidth)} onChange={(event) => updateConfiguration(index, 'dimensionWidth', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="Width" /></label>
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Configuration-specific notes <span className="font-normal">(optional)</span></h3>
+                  <PrivateNotesEditor id={`property-configuration-notes-${property?.id ?? 'new'}-${index}`} label={`Option ${index + 1} notes in Markdown`} placeholder="Add details for this option. Markdown is supported." maxLength={20_000} value={configuration.notesMarkdown} onChange={(value) => updateConfiguration(index, 'notesMarkdown', value)} />
+                </div>
+                <button type="button" aria-label={`Remove option ${index + 1}`} onClick={() => setValues((current) => ({ ...current, configurations: current.configurations.filter((_, configurationIndex) => configurationIndex !== index) }))} className="inline-flex min-h-10 w-fit items-center gap-2 border border-white/15 px-3 text-xs text-[#d7b3a9] transition-colors hover:border-red-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><Trash2 className="h-4 w-4" /> Remove option</button>
+              </div>
+            </fieldset>)}
+          </div>
+          <button type="button" onClick={addConfiguration} disabled={values.configurations.length >= 20} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-white/20 px-3 text-xs font-semibold text-white transition-colors hover:border-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-4 w-4" /> Add configuration / option</button>
+        </section>
+
+        <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">APPROVALS &amp; PROJECT DETAILS</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Approvals, project details and amenities</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Enter details provided or verified for this listing. Private supporting documents can be uploaded in the administrator-only document area below.</p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Approval / registration number <span className="font-normal">(optional)</span></span><input maxLength={160} value={values.approvalReference} onChange={(event) => update('approvalReference', event.target.value)} className={inputClass} placeholder="e.g. RERA registration number" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Approving authority <span className="font-normal">(optional)</span></span><input maxLength={200} value={values.approvalAuthority} onChange={(event) => update('approvalAuthority', event.target.value)} className={inputClass} placeholder="Name of the authority that approved the project" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Current phase of project <span className="font-normal">(optional)</span></span><select value={values.projectPhase} onChange={(event) => update('projectPhase', event.target.value)} className={inputClass}><option value="">Select project phase</option><option value="1">1 · Initiation &amp; Conception</option><option value="2">2 · Planning &amp; Design</option><option value="3">3 · Pre-Construction</option><option value="4">4 · Procurement</option><option value="5">5 · Construction</option><option value="6">6 · Post-Construction / Closeout</option></select></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Status of construction / development <span className="font-normal">(optional)</span></span><input maxLength={300} value={values.constructionStatus} onChange={(event) => update('constructionStatus', event.target.value)} className={inputClass} placeholder="e.g. Foundation work in progress" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Expected handover date <span className="font-normal">(optional)</span></span><input type="date" value={values.handoverDate} onChange={(event) => update('handoverDate', event.target.value)} className={inputClass} /></label>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Amenities and facilities <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="property-amenities-markdown" label="Amenities and facilities in Markdown" placeholder="List amenities and facilities confirmed for this property." maxLength={20_000} value={values.amenitiesMarkdown} onChange={(value) => update('amenitiesMarkdown', value)} /></div>
+            <a href="#property-private-documents" className="inline-flex min-h-10 w-fit items-center border border-white/20 px-3 text-xs font-medium text-white hover:border-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]">Upload private supporting documents</a>
+          </div>
+        </section>
+
+        {values.propertyType === 'LAND_PLOT' && <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">PLOT &amp; LAND DETAILS</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Land information</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Optional details that help customers assess the plot. Add only information verified or supplied for this listing.</p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Road access <span className="font-normal">(optional)</span></span><input maxLength={300} value={values.roadAccess} onChange={(event) => update('roadAccess', event.target.value)} className={inputClass} placeholder="e.g. 30 ft road frontage" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Land approved for <span className="font-normal">(optional)</span></span><select value={values.landApprovedFor} onChange={(event) => update('landApprovedFor', event.target.value)} className={inputClass}><option value="">Select permitted use</option><option value="RESIDENTIAL">Residential</option><option value="COMMERCIAL">Commercial</option><option value="MIXED_USE">Mixed-use</option></select></label>
+            <div className="sm:col-span-2"><h3 className="text-xs font-medium text-[#9caaa4]">Statutory approvals <span className="font-normal">(optional, select all that apply)</span></h3><div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">{[['CMDA','CMDA'],['DTCP','DTCP'],['RERA','RERA'],['OTHER','Other']] .map(([value,label]) => <label key={value} className="inline-flex min-h-9 items-center gap-2 text-sm text-[#d8dfdb]"><input type="checkbox" checked={values.statutoryApprovals.includes(value)} onChange={(event) => update('statutoryApprovals', event.target.checked ? [...values.statutoryApprovals, value] : values.statutoryApprovals.filter((item) => item !== value))} className="accent-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" />{label}</label>)}</div></div>
+            {values.statutoryApprovals.includes('OTHER') && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Mention other approvals</span><input required maxLength={300} value={values.otherStatutoryApprovals} onChange={(event) => update('otherStatutoryApprovals', event.target.value)} className={inputClass} /></label>}
+            {([
+              { field: 'waterSources', title: 'Water supply', other: 'otherWaterSource', choices: [['MUNICIPAL','Municipal water connection'],['BOREWELL','Borewell potential'],['OVERHEAD_TANK','Overhead tank'],['OTHER','Other'],['NOT_CONFIRMED','Not confirmed']] },
+              { field: 'electricitySources', title: 'Electricity', other: 'otherElectricitySource', choices: [['GRID','Grid connection'],['GENERATOR','Generator backup'],['SOLAR','Solar'],['OTHER','Other'],['NOT_CONFIRMED','Not confirmed']] },
+              { field: 'drainageOptions', title: 'Drainage and sewage', other: 'otherDrainageOption', choices: [['STORMWATER','Stormwater drains'],['UNDERGROUND_SEWAGE','Underground sewage lines'],['SEPTIC_TANK','Septic tank system'],['OTHER','Other'],['NOT_CONFIRMED','Not confirmed']] },
+            ] as const).map(({ field, title, other, choices }) => <fieldset key={field} className="sm:col-span-2"><legend className="text-xs font-medium text-[#9caaa4]">{title} <span className="font-normal">(optional, select all that apply)</span></legend><div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">{choices.map(([value,label]) => <label key={value} className="inline-flex min-h-9 items-center gap-2 text-sm text-[#d8dfdb]"><input type="checkbox" checked={values[field].includes(value)} onChange={(event) => update(field, event.target.checked ? [...values[field], value] : values[field].filter((item) => item !== value))} className="accent-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" />{label}</label>)}</div>{values[field].includes('OTHER') && <label className="mt-3 block max-w-xl text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Mention other {title.toLowerCase()}</span><input required maxLength={200} value={values[other]} onChange={(event) => update(other, event.target.value)} className={inputClass} /></label>}</fieldset>)}
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Proximity to key landmarks <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="plot-proximity-markdown" label="Nearby landmarks in Markdown" placeholder="Add known distances or travel times to landmarks." maxLength={20_000} value={values.proximityMarkdown} onChange={(value) => update('proximityMarkdown', value)} /></div>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Layout plans <span className="font-normal">(optional)</span></h3><p className="mb-3 text-xs text-[#9caaa4]">Upload public-facing layout plans as PDF, JPEG, PNG, or WebP. These are separate from private verification documents.</p><PropertyLayoutDocuments propertyId={property?.id ?? createdPropertyId} /></div>
+          </div>
+        </section>}
+
+        {values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">APARTMENT DETAILS</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Apartment information</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Optional furnishing, amenities, and nearby landmark details. Address and locality are taken from Basic Property Information above.</p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Furnishing status <span className="font-normal">(optional)</span></span><select value={values.furnishingStatus} onChange={(event) => update('furnishingStatus', event.target.value)} className={inputClass}><option value="">Select furnishing status</option><option value="FULLY_FURNISHED">Fully furnished</option><option value="SEMI_FURNISHED">Semi-furnished</option><option value="UNFURNISHED">Unfurnished</option><option value="OTHER">Other</option></select></label>
+            {values.furnishingStatus === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Enter furnishing status</span><input required maxLength={120} value={values.furnishingStatusOther} onChange={(event) => update('furnishingStatusOther', event.target.value)} className={inputClass} /></label>}
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Proximity to key landmarks <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="apartment-proximity-markdown" label="Nearby landmarks in Markdown" placeholder="Add known distances or travel times to landmarks." maxLength={20_000} value={values.proximityMarkdown} onChange={(value) => update('proximityMarkdown', value)} /></div>
+          </div>
+        </section>}
+
+        {values.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(values.propertySubtype) && <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">VILLA &amp; INDEPENDENT HOUSE DETAILS</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Home and neighborhood details</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Add confirmed details for this home. Use the existing Plot size field for the land area; location and map fields are above.</p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Facing direction <span className="font-normal">(optional)</span></span><select value={values.facingDirection} onChange={(event) => update('facingDirection', event.target.value)} className={inputClass}><option value="">Select facing direction</option><option value="NORTH">North</option><option value="SOUTH">South</option><option value="EAST">East</option><option value="WEST">West</option><option value="NORTH_EAST">North-East</option><option value="NORTH_WEST">North-West</option><option value="SOUTH_EAST">South-East</option><option value="SOUTH_WEST">South-West</option><option value="OTHER">Other</option></select></label>
+            {values.facingDirection === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Enter facing direction</span><input required maxLength={120} value={values.facingOther} onChange={(event) => update('facingOther', event.target.value)} className={inputClass} /></label>}
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Sunlight orientation <span className="font-normal">(optional)</span></span><input maxLength={300} value={values.sunlightOrientation} onChange={(event) => update('sunlightOrientation', event.target.value)} className={inputClass} placeholder="Describe known light exposure or orientation" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Neighborhood type <span className="font-normal">(optional)</span></span><select value={values.neighborhoodType} onChange={(event) => update('neighborhoodType', event.target.value)} className={inputClass}><option value="">Select neighborhood type</option><option value="STANDALONE">Standalone property</option><option value="GATED_COMMUNITY">Gated community / villa township</option><option value="OTHER">Other</option></select></label>
+            {values.neighborhoodType === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Enter neighborhood type</span><input required maxLength={120} value={values.neighborhoodTypeOther} onChange={(event) => update('neighborhoodTypeOther', event.target.value)} className={inputClass} /></label>}
+            {values.propertySubtype === 'Independent House' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Number of floors <span className="font-normal">(optional)</span></span><input type="number" min="1" max="100" step="1" inputMode="numeric" value={values.floorCount} onChange={(event) => update('floorCount', event.target.value)} className={inputClass} placeholder="e.g. 2" /></label>}
+            <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Public approval details <span className="font-normal">(optional)</span></span><textarea maxLength={5000} rows={3} value={values.publicComplianceSummary} onChange={(event) => update('publicComplianceSummary', event.target.value)} className={inputClass} placeholder="List supplied approval names and reference numbers only, such as a RERA registration number." /><span className="mt-1 block text-[11px] leading-5 text-[#82918b]">Keep title deeds and private clearance documents in Verification Documents. This summary may be shown publicly.</span></label>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Proximity to key landmarks <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="villa-house-proximity-markdown" label="Nearby landmarks in Markdown" placeholder="Add known distances or travel times to landmarks." maxLength={20_000} value={values.proximityMarkdown} onChange={(value) => update('proximityMarkdown', value)} /></div>
+          </div>
+        </section>}
+
+        {values.propertyType === 'COMMERCIAL' && <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">COMMERCIAL DETAILS</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Commercial property information</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Add commercial use and operating details that are known and approved for public display. Location, areas, pricing, photos, and videos use the shared property sections.</p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Commercial use <span className="font-normal">(optional)</span></span><select value={values.commercialUse} onChange={(event) => update('commercialUse', event.target.value)} className={inputClass}><option value="">Select commercial use</option><option value="RETAIL">Retail</option><option value="OFFICE">Office</option><option value="INDUSTRIAL">Industrial</option><option value="WAREHOUSE">Warehouse</option><option value="MIXED_USE">Mixed-use</option><option value="OTHER">Other</option></select></label>
+            {values.commercialUse === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Describe commercial use</span><input required maxLength={120} value={values.commercialUseOther} onChange={(event) => update('commercialUseOther', event.target.value)} className={inputClass} /></label>}
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Year built <span className="font-normal">(optional)</span></span><input type="number" min="1800" max="2100" step="1" inputMode="numeric" value={values.yearBuilt} onChange={(event) => update('yearBuilt', event.target.value)} className={inputClass} placeholder="YYYY" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Transaction type <span className="font-normal">(optional)</span></span><select value={values.transactionType} onChange={(event) => update('transactionType', event.target.value)} className={inputClass}><option value="">Select transaction type</option><option value="SALE">Sale</option><option value="LEASE">Lease</option><option value="RENT">Rent</option></select></label>
+            {['LEASE', 'RENT'].includes(values.transactionType) && <>
+              <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Lease expiry date <span className="font-normal">(optional)</span></span><input type="date" value={values.leaseExpiryDate} onChange={(event) => update('leaseExpiryDate', event.target.value)} className={inputClass} /></label>
+              <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Lease structure <span className="font-normal">(optional)</span></h3><p className="mb-2 text-[11px] leading-5 text-[#82918b]">Include relevant supplied terms such as maintenance/CAM charges, taxes, insurance, or whether the rent is gross or net.</p><PrivateNotesEditor id="commercial-lease-structure" label="Lease structure details in Markdown" placeholder="Add confirmed lease or rental terms." maxLength={20_000} value={values.leaseStructureMarkdown} onChange={(value) => update('leaseStructureMarkdown', value)} /></div>
+            </>}
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Occupancy <span className="font-normal">(optional)</span></span><select value={values.occupancyStatus} onChange={(event) => update('occupancyStatus', event.target.value)} className={inputClass}><option value="">Select occupancy</option><option value="VACANT">Vacant</option><option value="PARTIALLY_OCCUPIED">Partially occupied</option><option value="OCCUPIED">Occupied</option><option value="NOT_DISCLOSED">Not disclosed</option></select></label>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Tenant or occupancy profile <span className="font-normal">(optional)</span></h3><p className="mb-2 text-[11px] leading-5 text-[#82918b]">Add only public-facing, non-sensitive details relevant to the listing.</p><PrivateNotesEditor id="commercial-tenant-profile" label="Tenant and occupancy details in Markdown" placeholder="Add relevant tenant profile, vacancy, or lease information supplied for publication." maxLength={20_000} value={values.tenantProfileMarkdown} onChange={(value) => update('tenantProfileMarkdown', value)} /></div>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Recent upgrades <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="commercial-upgrades" label="Recent upgrades in Markdown" placeholder="Describe confirmed recent improvements or upgrades." maxLength={20_000} value={values.recentUpgradesMarkdown} onChange={(value) => update('recentUpgradesMarkdown', value)} /></div>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Proximity to key landmarks <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="commercial-proximity" label="Nearby landmarks in Markdown" placeholder="Add known distances or travel times to landmarks." maxLength={20_000} value={values.proximityMarkdown} onChange={(value) => update('proximityMarkdown', value)} /></div>
+          </div>
+        </section>}
+
+        <section className="border-t border-white/15 pt-6">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">LISTING SOURCE</p>
+          <h2 className="mt-1 font-display text-2xl text-white">Listing source and representation</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Record who supplied this opportunity, their relationship to it, and JLUXE&apos;s role. Internal contact details and verification records remain private to administrators.</p>
+
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Source category</span>
+              <select value={values.sourceCategory} onChange={(event) => update('sourceCategory', event.target.value)} className={inputClass}>
+                <option value="">Select source category</option>
+                {propertySourceCategories.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              </select>
+            </label>
+            {values.sourceCategory === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Enter the category *</span>
+              <input required maxLength={120} value={values.sourceCategoryOther} onChange={(event) => update('sourceCategoryOther', event.target.value)} className={inputClass} />
+            </label>}
+            <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Seller / organization name</span>
+              <input maxLength={200} value={values.sellerOrganizationName} onChange={(event) => update('sellerOrganizationName', event.target.value)} className={inputClass} />
+            </label>
+            <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Submitter&apos;s relationship to the property</span>
+              <select value={values.submitterRelationship} onChange={(event) => update('submitterRelationship', event.target.value)} className={inputClass}>
+                <option value="">Select relationship</option>
+                {propertySubmitterRelationships.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              </select>
+            </label>
+            {values.submitterRelationship === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Enter the relationship of Submitter to the Property *</span>
+              <input required maxLength={160} value={values.submitterRelationshipOther} onChange={(event) => update('submitterRelationshipOther', event.target.value)} className={inputClass} />
+            </label>}
+            <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">JLUXE&apos;s role *</span>
+              <select required value={values.representationType} onChange={(event) => update('representationType', event.target.value)} className={inputClass}>
                 <option value="">Select representation</option>
-                {representationTypes.map((value) => (
-                  <option key={value} value={value}>
-                    {formatLabel(value)}
-                  </option>
-                ))}
+                {representationTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
             </label>
+            {values.representationType === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]">
+              <span className="mb-1.5 block">Enter the role of Representation *</span>
+              <input required maxLength={160} value={values.representationRoleOther} onChange={(event) => update('representationRoleOther', event.target.value)} className={inputClass} />
+            </label>}
             <label className="block text-xs font-medium text-[#9caaa4]">
-              <span className="mb-1.5 block">Publication status *</span>
-              <select
-                value={values.publicationStatus}
-                onChange={(event) => update('publicationStatus', event.target.value as FormValues['publicationStatus'])}
-                className={inputClass}
-              >
-                {publicationStatuses.map((value) => (
-                  <option key={value} value={value}>
-                    {formatLabel(value)}
-                  </option>
-                ))}
+              <span className="mb-1.5 block">Authority verification</span>
+              <select value={values.authorityVerificationStatus} onChange={(event) => update('authorityVerificationStatus', event.target.value as AuthorityVerificationStatus)} className={inputClass}>
+                {authorityVerificationStatuses.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
               </select>
+              <span className="mt-1.5 block font-normal leading-5 text-[#82918b]">Use In review while checking the seller&apos;s authority. Select Verified only after the supporting details have been checked.</span>
             </label>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 className="text-sm font-semibold text-white">Internal contact details</h3>
+            <div className="mt-4 grid gap-5 sm:grid-cols-3">
+              <label className="block text-xs font-medium text-[#9caaa4]">
+                <span className="mb-1.5 block">Contact name</span>
+                <input maxLength={150} value={values.internalContactName} onChange={(event) => update('internalContactName', event.target.value)} className={inputClass} />
+              </label>
+              <label className="block text-xs font-medium text-[#9caaa4]">
+                <span className="mb-1.5 block">Phone number</span>
+                <input type="tel" autoComplete="tel" maxLength={32} value={values.internalContactPhone} onChange={(event) => update('internalContactPhone', event.target.value)} className={inputClass} />
+              </label>
+              <label className="block text-xs font-medium text-[#9caaa4]">
+                <span className="mb-1.5 block">Email</span>
+                <input type="email" autoComplete="email" maxLength={320} value={values.internalContactEmail} onChange={(event) => update('internalContactEmail', event.target.value)} className={inputClass} />
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <h3 id="property-private-documents" className="text-sm font-semibold text-white">Private notes and supporting documents</h3>
+            <p className="mt-1 text-xs leading-5 text-[#9caaa4]">These records are admin-only and are not included in public property pages.</p>
+            <fieldset className="mt-4">
+              <legend className="sr-only">Choose private information type</legend>
+              <div className="inline-flex flex-wrap gap-2">
+                {(['notes', 'documents'] as const).map((view) => (
+                  <label key={view} className="cursor-pointer">
+                    <input type="radio" name="source-detail-view" value={view} checked={sourceDetailView === view} onChange={() => setSourceDetailView(view)} className="peer sr-only" />
+                    <span className={`inline-flex min-h-10 items-center border px-4 text-xs font-semibold transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--gold)] ${sourceDetailView === view ? 'border-[var(--gold)] bg-[var(--gold)] text-[var(--viridian-950)]' : 'border-white/20 text-[#c3ccc6] hover:border-white/40'}`}>{view === 'notes' ? 'Private Notes' : 'Supporting Documents'}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className="mt-3">
+              {sourceDetailView === 'notes'
+                ? <PrivateNotesEditor value={values.privateNotesMarkdown} onChange={(value) => update('privateNotesMarkdown', value)} />
+                : <PropertyVerificationDocuments propertyId={property?.id ?? createdPropertyId} />}
+            </div>
           </div>
         </section>
 
         {error && (
-          <p role="alert" className="border-l-2 border-red-500 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            {error}
-          </p>
+          <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-950/40 px-4 py-3 text-sm text-red-100">
+            <p>{error}</p>
+            {fieldErrors.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5">
+              {fieldErrors.map((issue, index) => <li key={`${issue.label}-${index}`}>
+                <button type="button" onClick={() => focusFieldIssue(issue)} className="text-left underline decoration-red-200/60 underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                  {issue.label}{issue.message ? ` — ${issue.message}` : ''}
+                </button>
+              </li>)}
+            </ul>}
+          </div>
         )}
 
         <div className="flex flex-wrap gap-3 border-t border-white/15 pt-5">

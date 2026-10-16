@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createPropertySlug } from '@/lib/admin-property';
 import { createSellerPropertySubmission, type PropertyWrite } from '@/lib/db/queries/properties';
 import { hasPostgresErrorCode } from '@/lib/db/errors';
-import { plotSizeUnits, propertyTypes, type PlotSizeUnit } from '@/lib/db/types';
+import { legacyPropertyTypes, plotSizeUnits, type PlotSizeUnit } from '@/lib/db/types';
 import { cloudinaryDeliveryUrl, getCloudinaryImageDetails, verifySellerCloudinaryUpload } from '@/lib/cloudinary';
 import { sendJluxeNotification } from '@/lib/email-notifications';
 import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
@@ -21,7 +21,7 @@ const sellerPropertySchema = z.object({
   name: z.string().trim().min(2).max(150),
   email: z.string().trim().email().max(320),
   phone: z.string().trim().min(6).max(32),
-  propertyType: z.enum(propertyTypes),
+  propertyType: z.enum(legacyPropertyTypes),
   location: z.string().trim().min(1).max(255),
   startingPrice: z.string().trim().min(1).max(100),
   plotSize: optionalText(50),

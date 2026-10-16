@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminSession, hasAdminPermission } from '@/lib/admin-session';
 import { hasSameOrigin } from '@/lib/admin-request';
-import { adminPropertySchema, createPropertySlug, serializeProperty } from '@/lib/admin-property';
+import { adminPropertySchema, createPropertySlug, getPublicPropertyAddress, serializeProperty } from '@/lib/admin-property';
 import { deleteProperty, findPropertyById, transitionPropertyPublication, updateProperty } from '@/lib/db/queries/properties';
-import { hasPostgresErrorCode } from '@/lib/db/errors';
+import { getPostgresErrorContext, hasPostgresErrorCode } from '@/lib/db/errors';
 
 const idSchema = z.string().uuid();
 export const runtime = 'nodejs';
@@ -63,7 +63,11 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 
   const parsed = adminPropertySchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ success: false, error: 'Invalid property details.' }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({
+    success: false,
+    error: 'Invalid property details.',
+    issues: parsed.error.issues.map((issue) => ({ path: issue.path.map(String), message: issue.message })),
+  }, { status: 400 });
 
   const slug = parsed.data.slug || createPropertySlug(parsed.data.title);
   if (!slug) return NextResponse.json({ success: false, error: 'Enter a title that can form a URL slug.' }, { status: 400 });
@@ -72,12 +76,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
     const property = await updateProperty(id, {
       ...parsed.data,
       slug,
+      location: getPublicPropertyAddress({ ...parsed.data, title: parsed.data.title }),
     });
     if (!property) return NextResponse.json({ success: false, error: 'Property not found.' }, { status: 404 });
     return NextResponse.json({ success: true, data: serializeProperty(property) });
   } catch (error) {
     if (hasPostgresErrorCode(error, '23505')) return NextResponse.json({ success: false, error: 'A property with this slug already exists.' }, { status: 409 });
-    console.error('Failed to update admin property.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
+    console.error('Failed to update admin property.', getPostgresErrorContext(error));
     return NextResponse.json({ success: false, error: 'Unable to update property right now.' }, { status: 500 });
   }
 }

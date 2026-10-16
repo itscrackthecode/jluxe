@@ -3,7 +3,7 @@
 import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { FormEvent, useRef, useState } from 'react';
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnstile-widget';
-import { plotSizeUnits, propertyTypes } from '@/lib/db/types';
+import { legacyPropertyTypes, plotSizeUnits } from '@/lib/db/types';
 import { MAX_IMAGE_COUNT, uploadImage, validateImageFile, type UploadedCloudinaryImage } from '@/lib/cloudinary-client';
 
 type FormValues = {
@@ -168,7 +168,7 @@ export default function SellPropertyForm() {
             <span className="mb-2 block text-sm font-medium text-[var(--viridian-950)]">Property Type *</span>
             <select className={inputClass} value={values.propertyType} onChange={(event) => update('propertyType', event.target.value)} required>
               <option value="">Select property type</option>
-              {propertyTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
+              {legacyPropertyTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
           </label>
         </div>
