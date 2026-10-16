@@ -19,6 +19,12 @@ const migrationDirectory = join(process.cwd(), 'database', 'migrations');
 const migrationTable = 'public.schema_migrations';
 const advisoryLockKey = 628194320;
 const migrationNamePattern = /^\d{3,}_[a-z0-9_]+\.sql$/;
+const knownAppliedMigrationsWithoutSource: Record<string, string> = {
+  // This migration is recorded in the Neon database, but its original SQL file
+  // is absent from the repository. Keep its recorded checksum as an explicit
+  // compatibility entry so the runner can validate history without rerunning it.
+  '010_property_experience.sql': 'a2260635ace1f52958e3e5c728e1b4dbd11893d0b53732eda9b22776a5bfcc47',
+};
 
 function checksum(sql: string) {
   return createHash('sha256')
@@ -71,7 +77,15 @@ function validateHistory(migrations: Migration[], applied: AppliedMigration[]) {
   for (const record of applied) {
     const migration = migrationByName.get(record.migration_name);
     if (!migration) {
-      throw new Error(`Database tracks ${record.migration_name}, but its SQL file is missing.`);
+      const expectedChecksum = knownAppliedMigrationsWithoutSource[record.migration_name];
+      if (!expectedChecksum) {
+        throw new Error(`Database tracks ${record.migration_name}, but its SQL file is missing.`);
+      }
+      if (record.checksum !== expectedChecksum) {
+        throw new Error(`The recorded checksum does not match the approved missing migration: ${record.migration_name}`);
+      }
+      console.warn(`Recognized applied migration without a local SQL file: ${record.migration_name}`);
+      continue;
     }
     if (migration.checksum !== record.checksum) {
       throw new Error(`Applied migration was modified: ${record.migration_name}`);

@@ -7,8 +7,8 @@ import MediaGallerySlider, { type GalleryImage } from '@/components/media-galler
 
 const fieldClassName = 'min-h-11 w-full min-w-0 border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-base text-[var(--viridian-950)] outline-none transition-colors focus:border-[var(--gold)] disabled:cursor-not-allowed disabled:bg-[var(--cream)] md:text-sm';
 const pageSize = 12;
-const propertyTypes = ['PLOT', 'VILLA', 'APARTMENT', 'COMMERCIAL', 'LAND', 'OTHER'];
-const statusOptions = ['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'LEASED', 'WITHDRAWN'];
+const propertyTypes = ['RESIDENTIAL', 'COMMERCIAL', 'LAND_PLOT', 'OTHER', 'PLOT', 'VILLA', 'APARTMENT', 'LAND'];
+const statusOptions = ['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'LEASED', 'WITHDRAWN', 'OTHER'];
 
 type ApiProperty = {
   id: string;
@@ -17,12 +17,19 @@ type ApiProperty = {
   description: string | null;
   location: string | null;
   propertyType: string;
+  propertyTypeOther: string | null;
+  propertySubtype: string | null;
+  propertySubtypeOther: string | null;
+  shortSummary: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
   priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
+  priceBasis?: 'TOTAL_PRICE' | 'PER_SQFT' | 'PER_CENT' | 'OTHER';
+  customPriceBasis?: string | null;
   plotSize: string | null;
   plotSizeUnit: string | null;
   status: string;
+  availabilityOther?: string | null;
   representationType: 'CHANNEL_PARTNER' | 'AUTHORIZED_REPRESENTATIVE' | 'OTHER';
   createdAt: string;
   coverImage?: { storageKey: string; deliveryUrl?: string | null; altText: string | null } | null;
@@ -41,12 +48,13 @@ function formatPropertyPrice(property: ApiProperty) {
   const amount = Number(property.priceAmount);
   if (!Number.isFinite(amount)) return null;
 
-  let formattedAmount = new Intl.NumberFormat().format(amount);
+  let formattedAmount = new Intl.NumberFormat('en-IN').format(amount);
   if (property.priceCurrency) {
     try {
-      formattedAmount = new Intl.NumberFormat(undefined, {
+      formattedAmount = new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: property.priceCurrency,
+        currencyDisplay: 'symbol',
         maximumFractionDigits: 2,
       }).format(amount);
     } catch {
@@ -54,11 +62,23 @@ function formatPropertyPrice(property: ApiProperty) {
     }
   }
 
-  return property.priceMode === 'STARTING_FROM' ? `From ${formattedAmount}` : formattedAmount;
+  const basis = property.priceBasis === 'PER_SQFT' ? ' per sq. ft.'
+    : property.priceBasis === 'PER_CENT' ? ' per cent'
+      : property.priceBasis === 'OTHER' && property.customPriceBasis ? ` per ${property.customPriceBasis}` : '';
+  return `${property.priceMode === 'STARTING_FROM' ? 'From ' : ''}${formattedAmount}${basis}`;
 }
 
 function formatPropertyType(value: string) {
+  if (value === 'LAND_PLOT') return 'Land / Plot';
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function propertyTypeLabel(property: ApiProperty) {
+  const category = property.propertyType === 'OTHER' && property.propertyTypeOther
+    ? property.propertyTypeOther : formatPropertyType(property.propertyType);
+  const subtype = property.propertySubtype === 'Other' && property.propertySubtypeOther
+    ? property.propertySubtypeOther : property.propertySubtype;
+  return subtype ? `${category} · ${subtype}` : category;
 }
 
 function formatPlotSize(property: ApiProperty) {
@@ -106,11 +126,12 @@ function PropertyCard({ property }: { property: ApiProperty }) {
         </div>
         {property.location && <p className="mt-1.5 truncate text-sm text-[var(--muted)]">{property.location}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--viridian-950)]/10 pt-3 text-xs text-[var(--muted)]">
-          <span>{formatPropertyType(property.propertyType)}</span>
+          <span>{propertyTypeLabel(property)}</span>
           <span aria-hidden="true" className="text-[var(--viridian-950)]/30">•</span>
-          <span className="text-[var(--viridian-800)]">{formatPropertyType(property.status)}</span>
+          <span className="text-[var(--viridian-800)]">{property.status === 'OTHER' ? property.availabilityOther || 'Other' : formatPropertyType(property.status)}</span>
           {plotSize && <><span aria-hidden="true" className="text-[var(--viridian-950)]/30">•</span><span>{plotSize}</span></>}
         </div>
+        {property.shortSummary && <p className="mt-3 line-clamp-2 text-sm leading-5 text-[var(--muted)]">{property.shortSummary.replace(/[#*_`]/g, '').slice(0, 220)}</p>}
         <Link href={`/properties/${property.slug}`} className="touch-press mt-3 inline-flex min-h-9 items-center gap-2 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:text-[var(--gold)]">
           View Property <ArrowRight className="h-4 w-4" />
         </Link>

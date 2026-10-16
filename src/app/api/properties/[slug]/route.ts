@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { formatNumericValue } from '@/lib/db/numeric';
-import { findPublishedPropertyBySlug, listPropertyMedia } from '@/lib/db/queries/properties';
+import { findPublishedPropertyBySlug, listPropertyConfigurations, listPropertyMedia } from '@/lib/db/queries/properties';
+import { listPropertyLayoutDocuments } from '@/lib/db/queries/property-layout-documents';
 
 export const runtime = 'nodejs';
 
@@ -27,7 +28,12 @@ export async function GET(
       );
     }
 
-    const media = await listPropertyMedia(property.id);
+    const [media, configurations, layouts] = await Promise.all([
+      listPropertyMedia(property.id),
+      listPropertyConfigurations(property.id),
+      property.propertyType === 'LAND_PLOT' || property.propertyType === 'PLOT' || property.propertyType === 'LAND'
+        ? listPropertyLayoutDocuments(property.id) : Promise.resolve([]),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -35,6 +41,15 @@ export async function GET(
         ...property,
         priceAmount: formatNumericValue(property.priceAmount),
         plotSize: formatNumericValue(property.plotSize),
+        configurations: configurations.map((item) => ({
+          ...item,
+          areaValue: formatNumericValue(item.areaValue),
+          dimensionLength: formatNumericValue(item.dimensionLength),
+          dimensionWidth: formatNumericValue(item.dimensionWidth),
+          carpetArea: formatNumericValue(item.carpetArea ?? null),
+          superBuiltUpArea: formatNumericValue(item.superBuiltUpArea ?? null),
+        })),
+        layoutPlans: layouts.map(({ id, fileName, mimeType, byteSize }) => ({ id, fileName, mimeType, byteSize, url: `/api/properties/${encodeURIComponent(property.slug)}/layouts/${id}` })),
         images: media.map(({ id, storageKey, deliveryUrl, mimeType, width, height, position, altText }) => ({
           id,
           storageKey,

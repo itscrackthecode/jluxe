@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import AdminShell from '@/components/admin/admin-shell';
 import PropertyForm from '@/components/admin/property-form';
 import { getAdminSession } from '@/lib/admin-session';
-import { findPropertyById, listPropertyMedia } from '@/lib/db/queries/properties';
+import { findPropertyById, listPropertyMedia, listPropertyConfigurations } from '@/lib/db/queries/properties';
 
 export const metadata = {
   title: { absolute: 'Edit Property | JLUXE Admin' },
@@ -14,9 +14,10 @@ export default async function EditAdminPropertyPage({ params }: { params: Promis
   if (!admin) redirect('/admin/login');
 
   const { id } = await params;
-  const [property, media] = await Promise.all([
+  const [property, media, configurations] = await Promise.all([
     findPropertyById(id),
     listPropertyMedia(id),
+    listPropertyConfigurations(id),
   ]);
   if (!property) notFound();
 
@@ -29,6 +30,7 @@ export default async function EditAdminPropertyPage({ params }: { params: Promis
           plotSize: property.plotSize?.toString() ?? null,
         }}
         initialMedia={media}
+        initialConfigurations={configurations}
       />
     </AdminShell>
   );

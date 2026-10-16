@@ -103,7 +103,8 @@ export async function createPropertyEnquiry(input: {
                            WHEN m."storageKey" LIKE 'https://%' THEN m."storageKey" ELSE NULL END
                FROM "PropertyMedia" pm JOIN "Media" m ON m."id" = pm."mediaId"
                WHERE pm."propertyId" = p."id" ORDER BY pm."position" ASC LIMIT 1) AS "imageUrl"
-       FROM "Property" p WHERE p."slug" = $1 AND p."publicationStatus" = 'PUBLISHED' AND p."status" IN ('AVAILABLE', 'UNDER_OFFER')
+       FROM "Property" p WHERE p."slug" = $1 AND p."publicationStatus" = 'PUBLISHED'
+         AND p."enquiryEnabled" = TRUE AND p."status" NOT IN ('SOLD', 'LEASED', 'WITHDRAWN')
        FOR SHARE`, [input.slug],
     );
     const property = propertyResult.rows[0];
