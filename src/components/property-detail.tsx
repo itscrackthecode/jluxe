@@ -7,6 +7,7 @@ import { isConfiguredContact, siteConfig } from '@/lib/data';
 import PropertyImageGallery from '@/components/property-image-gallery';
 import PropertyEnquiryForm from '@/components/property-enquiry-form';
 import { isPropertyOptionEnquirable } from '@/lib/property-availability';
+import PropertyMarkdown from '@/components/property-markdown';
 
 type PropertyImage = {
   id: string;
@@ -293,7 +294,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
 
           {property.description && <section className="mt-7 max-w-4xl border-t border-[var(--viridian-950)]/15 pt-5 sm:mt-9 sm:pt-6">
             <h2 className="font-display text-2xl text-[var(--viridian-950)]">Property description</h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-base sm:leading-7">{property.description}</p>
+            <PropertyMarkdown source={property.description} className="mt-3 text-sm leading-6 text-[var(--muted)] sm:text-base sm:leading-7" />
             <p className="mt-4 text-xs leading-5 text-[var(--muted)]">{representationCopy(property.representationType)}</p>
           </section>}
           {property.features?.length > 0 && <section className="mt-7 max-w-4xl border-t border-[var(--viridian-950)]/15 pt-5"><h2 className="font-display text-2xl text-[var(--viridian-950)]">Features &amp; amenities</h2><ul className="mt-3 flex flex-wrap gap-2">{property.features.map((feature) => <li key={feature} className="border border-[var(--viridian-950)]/15 bg-white px-3 py-2 text-sm text-[var(--viridian-950)]">{feature}</li>)}</ul></section>}

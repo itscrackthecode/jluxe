@@ -88,7 +88,11 @@ export async function POST(request: Request) {
   }
 
   const parsed = adminPropertySchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ success: false, error: 'Invalid property details.' }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({
+    success: false,
+    error: 'Invalid property details.',
+    details: parsed.error.issues.map(({ path, message }) => ({ field: path.length ? path.join('.') : 'property', message })),
+  }, { status: 400 });
 
   const slug = parsed.data.slug || createPropertySlug(parsed.data.title);
   if (!slug) return NextResponse.json({ success: false, error: 'Enter a title that can form a URL slug.' }, { status: 400 });

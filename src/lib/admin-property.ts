@@ -17,8 +17,10 @@ const optionalText = (maxLength: number) => z.preprocess(
 );
 
 const optionalInteger = (maximum: number) => z.preprocess(
-  (value) => typeof value === 'string' && value.trim() === '' ? null : value,
-  z.coerce.number().int().min(0).max(maximum).nullable().optional().transform((value) => value ?? null),
+  (value) => value == null || (typeof value === 'string' && value.trim() === '')
+    ? null
+    : typeof value === 'string' ? Number(value) : value,
+  z.number().int().min(0).max(maximum).nullable().optional().transform((value) => value ?? null),
 );
 
 export const adminPropertySchema = z.object({
