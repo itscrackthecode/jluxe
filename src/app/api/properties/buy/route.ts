@@ -19,7 +19,6 @@ import { formatEmailDate, renderJluxeEmail } from '@/lib/email-templates';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
 import { readJsonBody } from '@/lib/read-json-body';
-import { findPublishedPropertyBySlug } from '@/lib/db/queries/properties';
 
 function escapeHtml(value: string) {
   return value
@@ -45,7 +44,6 @@ const nullableAmount = z.preprocess(
 
 const commonFields = {
   turnstileToken: z.string().min(1).max(2048),
-  propertySlug: z.string().trim().min(1).max(180).optional(),
   propertySubtype: z.string().trim().min(2).max(150),
   preferredCity: z.string().trim().min(2).max(255),
   preferredLocality: optionalText(255),
@@ -180,13 +178,7 @@ export async function POST(request: Request) {
   ) as Record<string, string>;
 
   try {
-    const selectedProperty = input.propertySlug ? await findPublishedPropertyBySlug(input.propertySlug) : null;
-    if (input.propertySlug && !selectedProperty) return NextResponse.json({ success: false, error: 'The selected property is unavailable.' }, { status: 400 });
     const created = await createBuyerPropertyEnquiry({
-      propertyId: selectedProperty?.id ?? null,
-      propertyTitle: selectedProperty?.title ?? '',
-      propertySlug: selectedProperty?.slug ?? '',
-      propertyLocation: selectedProperty?.location ?? null,
       propertyType,
       propertySubtype: input.propertySubtype,
       preferredCity: input.preferredCity,

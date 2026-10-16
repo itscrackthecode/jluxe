@@ -13,25 +13,13 @@ const enquirySchema = z.object({
   phone: z.string().trim().min(6).max(32),
   email: z.string().trim().email().max(320),
   message: z.string().trim().min(5).max(5000),
-  configurationId: z.string().uuid().optional(),
-  inventoryId: z.string().uuid().optional(),
   turnstileToken: z.string().min(1).max(2048),
-}).strict().refine((value) => !(value.configurationId && value.inventoryId), { message: 'Select one configuration or inventory unit.' });
+}).strict();
 
 type RouteContext = { params: Promise<{ slug: string }> };
 export const runtime = 'nodejs';
 
-function formatPrice(property: { priceAmount: string | null; priceCurrency: string | null; priceMode: string; priceMinimum: string | null; priceMaximum: string | null; priceBasis: string }) {
-  if (property.priceMinimum || property.priceMaximum) {
-    const money = (value: string | null) => {
-      if (!value) return '—';
-      const amount = Number(value);
-      if (!Number.isFinite(amount)) return 'Not provided';
-      try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency || 'INR', maximumFractionDigits: 2 }).format(amount); }
-      catch { return `${new Intl.NumberFormat().format(amount)} ${property.priceCurrency || 'INR'}`; }
-    };
-    return `${money(property.priceMinimum)} – ${money(property.priceMaximum)}${property.priceBasis !== 'TOTAL' ? ` / ${property.priceBasis.toLowerCase().replaceAll('_', ' ')}` : ''}`;
-  }
+function formatPrice(property: { priceAmount: string | null; priceCurrency: string | null; priceMode: string }) {
   if (!property.priceAmount) return property.priceMode === 'ON_REQUEST' ? 'On request' : null;
   const amount = Number(property.priceAmount);
   if (!Number.isFinite(amount)) return 'Not provided';
@@ -57,7 +45,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     const { turnstileToken: _turnstileToken, ...enquiryInput } = parsed.data;
     const created = await createPropertyEnquiry({ slug, ...enquiryInput });
     if (created.kind === 'unavailable') return NextResponse.json({ success: false, error: 'This property is no longer available for enquiry.' }, { status: 409 });
-    if (created.kind === 'invalid-configuration') return NextResponse.json({ success: false, error: 'This configuration is not part of the selected property.' }, { status: 400 });
 
     const { property, enquiry } = created;
     const publicUrl = `${siteConfig.url}/properties/${encodeURIComponent(property.slug)}`;
@@ -74,8 +61,6 @@ export async function POST(request: Request, { params }: RouteContext) {
           { label: 'Location', value: property.location },
           { label: 'Type', value: property.propertyType.replaceAll('_', ' ') },
           { label: 'Listed price', value: price },
-          ...(created.configuration ? [{ label: 'Selected configuration', value: created.configuration.name }, { label: 'Configuration price at enquiry', value: created.configuration.priceSnapshot }] : []),
-          ...(created.inventory ? [{ label: 'Selected unit / plot', value: created.inventory.reference }, { label: 'Unit price at enquiry', value: created.inventory.priceSnapshot }] : []),
           { label: 'Public listing', value: 'View property listing', linkUrl: publicUrl },
         ] },
         { title: 'Customer contact', fields: [

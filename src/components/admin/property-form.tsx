@@ -23,6 +23,7 @@ import { createPropertySlug } from '@/lib/admin-property';
 import { getMediaImageUrl } from '@/lib/media';
 import { uploadAdminImage, uploadAdminPropertyDocument, type PropertyDocumentKind } from '@/lib/cloudinary-client';
 import PropertyDescriptionEditor from '@/components/admin/property-description-editor';
+import { uploadAdminImage } from '@/lib/cloudinary-client';
 
 type PropertyData = {
   id: string;
@@ -38,18 +39,7 @@ type PropertyData = {
   status: PropertyStatus;
   representationType: RepresentationType;
   publicationStatus: PublicationStatus;
-  subtype?: string | null; projectName?: string | null; address?: string | null; locality?: string | null;
-  city?: string | null; state?: string | null; locationUrl?: string | null; bedrooms?: number | null;
-  bathrooms?: number | null; builtUpArea?: string | null; builtUpAreaUnit?: PlotSizeUnit | null;
-  floorCount?: number | null; parkingSpaces?: number | null; roadAccess?: string | null; approvalInfo?: string | null;
-  seoTitle?: string | null; seoDescription?: string | null; availability?: string;
-  priceMinimum?: string | null; priceMaximum?: string | null; priceBasis?: string;
-  features?: string[]; configurations?: Configuration[];
-  inventory?: InventoryItem[];
 };
-
-type Configuration = { id?: string; name: string; area: string | null; areaUnit: string | null; bedrooms: number | null; bathrooms: number | null; floor: string | null; block: string | null; priceMode: 'EXACT' | 'RANGE' | 'PER_UNIT' | 'ON_REQUEST'; priceAmount: string | null; priceMinimum: string | null; priceMaximum: string | null; priceCurrency: string | null; priceBasis: string; availability: string; availableUnits: number | null; features: string[]; media?: Array<{ id: string }> };
-type InventoryItem = { id?: string; reference: string; configurationId: string | null; availability: string; priceAmount: string | null; priceCurrency: string | null; area: string | null; areaUnit: string | null };
 
 type FormValues = {
   title: string;
@@ -64,10 +54,6 @@ type FormValues = {
   status: string;
   representationType: string;
   publicationStatus: PublicationStatus;
-  subtype: string; projectName: string; address: string; locality: string; city: string; state: string; locationUrl: string;
-  bedrooms: string; bathrooms: string; builtUpArea: string; builtUpAreaUnit: string; floorCount: string; parkingSpaces: string;
-  roadAccess: string; approvalInfo: string; seoTitle: string; seoDescription: string; availability: string;
-  priceMinimum: string; priceMaximum: string; priceBasis: string; featuresText: string;
 };
 
 type MediaOption = { id: string; storageKey: string; mimeType: string; deliveryUrl?: string | null; byteSize?: string; width?: number | null; height?: number | null };
@@ -99,11 +85,6 @@ function toFormValues(property?: PropertyData): FormValues {
     status: property?.status ?? '',
     representationType: property?.representationType ?? '',
     publicationStatus: property?.publicationStatus ?? 'DRAFT',
-    subtype: property?.subtype ?? '', projectName: property?.projectName ?? '', address: property?.address ?? '', locality: property?.locality ?? '',
-    city: property?.city ?? '', state: property?.state ?? '', locationUrl: property?.locationUrl ?? '', bedrooms: property?.bedrooms?.toString() ?? '', bathrooms: property?.bathrooms?.toString() ?? '',
-    builtUpArea: property?.builtUpArea ?? '', builtUpAreaUnit: property?.builtUpAreaUnit ?? '', floorCount: property?.floorCount?.toString() ?? '', parkingSpaces: property?.parkingSpaces?.toString() ?? '',
-    roadAccess: property?.roadAccess ?? '', approvalInfo: property?.approvalInfo ?? '', seoTitle: property?.seoTitle ?? '', seoDescription: property?.seoDescription ?? '', availability: property?.availability ?? 'AVAILABLE',
-    priceMinimum: property?.priceMinimum ?? '', priceMaximum: property?.priceMaximum ?? '', priceBasis: property?.priceBasis ?? 'TOTAL', featuresText: (property?.features ?? []).join(', '),
   };
 }
 
@@ -121,11 +102,9 @@ function configurationPriceLabel(configuration: Configuration) {
 export default function PropertyForm({
   property,
   initialMedia = [],
-  duplicate = false,
 }: {
   property?: PropertyData;
   initialMedia?: PropertyMediaItem[];
-  duplicate?: boolean;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<FormValues>(() => toFormValues(property));
@@ -159,13 +138,6 @@ export default function PropertyForm({
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaActionPending, setMediaActionPending] = useState(false);
   const [mediaNotice, setMediaNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-  const [documents, setDocuments] = useState<Array<{ id: string; title: string; kind: PropertyDocumentKind; url: string; byteSize: string }>>([]);
-  const [documentKind, setDocumentKind] = useState<PropertyDocumentKind>('FLOOR_PLAN');
-  const [documentMessage, setDocumentMessage] = useState('');
-  const [documentBusy, setDocumentBusy] = useState(false);
-  const [promoKind, setPromoKind] = useState<'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT'>('PROMO_LANDSCAPE');
-  const [promoSelection, setPromoSelection] = useState<Array<{ mediaId: string; kind: 'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT' }>>([]);
-  const [promoMessage, setPromoMessage] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -196,69 +168,12 @@ export default function PropertyForm({
     return () => controller.abort();
   }, [property?.id]);
 
-  useEffect(() => {
-    if (!property?.id) return;
-    const controller = new AbortController();
-    fetch(`/admin/api/properties/${property.id}/assets`, { signal: controller.signal })
-      .then(async (response) => { const result = await response.json(); if (response.ok && result.success) setPromoSelection(result.data.map((item: { id: string; kind: 'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT' }) => ({ mediaId: item.id, kind: item.kind }))); })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [property?.id]);
-
-  useEffect(() => {
-    if (!property?.id) return;
-    const controller = new AbortController();
-    fetch(`/admin/api/properties/${property.id}/documents`, { signal: controller.signal })
-      .then(async (response) => { const result = await response.json(); if (response.ok && result.success) setDocuments(result.data); })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [property?.id]);
-
-  async function uploadDocument(file: File | undefined) {
-    if (!file || !property?.id || documentBusy) return;
-    setDocumentBusy(true); setDocumentMessage('');
-    try {
-      await uploadAdminPropertyDocument(file, property.id, documentKind);
-      const response = await fetch(`/admin/api/properties/${property.id}/documents`, { cache: 'no-store' });
-      const result = await response.json();
-      if (response.ok && result.success) setDocuments(result.data);
-      setDocumentMessage('PDF added to this property.');
-    } catch (reason) {
-      setDocumentMessage(reason instanceof Error ? reason.message : 'Unable to upload this PDF.');
-    } finally { setDocumentBusy(false); }
-  }
-
-  async function removeDocument(mediaId: string) {
-    if (!property?.id || documentBusy || !window.confirm('Remove this document from the property? The media file remains in the library.')) return;
-    setDocumentBusy(true); setDocumentMessage('');
-    try {
-      const response = await fetch(`/admin/api/properties/${property.id}/documents`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mediaId }) });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to remove document.');
-      setDocuments((current) => current.filter((document) => document.id !== mediaId));
-    } catch (reason) { setDocumentMessage(reason instanceof Error ? reason.message : 'Unable to remove document.'); }
-    finally { setDocumentBusy(false); }
-  }
-
-  async function savePromotionalAssets() {
-    if (!property?.id || mediaActionPending) return;
-    setMediaActionPending(true); setPromoMessage('');
-    try {
-      const response = await fetch(`/admin/api/properties/${property.id}/assets`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ media: promoSelection }) });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error ?? 'Unable to save promotional assets.');
-      setPromoSelection(result.data.map((item: { id: string; kind: 'PROMO_LANDSCAPE' | 'PROMO_PORTRAIT' }) => ({ mediaId: item.id, kind: item.kind })));
-      setPromoMessage('Promotional images saved.');
-    } catch (reason) { setPromoMessage(reason instanceof Error ? reason.message : 'Unable to save promotional assets.'); }
-    finally { setMediaActionPending(false); }
-  }
-
   function update<K extends keyof FormValues>(field: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }));
   }
 
   async function persistMediaList(newList: AttachedMediaItem[]) {
-    const entityId = isEditing ? property?.id ?? createdPropertyId : createdPropertyId;
+    const entityId = property?.id ?? createdPropertyId;
     if (!entityId) {
       setMediaList(newList);
       return;
@@ -428,12 +343,13 @@ export default function PropertyForm({
       inventory,
       seoTitle: values.seoTitle || null,
       seoDescription: values.seoDescription || null,
+      priceCurrency: values.priceAmount ? 'INR' : null,
       plotSize: values.plotSize || null,
       plotSizeUnit: values.plotSizeUnit || null,
     };
 
     try {
-      const entityId = isEditing ? property?.id ?? createdPropertyId : createdPropertyId;
+      const entityId = property?.id ?? createdPropertyId;
       const response = await fetch(entityId ? `/admin/api/properties/${entityId}` : '/admin/api/properties', {
         method: entityId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,18 +367,8 @@ export default function PropertyForm({
       }
 
       const savedId = entityId ?? result.data.id as string;
-      {
-        for (const configuration of configurations) {
-          if (!configuration.id) continue;
-          const mediaResponse = await fetch(`/admin/api/properties/${savedId}/configurations/${configuration.id}/media`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mediaIds: configurationMediaIds[configuration.id] ?? [] }),
-          });
-          if (!mediaResponse.ok) throw new Error('Property saved, but configuration images could not be updated. Save again to retry.');
-        }
-      }
       if (!entityId) setCreatedPropertyId(savedId);
-      if (!entityId && mediaList.length > 0) {
+      if (!property && mediaList.length > 0) {
         const linked = await fetch(`/admin/api/properties/${savedId}/media`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ media: mediaList.map((item) => ({ mediaId: item.mediaId, altText: item.altText })) }),
@@ -474,6 +380,9 @@ export default function PropertyForm({
       const notice = targetPublicationStatus === 'DRAFT' ? 'Property saved as draft.'
         : targetPublicationStatus === 'ARCHIVED' ? 'Property archived successfully.'
           : entityId ? 'Property updated successfully.' : 'Property published successfully.';
+      const notice = values.publicationStatus === 'DRAFT' ? 'Property saved as draft.'
+        : values.publicationStatus === 'ARCHIVED' ? 'Property archived successfully.'
+          : property || entityId ? 'Property updated successfully.' : 'Property published successfully.';
       router.push(`/admin/properties?notice=${encodeURIComponent(notice)}`);
       router.refresh();
     } catch {
@@ -498,6 +407,13 @@ export default function PropertyForm({
       <form onSubmit={submit} className="mt-5 space-y-4 pb-28">
         <section className={`${panelClass} grid gap-4 p-4 sm:grid-cols-2 sm:gap-5 sm:p-6`}>
           <div className="sm:col-span-2"><p className="text-[11px] font-semibold tracking-[0.16em] text-[var(--gold)]">START HERE</p><h2 className={`mt-1 ${panelHeadingClass}`}>Basic information</h2><p className="mt-1 text-xs text-[#9caaa4]">The title and location identify this property across JLUXE.</p></div>
+      <div className="mt-5 border-b border-white/15 pb-6">
+        <p className="text-xs font-semibold tracking-[0.2em] text-[var(--gold)]">PROPERTY LISTING</p>
+        <h1 className="mt-2 font-display text-4xl text-white">{property ? 'Edit property' : 'Add property'}</h1>
+      </div>
+
+      <form onSubmit={submit} className="mt-6 space-y-8">
+        <section className="grid gap-5 sm:grid-cols-2">
           <label className="block text-xs font-medium text-[#9caaa4]">
             <span className="mb-1.5 block">Title *</span>
             <input
@@ -536,8 +452,6 @@ export default function PropertyForm({
             </select>
             {values.propertyType === 'COMMERCIAL' && <span className="mt-1 block text-[11px] text-[#9caaa4]">For office listings, set subtype to Office Space.</span>}
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Subtype</span><input maxLength={100} value={values.subtype} onChange={(event) => update('subtype', event.target.value)} placeholder={values.propertyType === 'APARTMENT' ? 'Flat, studio, penthouse' : values.propertyType === 'PLOT' ? 'Residential plot, commercial plot' : 'Independent house, office…'} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Project / development name</span><input maxLength={200} value={values.projectName} onChange={(event) => update('projectName', event.target.value)} className={inputClass} /></label>
           <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2">
             <span className="mb-1.5 block">Location</span>
             <input
@@ -547,18 +461,6 @@ export default function PropertyForm({
               className={inputClass}
             />
           </label>
-          <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Street address</span><input maxLength={500} value={values.address} onChange={(event) => update('address', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Locality</span><input maxLength={150} value={values.locality} onChange={(event) => update('locality', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">City</span><input maxLength={150} value={values.city} onChange={(event) => update('city', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">State</span><input maxLength={150} value={values.state} onChange={(event) => update('state', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Map or location link</span><input type="url" maxLength={1000} value={values.locationUrl} onChange={(event) => update('locationUrl', event.target.value)} className={inputClass} /></label>
-          <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Availability</span><select value={values.availability} onChange={(event) => update('availability', event.target.value)} className={inputClass}>{['AVAILABLE','LIMITED','COMING_SOON','RESERVED','SOLD_OUT','UNAVAILABLE'].map((option) => <option key={option} value={option}>{formatLabel(option)}</option>)}</select></label>
-           {(showTypeField(['APARTMENT', 'VILLA', 'OTHER'].includes(values.propertyType), values.bedrooms) || showTypeField(['APARTMENT', 'VILLA', 'OTHER'].includes(values.propertyType), values.bathrooms)) && <><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Bedrooms / BHK</span><input type="number" min="0" max="100" value={values.bedrooms} onChange={(event) => update('bedrooms', event.target.value)} className={inputClass} /></label><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Bathrooms</span><input type="number" min="0" max="100" value={values.bathrooms} onChange={(event) => update('bathrooms', event.target.value)} className={inputClass} /></label></>}
-           {showTypeField(!['PLOT','LAND'].includes(values.propertyType), values.builtUpArea) && <><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Built-up area</span><input type="number" min="0.01" step="0.01" value={values.builtUpArea} onChange={(event) => update('builtUpArea', event.target.value)} className={inputClass} /></label><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Area unit</span><select value={values.builtUpAreaUnit} onChange={(event) => update('builtUpAreaUnit', event.target.value)} className={inputClass}><option value="">Select unit</option>{plotSizeUnits.map((unit) => <option key={unit} value={unit}>{formatLabel(unit)}</option>)}</select></label></>}
-           {showTypeField(['APARTMENT', 'VILLA', 'COMMERCIAL', 'OTHER'].includes(values.propertyType), values.floorCount) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Floors</span><input type="number" min="0" max="500" value={values.floorCount} onChange={(event) => update('floorCount', event.target.value)} className={inputClass} /></label>}
-           {showTypeField(['APARTMENT', 'VILLA', 'COMMERCIAL', 'OTHER'].includes(values.propertyType), values.parkingSpaces) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Parking spaces</span><input type="number" min="0" max="1000" value={values.parkingSpaces} onChange={(event) => update('parkingSpaces', event.target.value)} className={inputClass} /></label>}
-           {showTypeField(['PLOT','LAND','COMMERCIAL','OTHER'].includes(values.propertyType), values.roadAccess) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Road access</span><input maxLength={255} value={values.roadAccess} onChange={(event) => update('roadAccess', event.target.value)} className={inputClass} /></label>}
-           {showTypeField(['PLOT','LAND','COMMERCIAL','OTHER'].includes(values.propertyType), values.approvalInfo) && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Approval details</span><input maxLength={500} value={values.approvalInfo} onChange={(event) => update('approvalInfo', event.target.value)} className={inputClass} /></label>}
           <label className="block text-xs font-medium text-[#9caaa4]">
             <span className="mb-1.5 block">Property status *</span>
             <select
@@ -612,6 +514,7 @@ export default function PropertyForm({
               </select>
             </label>
             {showTypeField(['PLOT', 'LAND', 'VILLA'].includes(values.propertyType), values.plotSize) && <label className="block text-xs font-medium text-[#9caaa4]">
+            <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">Plot size</span>
               <input
                 type="number"
@@ -637,9 +540,6 @@ export default function PropertyForm({
                 ))}
               </select>
             </label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Minimum price (INR)</span><input type="number" min="0" step="0.01" value={values.priceMinimum} onChange={(event) => update('priceMinimum', event.target.value)} className={inputClass} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Maximum price (INR)</span><input type="number" min="0" step="0.01" value={values.priceMaximum} onChange={(event) => update('priceMaximum', event.target.value)} className={inputClass} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Price basis</span><select value={values.priceBasis} onChange={(event) => update('priceBasis', event.target.value)} className={inputClass}>{[['TOTAL','Total'],['PER_UNIT','Per unit'],['PER_SQFT','Per sq ft'],['PER_SQM','Per sq m'],['PER_ACRE','Per acre']].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           </div>
         </section>
 
@@ -686,11 +586,8 @@ export default function PropertyForm({
         <section className={`${panelClass} p-4 sm:p-6`}>
           <h2 className={panelHeadingClass}>Representation &amp; publication</h2>
           <p className="mt-1 text-xs text-[#9caaa4]">Choose how JLUXE represents this opportunity and when it appears publicly.</p>
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Features &amp; amenities (comma-separated)</span><textarea rows={3} maxLength={5000} value={values.featuresText} onChange={(event)=>update('featuresText',event.target.value)} placeholder="Only enter verified features" className={`${inputClass} py-3`} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">SEO title</span><input maxLength={200} value={values.seoTitle} onChange={(event)=>update('seoTitle',event.target.value)} className={inputClass} /></label>
-            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">SEO description</span><textarea rows={2} maxLength={320} value={values.seoDescription} onChange={(event)=>update('seoDescription',event.target.value)} className={`${inputClass} py-3`} /></label>
-          </div>
+        <section className="border-t border-white/15 pt-6">
+          <h2 className="font-display text-2xl text-white">Representation and publication</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">JLUXE representation *</span>
@@ -738,6 +635,20 @@ export default function PropertyForm({
             <button type="submit" name="saveAction" value="draft" disabled={saving} className="inline-flex min-h-11 items-center justify-center border border-white/20 px-4 text-sm font-medium text-white transition-colors hover:bg-white/5 disabled:opacity-60">{saving ? 'Saving…' : 'Save draft'}</button>
             <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center bg-[var(--gold)] px-5 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-[var(--gold)]/90 disabled:opacity-60">{saving ? 'Saving…' : values.publicationStatus === 'PUBLISHED' ? isEditing ? 'Update property' : duplicate ? 'Create & publish' : 'Publish property' : values.publicationStatus === 'ARCHIVED' ? 'Save archive status' : isEditing ? 'Save changes' : duplicate ? 'Create duplicate' : 'Create property'}</button>
           </div>
+        <div className="flex flex-wrap gap-3 border-t border-white/15 pt-5">
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--gold)] px-6 text-sm font-semibold text-[var(--viridian-950)] transition-colors hover:bg-[var(--gold)]/90 disabled:opacity-60"
+          >
+            {saving ? 'Saving...' : property ? 'Save changes' : 'Create property'}
+          </button>
+          <Link
+            href="/admin/properties"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-6 text-sm font-medium text-white transition-colors hover:bg-white/10"
+          >
+            Cancel
+          </Link>
         </div>
       {/* Media Management Section for existing property */}
       {(
