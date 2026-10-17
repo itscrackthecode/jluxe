@@ -23,7 +23,7 @@ type ApiProperty = {
   shortSummary: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
-  priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
+  priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST' | 'EARLY_BIRD';
   priceBasis?: 'TOTAL_PRICE' | 'PER_SQFT' | 'PER_CENT' | 'OTHER';
   customPriceBasis?: string | null;
   plotSize: string | null;
@@ -65,7 +65,8 @@ function formatPropertyPrice(property: ApiProperty) {
   const basis = property.priceBasis === 'PER_SQFT' ? ' per sq. ft.'
     : property.priceBasis === 'PER_CENT' ? ' per cent'
       : property.priceBasis === 'OTHER' && property.customPriceBasis ? ` per ${property.customPriceBasis}` : '';
-  return `${property.priceMode === 'STARTING_FROM' ? 'From ' : ''}${formattedAmount}${basis}`;
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'From ' : property.priceMode === 'EARLY_BIRD' ? 'Early Bird ' : '';
+  return `${prefix}${formattedAmount}${basis}`;
 }
 
 function formatPropertyType(value: string) {

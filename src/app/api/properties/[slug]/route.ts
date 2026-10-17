@@ -44,6 +44,7 @@ export async function GET(
         configurations: configurations.map((item) => ({
           ...item,
           areaValue: formatNumericValue(item.areaValue),
+          priceAmount: formatNumericValue(item.priceAmount ?? null),
           dimensionLength: formatNumericValue(item.dimensionLength),
           dimensionWidth: formatNumericValue(item.dimensionWidth),
           carpetArea: formatNumericValue(item.carpetArea ?? null),

@@ -31,6 +31,11 @@ type ApiConfiguration = {
   dimensionLength: string | null;
   dimensionWidth: string | null;
   notesMarkdown: string | null;
+  priceMode?: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST' | 'EARLY_BIRD' | null;
+  priceAmount?: string | null;
+  priceBasis?: 'TOTAL_PRICE' | 'PER_SQFT' | 'PER_CENT' | 'OTHER' | null;
+  customPriceBasis?: string | null;
+  additionalCharges?: Array<{ label: string; amount: string }>;
   plotNumber?: string | null;
   bedroomCount?: number | null;
   bathroomCount?: number | null;
@@ -57,7 +62,7 @@ type ApiProperty = {
   longitude: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
-  priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
+  priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST' | 'EARLY_BIRD';
   priceBasis?: 'TOTAL_PRICE' | 'PER_SQFT' | 'PER_CENT' | 'OTHER';
   customPriceBasis?: string | null;
   additionalCharges?: Array<{ label: string; amount: string }>;
@@ -68,9 +73,8 @@ type ApiProperty = {
   landApprovedFor?: string | null;
   statutoryApprovals?: string[];
   otherStatutoryApprovals?: string | null;
-  approvalReference?: string | null;
-  approvalAuthority?: string | null;
   projectPhase?: number | null;
+  projectFeaturesMarkdown?: string | null;
   constructionStatus?: string | null;
   handoverDate?: string | null;
   waterSources?: string[];
@@ -159,7 +163,8 @@ function getPrice(property: ApiProperty) {
   const basis = property.priceBasis === 'PER_SQFT' ? ' per sq. ft.'
     : property.priceBasis === 'PER_CENT' ? ' per cent'
       : property.priceBasis === 'OTHER' && property.customPriceBasis ? ` per ${property.customPriceBasis}` : '';
-  return `${property.priceMode === 'STARTING_FROM' ? 'From ' : ''}${formatted}${basis}`;
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'From ' : property.priceMode === 'EARLY_BIRD' ? 'Early Bird ' : '';
+  return `${prefix}${formatted}${basis}`;
 }
 
 function getWhatsAppPrice(property: ApiProperty) {
@@ -167,7 +172,7 @@ function getWhatsAppPrice(property: ApiProperty) {
   const amount = Number(property.priceAmount);
   if (!Number.isFinite(amount)) return null;
   const formattedAmount = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(amount);
-  const prefix = property.priceMode === 'STARTING_FROM' ? 'starting from ' : '';
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'starting from ' : property.priceMode === 'EARLY_BIRD' ? 'early bird ' : '';
   const basis = property.priceBasis === 'PER_SQFT' ? ' per sq. ft.'
     : property.priceBasis === 'PER_CENT' ? ' per cent'
       : property.priceBasis === 'OTHER' && property.customPriceBasis ? ` per ${property.customPriceBasis}` : '';
@@ -186,6 +191,19 @@ function formatConfigurationNumber(value: string | null) {
   if (!value) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(numeric) : null;
+}
+
+function getConfigurationPrice(configuration: ApiConfiguration) {
+  if (configuration.priceMode === 'ON_REQUEST') return 'On request';
+  if (configuration.priceAmount == null || configuration.priceAmount === '') return null;
+  const amount = Number(configuration.priceAmount);
+  if (!Number.isFinite(amount)) return null;
+  const formattedAmount = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(amount);
+  const prefix = configuration.priceMode === 'STARTING_FROM' ? 'From ' : configuration.priceMode === 'EARLY_BIRD' ? 'Early Bird ' : '';
+  const basis = configuration.priceBasis === 'PER_SQFT' ? ' per sq. ft.'
+    : configuration.priceBasis === 'PER_CENT' ? ' per cent'
+      : configuration.priceBasis === 'OTHER' && configuration.customPriceBasis ? ` per ${configuration.customPriceBasis}` : '';
+  return `${prefix}₹${formattedAmount}${basis}`;
 }
 
 function configurationUnit(configuration: ApiConfiguration) {
@@ -377,6 +395,7 @@ export default function PropertyDetail({ slug }: { slug: string }) {
               const width = formatConfigurationNumber(configuration.dimensionWidth);
               const unit = configurationUnit(configuration);
               const basis = configurationBasis(configuration);
+              const configurationPrice = getConfigurationPrice(configuration);
               const houseConfiguration = property.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(property.propertySubtype ?? '');
               return <article key={configuration.id} className="min-w-0 border border-[var(--viridian-950)]/12 bg-white p-4 sm:p-5">
                 <h3 className="font-display text-xl text-[var(--viridian-950)]">{configuration.optionName || `Option ${index + 1}`}</h3>
@@ -392,6 +411,8 @@ export default function PropertyDetail({ slug }: { slug: string }) {
                   {length && <div><dt className="text-[11px] text-[var(--muted)]">Length</dt><dd className="mt-1 font-medium text-[var(--viridian-950)]">{length}</dd></div>}
                   {width && <div><dt className="text-[11px] text-[var(--muted)]">Width</dt><dd className="mt-1 font-medium text-[var(--viridian-950)]">{width}</dd></div>}
                 </dl>}
+                {configurationPrice && <div className="mt-4 border-t border-[var(--viridian-950)]/10 pt-3"><p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--muted)]">PRICE</p><p className="mt-1 font-display text-xl text-[var(--viridian-950)]">{configurationPrice}</p></div>}
+                {configuration.additionalCharges?.length ? <div className="mt-3 border-t border-[var(--viridian-950)]/10 pt-3"><h4 className="text-[11px] font-semibold tracking-[0.12em] text-[var(--muted)]">ADDITIONAL CHARGES</h4><dl className="mt-2 space-y-2">{configuration.additionalCharges.map((charge, chargeIndex) => <div key={`${charge.label}-${chargeIndex}`} className="flex justify-between gap-3 text-sm"><dt className="text-[var(--muted)]">{charge.label}</dt><dd className="shrink-0 font-medium text-[var(--viridian-950)]">₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(charge.amount))}</dd></div>)}</dl></div> : null}
                 {configuration.roomConfiguration?.some((room) => room.name && room.count != null) ? <div className="mt-3 border-t border-[var(--viridian-950)]/10 pt-3"><h4 className="text-[11px] text-[var(--muted)]">Room configuration</h4><ul className="mt-1 space-y-1 text-sm text-[var(--viridian-950)]">{configuration.roomConfiguration.map((room, roomIndex) => room.name && room.count != null ? <li key={`${room.name}-${roomIndex}`}>{room.name}: {room.count}</li> : null)}</ul></div> : null}
                 {configuration.notesMarkdown && <div className="mt-4 border-t border-[var(--viridian-950)]/10 pt-3 text-sm leading-6 text-[var(--muted)]"><MarkdownContent value={configuration.notesMarkdown} /></div>}
               </article>;
@@ -430,25 +451,24 @@ export default function PropertyDetail({ slug }: { slug: string }) {
             {property.recentUpgradesMarkdown && <div className="mt-4 border border-[var(--viridian-950)]/10 bg-white p-4"><h3 className="text-sm font-semibold text-[var(--viridian-950)]">Recent upgrades</h3><div className="mt-2 text-sm leading-6 text-[var(--muted)]"><MarkdownContent value={property.recentUpgradesMarkdown} /></div></div>}
             {property.proximityMarkdown && <div className="mt-4 border border-[var(--viridian-950)]/10 bg-white p-4"><h3 className="text-sm font-semibold text-[var(--viridian-950)]">Proximity to key landmarks</h3><div className="mt-2 text-sm leading-6 text-[var(--muted)]"><MarkdownContent value={property.proximityMarkdown} /></div></div>}
           </section>}
-          {(property.approvalReference || property.approvalAuthority || property.projectPhase != null || property.constructionStatus || property.handoverDate || property.amenitiesMarkdown) && <section className="mt-7 border-t border-[var(--viridian-950)]/15 pt-5 sm:mt-9 sm:pt-6">
+          {(property.statutoryApprovals?.length || property.projectPhase != null || property.projectFeaturesMarkdown || property.constructionStatus || property.handoverDate || property.amenitiesMarkdown) && <section className="mt-7 border-t border-[var(--viridian-950)]/15 pt-5 sm:mt-9 sm:pt-6">
             <p className="text-[11px] font-semibold tracking-[0.16em] text-[var(--gold)]">APPROVALS &amp; PROJECT DETAILS</p>
             <h2 className="mt-1 font-display text-2xl text-[var(--viridian-950)]">Project information</h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              {property.approvalReference && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Approval / registration number</dt><dd className="mt-1 break-words text-sm font-medium text-[var(--viridian-950)]">{property.approvalReference}</dd></div>}
-              {property.approvalAuthority && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Approving authority</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.approvalAuthority}</dd></div>}
+              {property.statutoryApprovals?.length ? <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Statutory approvals</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.statutoryApprovals.map((item) => item === 'OTHER' ? property.otherStatutoryApprovals || 'Other' : item).join(', ')}</dd></div> : null}
               {property.projectPhase != null && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Current project phase</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.projectPhase} · {projectPhaseLabels[property.projectPhase] ?? ''}</dd></div>}
               {property.constructionStatus && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Construction / development status</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.constructionStatus}</dd></div>}
               {property.handoverDate && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Expected handover</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{new Intl.DateTimeFormat('en-IN', { dateStyle: 'long' }).format(new Date(`${property.handoverDate}T00:00:00`))}</dd></div>}
             </dl>
+            {property.projectFeaturesMarkdown && <div className="mt-4 border border-[var(--viridian-950)]/10 bg-white p-4"><h3 className="text-sm font-semibold text-[var(--viridian-950)]">Project features</h3><div className="mt-2 text-sm leading-6 text-[var(--muted)]"><MarkdownContent value={property.projectFeaturesMarkdown} /></div></div>}
             {property.amenitiesMarkdown && <div className="mt-4 border border-[var(--viridian-950)]/10 bg-white p-4"><h3 className="text-sm font-semibold text-[var(--viridian-950)]">Amenities and facilities</h3><div className="mt-2 text-sm leading-6 text-[var(--muted)]"><MarkdownContent value={property.amenitiesMarkdown} /></div></div>}
           </section>}
-          {['LAND_PLOT', 'PLOT', 'LAND'].includes(property.propertyType) && (property.roadAccess || property.landApprovedFor || property.statutoryApprovals?.length || property.waterSources?.length || property.electricitySources?.length || property.drainageOptions?.length || property.proximityMarkdown || property.layoutPlans?.length) && <section className="mt-7 border-t border-[var(--viridian-950)]/15 pt-5 sm:mt-9 sm:pt-6">
+          {['LAND_PLOT', 'PLOT', 'LAND'].includes(property.propertyType) && (property.roadAccess || property.landApprovedFor || property.waterSources?.length || property.electricitySources?.length || property.drainageOptions?.length || property.proximityMarkdown || property.layoutPlans?.length) && <section className="mt-7 border-t border-[var(--viridian-950)]/15 pt-5 sm:mt-9 sm:pt-6">
             <p className="text-[11px] font-semibold tracking-[0.16em] text-[var(--gold)]">PLOT &amp; LAND INFORMATION</p>
             <h2 className="mt-1 font-display text-2xl text-[var(--viridian-950)]">Land details</h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               {property.roadAccess && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Road access</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.roadAccess}</dd></div>}
               {property.landApprovedFor && <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Land approved for</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{landLabel(property.landApprovedFor)}</dd></div>}
-              {property.statutoryApprovals?.length ? <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Statutory approvals</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.statutoryApprovals.map((item) => item === 'OTHER' ? property.otherStatutoryApprovals || 'Other' : item).join(', ')}</dd></div> : null}
               {property.waterSources?.length ? <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Water supply</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.waterSources.map((item) => item === 'OTHER' ? property.otherWaterSource || 'Other' : landLabel(item)).join(', ')}</dd></div> : null}
               {property.electricitySources?.length ? <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Electricity</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.electricitySources.map((item) => item === 'OTHER' ? property.otherElectricitySource || 'Other' : landLabel(item)).join(', ')}</dd></div> : null}
               {property.drainageOptions?.length ? <div className="border border-[var(--viridian-950)]/10 bg-white p-4"><dt className="text-xs text-[var(--muted)]">Drainage and sewage</dt><dd className="mt-1 text-sm font-medium text-[var(--viridian-950)]">{property.drainageOptions.map((item) => item === 'OTHER' ? property.otherDrainageOption || 'Other' : landLabel(item)).join(', ')}</dd></div> : null}
