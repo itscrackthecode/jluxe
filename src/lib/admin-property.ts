@@ -36,6 +36,11 @@ const propertyConfigurationSchema = z.object({
   dimensionLength: optionalDecimal(12),
   dimensionWidth: optionalDecimal(12),
   notesMarkdown: optionalText(20_000),
+  priceMode: optionalEnum(priceModes),
+  priceAmount: optionalDecimal(12),
+  priceBasis: optionalEnum(priceBases),
+  customPriceBasis: optionalText(80),
+  additionalCharges: z.array(z.object({ label: z.string().trim().max(120), amount: z.string().trim().max(15) }).strict()).max(20).default([]),
   plotNumber: optionalText(80),
   bedroomCount: optionalInteger(100),
   bathroomCount: optionalInteger(100),
@@ -113,6 +118,11 @@ export const adminPropertySchema = z.object({
   approvalReference: optionalText(160),
   approvalAuthority: optionalText(200),
   projectPhase: optionalInteger(6),
+  projectTotalLandArea: optionalDecimal(12),
+  projectPhaseLandArea: optionalDecimal(12),
+  projectApartmentCount: optionalInteger(100000),
+  projectVillaCount: optionalInteger(100000),
+  projectFeaturesMarkdown: optionalText(20_000),
   constructionStatus: optionalText(300),
   handoverDate: z.preprocess((value) => typeof value === 'string' && value.trim() === '' ? null : value, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().transform((value) => value ?? null)),
   waterSources: z.array(z.enum(['MUNICIPAL', 'BOREWELL', 'OVERHEAD_TANK', 'OTHER', 'NOT_CONFIRMED'])).max(10).default([]),
@@ -208,7 +218,7 @@ export const adminPropertySchema = z.object({
   const isApartment = value.propertyType === 'RESIDENTIAL' && value.propertySubtype === 'Apartment';
   const isHouse = value.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(value.propertySubtype ?? '');
   if (!isLandPlot && (
-    value.roadAccess || value.landApprovedFor || value.statutoryApprovals.length ||
+    value.roadAccess || value.landApprovedFor ||
     value.waterSources.length || value.electricitySources.length || value.drainageOptions.length
   )) context.addIssue({ code: 'custom', path: ['propertyType'], message: 'Plot and land details are only supported for Land / Plot listings.' });
   if (!isLandPlot && !isCommercial && !isApartment && !isHouse && value.proximityMarkdown) context.addIssue({ code: 'custom', path: ['proximityMarkdown'], message: 'Proximity details are only supported for Land / Plot, Commercial, Apartment, Villa, or Independent House listings.' });
@@ -245,6 +255,28 @@ export const adminPropertySchema = z.object({
   }
   if (!['LEASE', 'RENT'].includes(value.transactionType ?? '') && (value.leaseStructureMarkdown || value.leaseExpiryDate)) context.addIssue({ code: 'custom', path: ['transactionType'], message: 'Lease terms and lease expiry only apply to Lease or Rent listings.' });
   value.configurations.forEach((configuration, index) => {
+    if (configuration.priceAmount !== null && configuration.priceMode === null) {
+      context.addIssue({ code: 'custom', path: ['configurations', index, 'priceMode'], message: 'Select a price mode for this amount.' });
+    }
+    if (configuration.priceMode && configuration.priceMode !== 'ON_REQUEST' && configuration.priceAmount === null) {
+      context.addIssue({ code: 'custom', path: ['configurations', index, 'priceAmount'], message: 'Enter an amount or select On request.' });
+    }
+    if (configuration.priceMode === 'ON_REQUEST' && configuration.priceAmount !== null) {
+      context.addIssue({ code: 'custom', path: ['configurations', index, 'priceAmount'], message: 'Remove the amount when the price is on request.' });
+    }
+    if (configuration.priceAmount !== null && configuration.priceBasis === null) {
+      context.addIssue({ code: 'custom', path: ['configurations', index, 'priceBasis'], message: 'Select a price basis for this amount.' });
+    }
+    if (configuration.priceBasis === 'OTHER' && !configuration.customPriceBasis) {
+      context.addIssue({ code: 'custom', path: ['configurations', index, 'customPriceBasis'], message: 'Enter the custom price basis.' });
+    }
+    configuration.additionalCharges.forEach((charge, chargeIndex) => {
+      const label = charge.label.trim();
+      const amount = charge.amount.trim();
+      if (!label || !amount || !decimalPattern.test(amount) || amount.split('.')[0].length > 12) {
+        context.addIssue({ code: 'custom', path: ['configurations', index, 'additionalCharges', chargeIndex], message: 'Enter both a charge name and a valid amount.' });
+      }
+    });
     configuration.roomConfiguration.forEach((room, roomIndex) => {
       if ((room.name === null) !== (room.count === null)) context.addIssue({ code: 'custom', path: ['configurations', index, 'roomConfiguration', roomIndex], message: 'Enter both a room name and its count.' });
     });

@@ -24,7 +24,8 @@ function formatPrice(property: { priceAmount: string | null; priceCurrency: stri
   const amount = Number(property.priceAmount);
   if (!Number.isFinite(amount)) return 'Not provided';
   const formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency || 'INR', maximumFractionDigits: 2 }).format(amount);
-  return property.priceMode === 'STARTING_FROM' ? `From ${formatted}` : formatted;
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'From ' : property.priceMode === 'EARLY_BIRD' ? 'Early Bird ' : '';
+  return `${prefix}${formatted}`;
 }
 
 export async function POST(request: Request, { params }: RouteContext) {

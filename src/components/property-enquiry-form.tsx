@@ -6,7 +6,7 @@ import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/turnst
 
 type PropertySummary = {
   id: string; slug: string; title: string; location: string | null; propertyType: string;
-  priceAmount: string | null; priceCurrency: string | null; priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
+  priceAmount: string | null; priceCurrency: string | null; priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST' | 'EARLY_BIRD';
   images: Array<{ id: string; deliveryUrl?: string | null; altText: string | null }>;
 };
 
@@ -22,7 +22,8 @@ function formatPrice(property: PropertySummary) {
     try { formatted = new Intl.NumberFormat(undefined, { style: 'currency', currency: property.priceCurrency, maximumFractionDigits: 2 }).format(amount); }
     catch { formatted = `${formatted} ${property.priceCurrency}`; }
   }
-  return property.priceMode === 'STARTING_FROM' ? `From ${formatted}` : formatted;
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'From ' : property.priceMode === 'EARLY_BIRD' ? 'Early Bird ' : '';
+  return `${prefix}${formatted}`;
 }
 
 export default function PropertyEnquiryForm({ property }: { property: PropertySummary }) {

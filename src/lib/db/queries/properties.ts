@@ -29,7 +29,7 @@ const adminPropertyColumns = `
   "submitterRelationship", "submitterRelationshipOther", "representationRoleOther",
   "authorityVerificationStatus", "internalContactName", "internalContactPhone",
   "internalContactEmail", "privateNotesMarkdown", "roadAccess", "proximityMarkdown", "landApprovedFor",
-  "statutoryApprovals", "otherStatutoryApprovals", "approvalReference", "approvalAuthority", "projectPhase", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource",
+  "statutoryApprovals", "otherStatutoryApprovals", "approvalReference", "approvalAuthority", "projectPhase", "projectTotalLandArea", "projectPhaseLandArea", "projectApartmentCount", "projectVillaCount", "projectFeaturesMarkdown", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource",
   "electricitySources", "otherElectricitySource", "drainageOptions", "otherDrainageOption",
   "furnishingStatus", "furnishingStatusOther", "amenitiesMarkdown", "publicationStatus",
   "facingDirection", "facingOther", "sunlightOrientation", "neighborhoodType", "neighborhoodTypeOther", "floorCount", "publicComplianceSummary",
@@ -47,7 +47,7 @@ export type PublicProperty = Omit<Pick<
   | 'mapLocation' | 'latitude' | 'longitude'
   | 'priceAmount' | 'priceCurrency' | 'priceMode' | 'priceBasis' | 'customPriceBasis' | 'additionalCharges' | 'offerDetails' | 'plotSize' | 'plotSizeUnit'
   | 'status' | 'availabilityOther' | 'enquiryEnabled' | 'seoTitle' | 'seoDescription' | 'representationType' | 'createdAt' | 'roadAccess' | 'proximityMarkdown' | 'landApprovedFor'
-  | 'statutoryApprovals' | 'otherStatutoryApprovals' | 'approvalReference' | 'approvalAuthority' | 'projectPhase' | 'constructionStatus' | 'handoverDate' | 'waterSources' | 'otherWaterSource'
+  | 'statutoryApprovals' | 'otherStatutoryApprovals' | 'projectPhase' | 'projectFeaturesMarkdown' | 'constructionStatus' | 'handoverDate' | 'waterSources' | 'otherWaterSource'
   | 'electricitySources' | 'otherElectricitySource' | 'drainageOptions' | 'otherDrainageOption'
   | 'furnishingStatus' | 'furnishingStatusOther' | 'amenitiesMarkdown'
   | 'facingDirection' | 'facingOther' | 'sunlightOrientation' | 'neighborhoodType' | 'neighborhoodTypeOther' | 'floorCount' | 'publicComplianceSummary'
@@ -97,7 +97,7 @@ export async function listPublicProperties(filters: {
               "mapLocation", "latitude", "longitude",
               "priceAmount", "priceCurrency", "priceMode", "priceBasis", "customPriceBasis", "additionalCharges", "offerDetails", "plotSize", "plotSizeUnit",
               "status", "representationType", "roadAccess", "proximityMarkdown", "landApprovedFor",
-              "statutoryApprovals", "otherStatutoryApprovals", "approvalReference", "approvalAuthority", "projectPhase", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource",
+              "statutoryApprovals", "otherStatutoryApprovals", "projectPhase", "projectFeaturesMarkdown", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource",
               "electricitySources", "otherElectricitySource", "drainageOptions", "otherDrainageOption",
               "furnishingStatus", "furnishingStatusOther", "amenitiesMarkdown",
               "facingDirection", "facingOther", "sunlightOrientation", "neighborhoodType", "neighborhoodTypeOther", "floorCount", "publicComplianceSummary",
@@ -158,7 +158,8 @@ export async function findPropertyById(id: UUID): Promise<AdminProperty | null> 
 export async function listPropertyConfigurations(propertyId: UUID): Promise<PropertyConfiguration[]> {
   const result = await pool.query<PropertyConfiguration>(
     `SELECT "id", "propertyId", "position", "optionName", "areaValue", "areaUnit",
-            "customAreaUnit", "areaBasis", "customAreaBasis", "dimensionLength", "dimensionWidth", "notesMarkdown", "plotNumber",
+            "customAreaUnit", "areaBasis", "customAreaBasis", "dimensionLength", "dimensionWidth", "notesMarkdown",
+            "priceMode", "priceAmount", "priceBasis", "customPriceBasis", "additionalCharges", "plotNumber",
             "bedroomCount", "bathroomCount", "floorNumber"
             , "carpetArea", "superBuiltUpArea", "roomConfiguration"
      FROM "PropertyConfiguration" WHERE "propertyId" = $1 ORDER BY "position", "id"`,
@@ -177,12 +178,15 @@ async function replacePropertyConfigurations(
     await client.query(
       `INSERT INTO "PropertyConfiguration" (
          "propertyId", "position", "optionName", "areaValue", "areaUnit", "customAreaUnit",
-         "areaBasis", "customAreaBasis", "dimensionLength", "dimensionWidth", "notesMarkdown", "plotNumber",
+         "areaBasis", "customAreaBasis", "dimensionLength", "dimensionWidth", "notesMarkdown",
+         "priceMode", "priceAmount", "priceBasis", "customPriceBasis", "additionalCharges", "plotNumber",
          "bedroomCount", "bathroomCount", "floorNumber", "carpetArea", "superBuiltUpArea", "roomConfiguration", "updatedAt"
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())`,
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, NOW())`,
       [propertyId, position, configuration.optionName, configuration.areaValue, configuration.areaUnit,
         configuration.customAreaUnit, configuration.areaBasis, configuration.customAreaBasis,
-        configuration.dimensionLength, configuration.dimensionWidth, configuration.notesMarkdown, configuration.plotNumber ?? null,
+        configuration.dimensionLength, configuration.dimensionWidth, configuration.notesMarkdown,
+        configuration.priceMode ?? null, configuration.priceAmount ?? null, configuration.priceBasis ?? null,
+        configuration.customPriceBasis ?? null, JSON.stringify(configuration.additionalCharges ?? []), configuration.plotNumber ?? null,
         configuration.bedroomCount ?? null, configuration.bathroomCount ?? null, configuration.floorNumber ?? null,
         configuration.carpetArea ?? null, configuration.superBuiltUpArea ?? null, JSON.stringify(configuration.roomConfiguration ?? [])],
     );
@@ -197,7 +201,7 @@ export async function findPublishedPropertyBySlug(slug: string): Promise<PublicP
             "mapLocation", "latitude", "longitude",
             "priceAmount", "priceCurrency", "priceMode", "priceBasis", "customPriceBasis", "additionalCharges", "offerDetails", "plotSize", "plotSizeUnit",
             "status", "representationType", "roadAccess", "proximityMarkdown", "landApprovedFor",
-            "statutoryApprovals", "otherStatutoryApprovals", "approvalReference", "approvalAuthority", "projectPhase", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource",
+            "statutoryApprovals", "otherStatutoryApprovals", "projectPhase", "projectFeaturesMarkdown", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource",
             "electricitySources", "otherElectricitySource", "drainageOptions", "otherDrainageOption",
             "furnishingStatus", "furnishingStatusOther", "amenitiesMarkdown",
             "facingDirection", "facingOther", "sunlightOrientation", "neighborhoodType", "neighborhoodTypeOther", "floorCount", "publicComplianceSummary",
@@ -326,7 +330,7 @@ export type PropertyWrite = Pick<
   | 'submitterRelationshipOther' | 'representationRoleOther' | 'authorityVerificationStatus'
   | 'internalContactName' | 'internalContactPhone' | 'internalContactEmail' | 'privateNotesMarkdown'
   | 'priceBasis' | 'customPriceBasis' | 'additionalCharges' | 'offerDetails'
-  | 'roadAccess' | 'proximityMarkdown' | 'landApprovedFor' | 'statutoryApprovals' | 'otherStatutoryApprovals' | 'approvalReference' | 'approvalAuthority' | 'projectPhase' | 'constructionStatus' | 'handoverDate'
+  | 'roadAccess' | 'proximityMarkdown' | 'landApprovedFor' | 'statutoryApprovals' | 'otherStatutoryApprovals' | 'approvalReference' | 'approvalAuthority' | 'projectPhase' | 'projectTotalLandArea' | 'projectPhaseLandArea' | 'projectApartmentCount' | 'projectVillaCount' | 'projectFeaturesMarkdown' | 'constructionStatus' | 'handoverDate'
   | 'waterSources' | 'otherWaterSource' | 'electricitySources' | 'otherElectricitySource' | 'drainageOptions' | 'otherDrainageOption'
   | 'furnishingStatus' | 'furnishingStatusOther' | 'amenitiesMarkdown'
   | 'facingDirection' | 'facingOther' | 'sunlightOrientation' | 'neighborhoodType' | 'neighborhoodTypeOther' | 'floorCount' | 'publicComplianceSummary'
@@ -347,8 +351,8 @@ export async function createProperty(input: PropertyWrite): Promise<AdminPropert
        "submitterRelationship", "submitterRelationshipOther", "representationRoleOther",
        "authorityVerificationStatus", "internalContactName", "internalContactPhone",
        "internalContactEmail", "privateNotesMarkdown", "roadAccess", "proximityMarkdown", "landApprovedFor", "statutoryApprovals", "otherStatutoryApprovals", "approvalReference", "approvalAuthority", "projectPhase", "constructionStatus", "handoverDate", "waterSources", "otherWaterSource", "electricitySources", "otherElectricitySource", "drainageOptions", "otherDrainageOption", "furnishingStatus", "furnishingStatusOther", "amenitiesMarkdown", "facingDirection", "facingOther", "sunlightOrientation", "neighborhoodType", "neighborhoodTypeOther", "floorCount", "publicComplianceSummary", "publicationStatus",
-       "commercialUse", "commercialUseOther", "yearBuilt", "recentUpgradesMarkdown", "transactionType", "leaseStructureMarkdown", "occupancyStatus", "leaseExpiryDate", "tenantProfileMarkdown", "availabilityOther", "enquiryEnabled", "seoTitle", "seoDescription", "updatedAt"
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, NOW())
+       "commercialUse", "commercialUseOther", "yearBuilt", "recentUpgradesMarkdown", "transactionType", "leaseStructureMarkdown", "occupancyStatus", "leaseExpiryDate", "tenantProfileMarkdown", "availabilityOther", "enquiryEnabled", "seoTitle", "seoDescription", "projectTotalLandArea", "projectPhaseLandArea", "projectApartmentCount", "projectVillaCount", "projectFeaturesMarkdown", "updatedAt"
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, $83, $84, $85, $86, $87, NOW())
     RETURNING ${adminPropertyColumns}`,
     [
       input.slug, input.title, input.description, input.shortSummary ?? null, input.location, input.propertyType,
@@ -378,6 +382,8 @@ export async function createProperty(input: PropertyWrite): Promise<AdminPropert
       input.transactionType ?? null, input.leaseStructureMarkdown ?? null, input.occupancyStatus ?? null,
       input.leaseExpiryDate ?? null, input.tenantProfileMarkdown ?? null, input.availabilityOther ?? null,
       input.enquiryEnabled ?? true, input.seoTitle ?? null, input.seoDescription ?? null,
+      input.projectTotalLandArea ?? null, input.projectPhaseLandArea ?? null, input.projectApartmentCount ?? null,
+      input.projectVillaCount ?? null, input.projectFeaturesMarkdown ?? null,
     ],
   );
   await replacePropertyConfigurations(client, result.rows[0].id, input.configurations);
@@ -412,7 +418,9 @@ export async function updateProperty(id: UUID, input: PropertyWrite): Promise<Ad
        "publicationStatus" = $70, "commercialUse" = $71, "commercialUseOther" = $72, "yearBuilt" = $73,
        "recentUpgradesMarkdown" = $74, "transactionType" = $75, "leaseStructureMarkdown" = $76,
        "occupancyStatus" = $77, "leaseExpiryDate" = $78, "tenantProfileMarkdown" = $79,
-       "availabilityOther" = $80, "enquiryEnabled" = $81, "seoTitle" = $82, "seoDescription" = $83, "updatedAt" = NOW()
+       "availabilityOther" = $80, "enquiryEnabled" = $81, "seoTitle" = $82, "seoDescription" = $83,
+       "projectTotalLandArea" = $84, "projectPhaseLandArea" = $85, "projectApartmentCount" = $86,
+       "projectVillaCount" = $87, "projectFeaturesMarkdown" = $88, "updatedAt" = NOW()
      WHERE "id" = $1
     RETURNING ${adminPropertyColumns}`,
     [
@@ -442,6 +450,8 @@ export async function updateProperty(id: UUID, input: PropertyWrite): Promise<Ad
       input.transactionType ?? null, input.leaseStructureMarkdown ?? null, input.occupancyStatus ?? null,
       input.leaseExpiryDate ?? null, input.tenantProfileMarkdown ?? null, input.availabilityOther ?? null,
       input.enquiryEnabled ?? true, input.seoTitle ?? null, input.seoDescription ?? null,
+      input.projectTotalLandArea ?? null, input.projectPhaseLandArea ?? null, input.projectApartmentCount ?? null,
+      input.projectVillaCount ?? null, input.projectFeaturesMarkdown ?? null,
     ],
   );
   if (!result.rows[0]) return null;

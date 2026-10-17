@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ArrowUp, ArrowDown, Trash2, Star, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Trash2, Star, Plus, Eye, Download, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
@@ -85,6 +85,11 @@ type PropertyData = {
   approvalReference?: string | null;
   approvalAuthority?: string | null;
   projectPhase?: number | null;
+  projectTotalLandArea?: string | null;
+  projectPhaseLandArea?: string | null;
+  projectApartmentCount?: number | null;
+  projectVillaCount?: number | null;
+  projectFeaturesMarkdown?: string | null;
   constructionStatus?: string | null;
   handoverDate?: string | null;
   waterSources?: string[];
@@ -173,6 +178,11 @@ type FormValues = {
   approvalReference: string;
   approvalAuthority: string;
   projectPhase: string;
+  projectTotalLandArea: string;
+  projectPhaseLandArea: string;
+  projectApartmentCount: string;
+  projectVillaCount: string;
+  projectFeaturesMarkdown: string;
   constructionStatus: string;
   handoverDate: string;
   waterSources: string[];
@@ -210,6 +220,11 @@ type FormValues = {
     dimensionLength: string;
     dimensionWidth: string;
     notesMarkdown: string;
+    priceMode: string;
+    priceAmount: string;
+    priceBasis: string;
+    customPriceBasis: string;
+    additionalCharges: Array<{ label: string; amount: string }>;
     plotNumber: string;
     bedroomCount: string;
     bathroomCount: string;
@@ -232,6 +247,27 @@ type AttachedMediaItem = {
 };
 
 type PropertyFormIssue = { label: string; message?: string; index?: number };
+
+function getAttachedMediaUrl(item: Pick<AttachedMediaItem, 'deliveryUrl' | 'storageKey'>) {
+  return item.deliveryUrl ?? (item.storageKey.startsWith('/') ? item.storageKey : null);
+}
+
+function getAttachedMediaDownloadUrl(item: Pick<AttachedMediaItem, 'deliveryUrl' | 'storageKey'>) {
+  const url = getAttachedMediaUrl(item);
+  if (!url) return null;
+  if (url.startsWith('/')) return url;
+  if (!url.startsWith('https://res.cloudinary.com/')) return null;
+
+  try {
+    const parsed = new URL(url);
+    const uploadPath = '/image/upload/';
+    if (!parsed.pathname.includes(uploadPath)) return null;
+    parsed.pathname = parsed.pathname.replace(uploadPath, `${uploadPath}fl_attachment/`);
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
 
 const propertyFieldLabels: Record<string, string> = {
   title: 'Title', slug: 'URL slug', propertyType: 'Property type', propertyTypeOther: 'Enter the type of Property',
@@ -308,6 +344,10 @@ function toFormValues(property?: PropertyData, configurations: PropertyConfigura
     landApprovedFor: property?.landApprovedFor ?? '', statutoryApprovals: property?.statutoryApprovals ?? [],
     otherStatutoryApprovals: property?.otherStatutoryApprovals ?? '', approvalReference: property?.approvalReference ?? '',
     approvalAuthority: property?.approvalAuthority ?? '', projectPhase: property?.projectPhase == null ? '' : String(property.projectPhase),
+    projectTotalLandArea: property?.projectTotalLandArea ?? '', projectPhaseLandArea: property?.projectPhaseLandArea ?? '',
+    projectApartmentCount: property?.projectApartmentCount == null ? '' : String(property.projectApartmentCount),
+    projectVillaCount: property?.projectVillaCount == null ? '' : String(property.projectVillaCount),
+    projectFeaturesMarkdown: property?.projectFeaturesMarkdown ?? '',
     constructionStatus: property?.constructionStatus ?? '', handoverDate: property?.handoverDate ?? '',
     waterSources: property?.waterSources ?? [], otherWaterSource: property?.otherWaterSource ?? '',
     electricitySources: property?.electricitySources ?? [], otherElectricitySource: property?.otherElectricitySource ?? '',
@@ -327,10 +367,12 @@ function toFormValues(property?: PropertyData, configurations: PropertyConfigura
       optionName: item.optionName ?? '', areaValue: item.areaValue ?? '', areaUnit: item.areaUnit ?? '',
       customAreaUnit: item.customAreaUnit ?? '', areaBasis: item.areaBasis ?? '', customAreaBasis: item.customAreaBasis ?? '',
       dimensionLength: item.dimensionLength ?? '', dimensionWidth: item.dimensionWidth ?? '', notesMarkdown: item.notesMarkdown ?? '', plotNumber: item.plotNumber ?? '',
+      priceMode: item.priceMode ?? '', priceAmount: item.priceAmount ?? '', priceBasis: item.priceBasis ?? '', customPriceBasis: item.customPriceBasis ?? '',
+      additionalCharges: item.additionalCharges ?? [],
       bedroomCount: item.bedroomCount == null ? '' : String(item.bedroomCount), bathroomCount: item.bathroomCount == null ? '' : String(item.bathroomCount), floorNumber: item.floorNumber ?? '',
       carpetArea: item.carpetArea ?? '', superBuiltUpArea: item.superBuiltUpArea ?? '',
       roomConfiguration: item.roomConfiguration?.map((room) => ({ name: room.name ?? '', count: room.count == null ? '' : String(room.count) })) ?? [],
-    })) : property ? [] : [{ optionName: '', areaValue: '', areaUnit: '', customAreaUnit: '', areaBasis: '', customAreaBasis: '', dimensionLength: '', dimensionWidth: '', notesMarkdown: '', plotNumber: '', bedroomCount: '', bathroomCount: '', floorNumber: '', carpetArea: '', superBuiltUpArea: '', roomConfiguration: [] }],
+    })) : property ? [] : [{ optionName: '', areaValue: '', areaUnit: '', customAreaUnit: '', areaBasis: '', customAreaBasis: '', dimensionLength: '', dimensionWidth: '', notesMarkdown: '', priceMode: '', priceAmount: '', priceBasis: '', customPriceBasis: '', additionalCharges: [], plotNumber: '', bedroomCount: '', bathroomCount: '', floorNumber: '', carpetArea: '', superBuiltUpArea: '', roomConfiguration: [] }],
     publicationStatus: property?.publicationStatus ?? 'DRAFT',
   };
 }
@@ -393,6 +435,15 @@ export default function PropertyForm({
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaActionPending, setMediaActionPending] = useState(false);
   const [mediaNotice, setMediaNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [previewMedia, setPreviewMedia] = useState<AttachedMediaItem | null>(null);
+  const previewDialogRef = useRef<HTMLDialogElement | null>(null);
+
+  useEffect(() => {
+    const dialog = previewDialogRef.current;
+    if (!dialog) return;
+    if (previewMedia && !dialog.open) dialog.showModal();
+    if (!previewMedia && dialog.open) dialog.close();
+  }, [previewMedia]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -462,7 +513,7 @@ export default function PropertyForm({
     invalidFields[0]?.focus();
   }
 
-  function updateConfiguration(index: number, field: keyof FormValues['configurations'][number], value: string) {
+  function updateConfiguration(index: number, field: Exclude<keyof FormValues['configurations'][number], 'roomConfiguration' | 'additionalCharges'>, value: string) {
     setValues((current) => ({
       ...current,
       configurations: current.configurations.map((configuration, configurationIndex) =>
@@ -470,10 +521,38 @@ export default function PropertyForm({
     }));
   }
 
+  function updateConfigurationCharge(index: number, chargeIndex: number, field: 'label' | 'amount', value: string) {
+    setValues((current) => ({
+      ...current,
+      configurations: current.configurations.map((configuration, configurationIndex) => configurationIndex === index
+        ? { ...configuration, additionalCharges: configuration.additionalCharges.map((charge, itemIndex) => itemIndex === chargeIndex ? { ...charge, [field]: value } : charge) }
+        : configuration),
+    }));
+  }
+
+  function addConfigurationCharge(index: number) {
+    setValues((current) => ({
+      ...current,
+      configurations: current.configurations.map((configuration, configurationIndex) => configurationIndex === index
+        ? { ...configuration, additionalCharges: [...configuration.additionalCharges, { label: '', amount: '' }] }
+        : configuration),
+    }));
+  }
+
+  function removeConfigurationCharge(index: number, chargeIndex: number) {
+    setValues((current) => ({
+      ...current,
+      configurations: current.configurations.map((configuration, configurationIndex) => configurationIndex === index
+        ? { ...configuration, additionalCharges: configuration.additionalCharges.filter((_, itemIndex) => itemIndex !== chargeIndex) }
+        : configuration),
+    }));
+  }
+
   function addConfiguration() {
     setValues((current) => ({ ...current, configurations: [...current.configurations, {
       optionName: '', areaValue: '', areaUnit: '', customAreaUnit: '', areaBasis: '', customAreaBasis: '',
       dimensionLength: '', dimensionWidth: '', notesMarkdown: '', plotNumber: '', bedroomCount: '', bathroomCount: '', floorNumber: '',
+      priceMode: '', priceAmount: '', priceBasis: '', customPriceBasis: '', additionalCharges: [],
       carpetArea: '', superBuiltUpArea: '', roomConfiguration: [],
     }] }));
   }
@@ -639,6 +718,8 @@ export default function PropertyForm({
       offerDetails: values.offerDetails || null,
       configurations: values.configurations.filter((item) => Object.entries(item).some(([key, value]) => key === 'roomConfiguration'
         ? (value as Array<{ name: string; count: string }>).some((room) => room.name.trim() || room.count.trim())
+        : key === 'additionalCharges'
+          ? (value as Array<{ label: string; amount: string }>).some((charge) => charge.label.trim() || charge.amount.trim())
         : Boolean((value as string).trim()))).map((item) => ({
         optionName: item.optionName || null,
         areaValue: item.areaValue ? cleanMoneyInput(item.areaValue) : null,
@@ -649,6 +730,11 @@ export default function PropertyForm({
         dimensionLength: item.dimensionLength ? cleanMoneyInput(item.dimensionLength) : null,
         dimensionWidth: item.dimensionWidth ? cleanMoneyInput(item.dimensionWidth) : null,
         notesMarkdown: item.notesMarkdown || null,
+        priceMode: item.priceMode || null,
+        priceAmount: item.priceAmount ? cleanMoneyInput(item.priceAmount) : null,
+        priceBasis: item.priceBasis || null,
+        customPriceBasis: item.priceBasis === 'OTHER' ? item.customPriceBasis || null : null,
+        additionalCharges: item.additionalCharges.filter((charge) => charge.label.trim() || charge.amount.trim()).map((charge) => ({ ...charge, amount: cleanMoneyInput(charge.amount) })),
         plotNumber: values.propertyType === 'LAND_PLOT' ? item.plotNumber || null : null,
         bedroomCount: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && item.bedroomCount !== '' ? Number(item.bedroomCount) : null,
         bathroomCount: values.propertyType === 'RESIDENTIAL' && values.propertySubtype === 'Apartment' && item.bathroomCount !== '' ? Number(item.bathroomCount) : null,
@@ -660,11 +746,16 @@ export default function PropertyForm({
       roadAccess: values.propertyType === 'LAND_PLOT' ? values.roadAccess || null : null,
       proximityMarkdown: values.propertyType === 'LAND_PLOT' || values.propertyType === 'COMMERCIAL' || isApartment || isHouse ? values.proximityMarkdown || null : null,
       landApprovedFor: values.propertyType === 'LAND_PLOT' ? values.landApprovedFor || null : null,
-      statutoryApprovals: values.propertyType === 'LAND_PLOT' ? values.statutoryApprovals : [],
-      otherStatutoryApprovals: values.propertyType === 'LAND_PLOT' ? values.otherStatutoryApprovals || null : null,
+      statutoryApprovals: values.statutoryApprovals,
+      otherStatutoryApprovals: values.statutoryApprovals.includes('OTHER') ? values.otherStatutoryApprovals || null : null,
       approvalReference: values.approvalReference || null,
       approvalAuthority: values.approvalAuthority || null,
       projectPhase: values.projectPhase ? Number(values.projectPhase) : null,
+      projectTotalLandArea: values.projectTotalLandArea ? cleanMoneyInput(values.projectTotalLandArea) : null,
+      projectPhaseLandArea: values.projectPhaseLandArea ? cleanMoneyInput(values.projectPhaseLandArea) : null,
+      projectApartmentCount: values.projectApartmentCount ? Number(values.projectApartmentCount) : null,
+      projectVillaCount: values.projectVillaCount ? Number(values.projectVillaCount) : null,
+      projectFeaturesMarkdown: values.projectFeaturesMarkdown || null,
       constructionStatus: values.constructionStatus || null,
       handoverDate: values.handoverDate || null,
       waterSources: values.propertyType === 'LAND_PLOT' ? values.waterSources : [],
@@ -930,11 +1021,12 @@ export default function PropertyForm({
         <section className="border-t border-white/15 pt-6">
           <p className="text-xs font-semibold tracking-[0.18em] text-[var(--gold)]">PRICING</p>
           <h2 className="mt-1 font-display text-2xl text-white">Pricing and charges</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Use the option cards below for prices and additional charges that differ by configuration. This section can hold the overall starting price.</p>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[#9caaa4]">
               <span className="mb-1.5 block">Price mode *</span>
               <select required value={values.priceMode} onChange={(event) => update('priceMode', event.target.value as PriceMode)} className={inputClass}>
-                <option value="EXACT">Exact price</option><option value="STARTING_FROM">Starting from</option><option value="ON_REQUEST">On request</option>
+                <option value="EXACT">Exact price</option><option value="STARTING_FROM">Starting from</option><option value="ON_REQUEST">On request</option><option value="EARLY_BIRD">Early Bird</option>
               </select>
             </label>
             <label className="block text-xs font-medium text-[#9caaa4]">
@@ -1015,6 +1107,14 @@ export default function PropertyForm({
                   <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Number of bathrooms <span className="font-normal">(optional)</span></span><input type="number" min="0" max="100" step="1" inputMode="numeric" value={configuration.bathroomCount} onChange={(event) => updateConfiguration(index, 'bathroomCount', event.target.value)} className={inputClass} placeholder="e.g. 2" /></label>
                   <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Floor number <span className="font-normal">(optional)</span></span><input maxLength={60} value={configuration.floorNumber} onChange={(event) => updateConfiguration(index, 'floorNumber', event.target.value)} className={inputClass} placeholder="e.g. 5, Ground, 2–4" /></label>
                 </>}
+                <div className="sm:col-span-2 mt-2 border-t border-white/10 pt-4"><h3 className="text-sm font-semibold text-white">Configuration pricing</h3><p className="mt-1 text-xs text-[#9caaa4]">Optional price and charges for this specific option.</p></div>
+                <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Price mode <span className="font-normal">(optional)</span></span><select value={configuration.priceMode} onChange={(event) => { updateConfiguration(index, 'priceMode', event.target.value); if (event.target.value === 'ON_REQUEST') updateConfiguration(index, 'priceAmount', ''); }} className={inputClass}><option value="">Select price mode</option><option value="EXACT">Exact price</option><option value="STARTING_FROM">Starting from</option><option value="ON_REQUEST">On request</option><option value="EARLY_BIRD">Early Bird</option></select></label>
+                {configuration.priceMode !== 'ON_REQUEST' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Price amount (INR) <span className="font-normal">(optional)</span></span><span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]"><span className="px-3 text-sm text-[#f5f1e8]" aria-hidden="true">₹</span><input aria-label={`Option ${index + 1} price amount in Indian rupees`} inputMode="decimal" value={formatMoneyInput(configuration.priceAmount)} onChange={(event) => updateConfiguration(index, 'priceAmount', cleanMoneyInput(event.target.value))} className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-[#f5f1e8] outline-none" placeholder="Enter amount" /></span></label>}
+                <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Price basis <span className="font-normal">(optional)</span></span><select value={configuration.priceBasis} onChange={(event) => updateConfiguration(index, 'priceBasis', event.target.value)} className={inputClass}><option value="">Select price basis</option><option value="TOTAL_PRICE">Total price</option><option value="PER_SQFT">Per sq. ft.</option><option value="PER_CENT">Per cent</option><option value="OTHER">Other</option></select></label>
+                {configuration.priceBasis === 'OTHER' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Price basis unit <span className="font-normal">(optional)</span></span><span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]"><span className="px-3 text-sm text-[#9caaa4]">per</span><input maxLength={80} value={configuration.customPriceBasis} onChange={(event) => updateConfiguration(index, 'customPriceBasis', event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-[#f5f1e8] outline-none" placeholder="e.g. acre" /></span></label>}
+                <div className="sm:col-span-2 border-t border-white/10 pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="text-xs font-medium text-[#9caaa4]">Additional charges <span className="font-normal">(optional)</span></h4><p className="mt-1 text-xs text-[#82918b]">Add charges that apply to this option and are not included in its price.</p></div><button type="button" onClick={() => addConfigurationCharge(index)} className="inline-flex min-h-9 items-center gap-2 border border-white/20 px-3 text-xs font-semibold text-white transition-colors hover:border-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><Plus className="h-3.5 w-3.5" /> Add charge</button></div>
+                  {configuration.additionalCharges.length > 0 && <div className="mt-3 space-y-3">{configuration.additionalCharges.map((charge, chargeIndex) => <div key={chargeIndex} className="grid gap-3 border border-white/10 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Charge name</span><input maxLength={120} value={charge.label} onChange={(event) => updateConfigurationCharge(index, chargeIndex, 'label', event.target.value)} className={inputClass} placeholder="e.g. Registration charges" /></label><label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Amount (INR)</span><span className="flex min-h-11 items-center border border-white/15 bg-[#09221c] focus-within:border-[var(--gold)]"><span className="px-3 text-sm text-[#f5f1e8]" aria-hidden="true">₹</span><input aria-label={`Option ${index + 1} charge ${chargeIndex + 1} amount in Indian rupees`} inputMode="decimal" value={formatMoneyInput(charge.amount)} onChange={(event) => updateConfigurationCharge(index, chargeIndex, 'amount', cleanMoneyInput(event.target.value))} className="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-[#f5f1e8] outline-none" placeholder="Enter amount" /></span></label><button type="button" aria-label={`Remove charge ${chargeIndex + 1} from option ${index + 1}`} onClick={() => removeConfigurationCharge(index, chargeIndex)} className="inline-flex min-h-11 items-center justify-center gap-2 border border-white/15 px-3 text-xs text-[#d7b3a9] hover:border-red-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"><Trash2 className="h-4 w-4" /><span className="sm:sr-only">Remove</span></button></div>)}</div>}
+                </div>
                 {values.propertyType === 'RESIDENTIAL' && ['Villa', 'Independent House'].includes(values.propertySubtype) && <>
                   <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Carpet area <span className="font-normal">(optional)</span></span><input inputMode="decimal" value={formatMoneyInput(configuration.carpetArea)} onChange={(event) => updateConfiguration(index, 'carpetArea', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="Enter carpet area" /></label>
                   {values.propertySubtype === 'Villa' && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Super built-up area <span className="font-normal">(optional, if applicable)</span></span><input inputMode="decimal" value={formatMoneyInput(configuration.superBuiltUpArea)} onChange={(event) => updateConfiguration(index, 'superBuiltUpArea', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="Enter super built-up area" /></label>}
@@ -1046,11 +1146,19 @@ export default function PropertyForm({
           <h2 className="mt-1 font-display text-2xl text-white">Approvals, project details and amenities</h2>
           <p className="mt-2 max-w-2xl text-xs leading-5 text-[#9caaa4]">Enter details provided or verified for this listing. Private supporting documents can be uploaded in the administrator-only document area below.</p>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div className="sm:col-span-2"><h3 className="text-sm font-semibold text-white">Project overview</h3><p className="mt-1 text-xs leading-5 text-[#9caaa4]">Optional project-wide details. These can be repeated on each property listing in the same project.</p></div>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Total project land area (acres) <span className="font-normal">(optional)</span></span><input inputMode="decimal" value={formatMoneyInput(values.projectTotalLandArea)} onChange={(event) => update('projectTotalLandArea', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="e.g. 7.5" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Phase land area (acres) <span className="font-normal">(optional)</span></span><input inputMode="decimal" value={formatMoneyInput(values.projectPhaseLandArea)} onChange={(event) => update('projectPhaseLandArea', cleanMoneyInput(event.target.value))} className={inputClass} placeholder="e.g. 3.02" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Apartment units in project <span className="font-normal">(optional)</span></span><input type="number" min="0" max="100000" step="1" inputMode="numeric" value={values.projectApartmentCount} onChange={(event) => update('projectApartmentCount', event.target.value)} className={inputClass} placeholder="e.g. 150" /></label>
+            <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Villa units in project <span className="font-normal">(optional)</span></span><input type="number" min="0" max="100000" step="1" inputMode="numeric" value={values.projectVillaCount} onChange={(event) => update('projectVillaCount', event.target.value)} className={inputClass} placeholder="e.g. 26" /></label>
+            <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Project features <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="property-project-features-markdown" label="Project features in Markdown" placeholder="List confirmed project infrastructure and services, such as CCTV, lifts, power backup, and EV charging." maxLength={20_000} value={values.projectFeaturesMarkdown} onChange={(value) => update('projectFeaturesMarkdown', value)} /></div>
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Approval / registration number <span className="font-normal">(optional)</span></span><input maxLength={160} value={values.approvalReference} onChange={(event) => update('approvalReference', event.target.value)} className={inputClass} placeholder="e.g. RERA registration number" /></label>
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Approving authority <span className="font-normal">(optional)</span></span><input maxLength={200} value={values.approvalAuthority} onChange={(event) => update('approvalAuthority', event.target.value)} className={inputClass} placeholder="Name of the authority that approved the project" /></label>
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Current phase of project <span className="font-normal">(optional)</span></span><select value={values.projectPhase} onChange={(event) => update('projectPhase', event.target.value)} className={inputClass}><option value="">Select project phase</option><option value="1">1 · Initiation &amp; Conception</option><option value="2">2 · Planning &amp; Design</option><option value="3">3 · Pre-Construction</option><option value="4">4 · Procurement</option><option value="5">5 · Construction</option><option value="6">6 · Post-Construction / Closeout</option></select></label>
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Status of construction / development <span className="font-normal">(optional)</span></span><input maxLength={300} value={values.constructionStatus} onChange={(event) => update('constructionStatus', event.target.value)} className={inputClass} placeholder="e.g. Foundation work in progress" /></label>
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Expected handover date <span className="font-normal">(optional)</span></span><input type="date" value={values.handoverDate} onChange={(event) => update('handoverDate', event.target.value)} className={inputClass} /></label>
+            <fieldset className="sm:col-span-2"><legend className="text-xs font-medium text-[#9caaa4]">Statutory approvals <span className="font-normal">(optional, select all that apply)</span></legend><div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">{[['CMDA','CMDA'],['DTCP','DTCP'],['RERA','RERA'],['OTHER','Other']] .map(([value,label]) => <label key={value} className="inline-flex min-h-9 items-center gap-2 text-sm text-[#d8dfdb]"><input type="checkbox" checked={values.statutoryApprovals.includes(value)} onChange={(event) => update('statutoryApprovals', event.target.checked ? [...values.statutoryApprovals, value] : values.statutoryApprovals.filter((item) => item !== value))} className="accent-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" />{label}</label>)}</div></fieldset>
+            {values.statutoryApprovals.includes('OTHER') && <label className="block text-xs font-medium text-[#9caaa4] sm:col-span-2"><span className="mb-1.5 block">Mention other approvals</span><input required maxLength={300} value={values.otherStatutoryApprovals} onChange={(event) => update('otherStatutoryApprovals', event.target.value)} className={inputClass} /></label>}
             <div className="sm:col-span-2"><h3 className="mb-2 text-xs font-medium text-[#9caaa4]">Amenities and facilities <span className="font-normal">(optional)</span></h3><PrivateNotesEditor id="property-amenities-markdown" label="Amenities and facilities in Markdown" placeholder="List amenities and facilities confirmed for this property." maxLength={20_000} value={values.amenitiesMarkdown} onChange={(value) => update('amenitiesMarkdown', value)} /></div>
             <a href="#property-private-documents" className="inline-flex min-h-10 w-fit items-center border border-white/20 px-3 text-xs font-medium text-white hover:border-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]">Upload private supporting documents</a>
           </div>
@@ -1063,8 +1171,6 @@ export default function PropertyForm({
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Road access <span className="font-normal">(optional)</span></span><input maxLength={300} value={values.roadAccess} onChange={(event) => update('roadAccess', event.target.value)} className={inputClass} placeholder="e.g. 30 ft road frontage" /></label>
             <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Land approved for <span className="font-normal">(optional)</span></span><select value={values.landApprovedFor} onChange={(event) => update('landApprovedFor', event.target.value)} className={inputClass}><option value="">Select permitted use</option><option value="RESIDENTIAL">Residential</option><option value="COMMERCIAL">Commercial</option><option value="MIXED_USE">Mixed-use</option></select></label>
-            <div className="sm:col-span-2"><h3 className="text-xs font-medium text-[#9caaa4]">Statutory approvals <span className="font-normal">(optional, select all that apply)</span></h3><div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">{[['CMDA','CMDA'],['DTCP','DTCP'],['RERA','RERA'],['OTHER','Other']] .map(([value,label]) => <label key={value} className="inline-flex min-h-9 items-center gap-2 text-sm text-[#d8dfdb]"><input type="checkbox" checked={values.statutoryApprovals.includes(value)} onChange={(event) => update('statutoryApprovals', event.target.checked ? [...values.statutoryApprovals, value] : values.statutoryApprovals.filter((item) => item !== value))} className="accent-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]" />{label}</label>)}</div></div>
-            {values.statutoryApprovals.includes('OTHER') && <label className="block text-xs font-medium text-[#9caaa4]"><span className="mb-1.5 block">Mention other approvals</span><input required maxLength={300} value={values.otherStatutoryApprovals} onChange={(event) => update('otherStatutoryApprovals', event.target.value)} className={inputClass} /></label>}
             {([
               { field: 'waterSources', title: 'Water supply', other: 'otherWaterSource', choices: [['MUNICIPAL','Municipal water connection'],['BOREWELL','Borewell potential'],['OVERHEAD_TANK','Overhead tank'],['OTHER','Other'],['NOT_CONFIRMED','Not confirmed']] },
               { field: 'electricitySources', title: 'Electricity', other: 'otherElectricitySource', choices: [['GRID','Grid connection'],['GENERATOR','Generator backup'],['SOLAR','Solar'],['OTHER','Other'],['NOT_CONFIRMED','Not confirmed']] },
@@ -1296,8 +1402,13 @@ export default function PropertyForm({
                         : 'border-white/10 bg-[#08201b]'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded border border-white/10 bg-[var(--sand)]">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewMedia(item)}
+                        aria-label={`Preview property image ${index + 1}`}
+                        className="relative h-16 w-24 shrink-0 overflow-hidden rounded border border-white/10 bg-[var(--sand)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
+                      >
                         <img
                           src={item.deliveryUrl ?? getMediaImageUrl(item.storageKey, 'property')}
                           alt={item.altText ?? 'Property thumbnail'}
@@ -1307,8 +1418,8 @@ export default function PropertyForm({
                             event.currentTarget.src = getMediaImageUrl(null, 'property');
                           }}
                         />
-                      </div>
-                      <div className="min-w-0">
+                      </button>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-semibold text-[#9caaa4]">
                             #{index + 1}
@@ -1324,6 +1435,24 @@ export default function PropertyForm({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewMedia(item)}
+                        aria-label={`Preview property image ${index + 1}`}
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded border border-white/15 bg-white/5 px-2.5 text-xs font-medium text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> Preview
+                      </button>
+                      {getAttachedMediaDownloadUrl(item) ? (
+                        <a
+                          href={getAttachedMediaDownloadUrl(item) ?? undefined}
+                          download={item.storageKey.split('/').pop() || `property-image-${index + 1}`}
+                          aria-label={`Download property image ${index + 1}`}
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded border border-white/15 bg-white/5 px-2.5 text-xs font-medium text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Download
+                        </a>
+                      ) : null}
                       {!isCover && (
                         <button
                           type="button"
@@ -1367,6 +1496,34 @@ export default function PropertyForm({
               })
             )}
           </div>
+
+          {previewMedia && (
+            <dialog
+              ref={previewDialogRef}
+              aria-label="Property image preview"
+              onCancel={(event) => { event.preventDefault(); setPreviewMedia(null); }}
+              onClose={() => setPreviewMedia(null)}
+              onClick={(event) => { if (event.target === event.currentTarget) setPreviewMedia(null); }}
+              className="fixed inset-0 m-auto max-h-[92vh] w-[min(96vw,1100px)] max-w-none overflow-hidden border border-white/15 bg-[#061a15] p-0 text-white shadow-2xl backdrop:bg-black/80"
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[var(--gold)]">IMAGE PREVIEW</p>
+                  <p className="mt-1 truncate font-mono text-xs text-[#9caaa4]">{previewMedia.storageKey}</p>
+                </div>
+                <button type="button" autoFocus onClick={() => setPreviewMedia(null)} aria-label="Close image preview" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border border-white/15 text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex max-h-[calc(92vh-64px)] min-h-40 items-center justify-center bg-black/30 p-3 sm:p-6">
+                <img
+                  src={previewMedia.deliveryUrl ?? getMediaImageUrl(previewMedia.storageKey, 'property')}
+                  alt={previewMedia.altText ?? 'Property image preview'}
+                  className="max-h-[calc(92vh-112px)] max-w-full object-contain"
+                />
+              </div>
+            </dialog>
+          )}
 
           <div className="mt-6">
             <button type="button" onClick={() => setMediaPickerOpen((open) => !open)} className="inline-flex min-h-10 items-center gap-2 rounded border border-white/20 px-4 text-sm font-medium text-white hover:bg-white/5">

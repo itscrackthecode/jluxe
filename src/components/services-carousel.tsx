@@ -38,7 +38,7 @@ export default function ServicesCarousel() {
                 <div className="absolute -right-12 top-6 h-24 w-24 rounded-full bg-[var(--gold)]/10 blur-2xl" />
                 <div className="relative z-10">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs tracking-[.2em] text-[var(--gold)]">{s.kicker}</span>
+                    <span className="text-xs tracking-[.2em] text-[var(--gold)]"></span>
                     <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-inner shadow-white/5">
                       <Icon className="h-5 w-5 text-[var(--gold)] transition-transform duration-300 group-hover:scale-105" strokeWidth={1.6} />
                     </div>

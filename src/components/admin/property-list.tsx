@@ -20,7 +20,7 @@ type PropertyRow = {
   propertyType: PropertyType;
   priceAmount: string | null;
   priceCurrency: string | null;
-  priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST';
+  priceMode: 'EXACT' | 'STARTING_FROM' | 'ON_REQUEST' | 'EARLY_BIRD';
   status: PropertyStatus;
   publicationStatus: PublicationStatus;
   updatedAt: string;
@@ -52,7 +52,8 @@ function priceLabel(property: PropertyRow) {
       formatted = `${formatted} ${property.priceCurrency}`;
     }
   }
-  return property.priceMode === 'STARTING_FROM' ? `From ${formatted}` : formatted;
+  const prefix = property.priceMode === 'STARTING_FROM' ? 'From ' : property.priceMode === 'EARLY_BIRD' ? 'Early Bird ' : '';
+  return `${prefix}${formatted}`;
 }
 
 const publicationBadge: Record<PropertyRow['publicationStatus'], string> = {

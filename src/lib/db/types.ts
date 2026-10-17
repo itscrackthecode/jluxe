@@ -16,7 +16,7 @@ export const representationTypes = ['CHANNEL_PARTNER', 'AUTHORIZED_REPRESENTATIV
 export const propertySourceCategories = ['INDIVIDUAL_OWNER', 'LANDOWNER', 'DEVELOPER', 'BUILDER', 'PROJECT_PROMOTER', 'AUTHORIZED_REPRESENTATIVE', 'OTHER'] as const;
 export const propertySubmitterRelationships = ['OWNER', 'DEVELOPER', 'BUILDER', 'APPOINTED_REPRESENTATIVE', 'OTHER'] as const;
 export const authorityVerificationStatuses = ['NOT_CHECKED', 'IN_REVIEW', 'VERIFIED', 'UNABLE_TO_VERIFY'] as const;
-export const priceModes = ['EXACT', 'STARTING_FROM', 'ON_REQUEST'] as const;
+export const priceModes = ['EXACT', 'STARTING_FROM', 'ON_REQUEST', 'EARLY_BIRD'] as const;
 export const priceBases = ['TOTAL_PRICE', 'PER_SQFT', 'PER_CENT', 'OTHER'] as const;
 export const plotSizeUnits = ['SQFT', 'SQM', 'ACRE', 'HECTARE'] as const;
 export const enquiryStatuses = ['NEW', 'CONTACTED', 'IN_DISCUSSION', 'CONVERTED', 'CLOSED'] as const;
@@ -47,6 +47,11 @@ export type PropertyConfiguration = {
   dimensionLength: NumericValue | null;
   dimensionWidth: NumericValue | null;
   notesMarkdown: string | null;
+  priceMode?: PriceMode | null;
+  priceAmount?: NumericValue | null;
+  priceBasis?: PriceBasis | null;
+  customPriceBasis?: string | null;
+  additionalCharges?: Array<{ label: string; amount: string }>;
   plotNumber?: string | null;
   bedroomCount?: number | null;
   bathroomCount?: number | null;
@@ -141,6 +146,11 @@ export interface Property {
   approvalReference?: string | null;
   approvalAuthority?: string | null;
   projectPhase?: number | null;
+  projectTotalLandArea?: NumericValue | null;
+  projectPhaseLandArea?: NumericValue | null;
+  projectApartmentCount?: number | null;
+  projectVillaCount?: number | null;
+  projectFeaturesMarkdown?: string | null;
   constructionStatus?: string | null;
   handoverDate?: string | null;
   waterSources?: string[];
