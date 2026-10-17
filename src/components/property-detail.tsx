@@ -74,6 +74,7 @@ type ApiProperty = {
   statutoryApprovals?: string[];
   otherStatutoryApprovals?: string | null;
   projectPhase?: number | null;
+  projectFeaturesMarkdown?: string | null;
   constructionStatus?: string | null;
   handoverDate?: string | null;
   waterSources?: string[];
