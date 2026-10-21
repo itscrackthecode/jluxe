@@ -6,9 +6,44 @@ export function careersInternalRewrite(pathname: string): string | null {
   return pathname === '/' ? '/careers' : `/careers${pathname}`;
 }
 
-/** Only the Careers hostname gets clean-root rewrites. All other hosts retain
- * their normal route behavior, including localhost's direct /careers routes. */
-export function careersHostRewrite(host: string | null | undefined, pathname: string): string | null {
-  const hostname = host?.toLowerCase().split(':')[0];
-  return hostname === 'careers.thejluxe.com' ? careersInternalRewrite(pathname) : null;
+type CareersRoutingEnvironment = {
+  VERCEL?: string;
+  VERCEL_ENV?: string;
+  VERCEL_URL?: string;
+};
+
+function normalizeHostname(host: string | null | undefined): string | null {
+  return host?.toLowerCase().split(':')[0].replace(/\.$/, '') ?? null;
+}
+
+/** Preview routing is limited to the exact deployment URL Vercel assigns to
+ * this project. The project slug and team suffix provide an additional guard
+ * against accidentally enabling Careers on another Vercel project. */
+export function isCareersPreviewHost(
+  host: string | null | undefined,
+  environment: CareersRoutingEnvironment = process.env as CareersRoutingEnvironment,
+): boolean {
+  const hostname = normalizeHostname(host);
+  const deploymentHost = normalizeHostname(environment.VERCEL_URL);
+
+  return Boolean(
+    environment.VERCEL === '1' &&
+      environment.VERCEL_ENV === 'preview' &&
+      deploymentHost &&
+      /^jluxe-[a-z0-9]+-winnishs-projects\.vercel\.app$/.test(deploymentHost) &&
+      hostname === deploymentHost,
+  );
+}
+
+/** Production Careers and the exact active Vercel Preview deployment get
+ * clean-root rewrites. All other hosts retain their normal route behavior. */
+export function careersHostRewrite(
+  host: string | null | undefined,
+  pathname: string,
+  environment: CareersRoutingEnvironment = process.env as CareersRoutingEnvironment,
+): string | null {
+  const hostname = normalizeHostname(host);
+  return hostname === 'careers.thejluxe.com' || isCareersPreviewHost(host, environment)
+    ? careersInternalRewrite(pathname)
+    : null;
 }

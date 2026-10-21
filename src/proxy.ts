@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { careersHostRewrite } from '@/lib/careers-routing';
+import { careersHostRewrite, isCareersPreviewHost } from '@/lib/careers-routing';
 
 /**
  * Hostname-based routing proxy (Next.js 16 "proxy.ts" convention).
@@ -38,6 +38,15 @@ export function proxy(request: NextRequest): NextResponse | undefined {
       }
       return NextResponse.next();
     }
+    const destination = careersHostRewrite(hostname, pathname);
+    return destination ? NextResponse.rewrite(new URL(destination, request.url)) : NextResponse.next();
+  }
+
+  // Vercel's canonical Preview URL serves the same clean Careers route tree.
+  // Keep preview admin paths on this deployment instead of redirecting them
+  // to the production admin hostname.
+  if (isCareersPreviewHost(hostname)) {
+    if (isAdminPath) return NextResponse.next();
     const destination = careersHostRewrite(hostname, pathname);
     return destination ? NextResponse.rewrite(new URL(destination, request.url)) : NextResponse.next();
   }
