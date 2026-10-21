@@ -227,6 +227,13 @@ button,a { -webkit-tap-highlight-color:transparent; }
   .mobile-nav-link:active { opacity:.72; }
 }
 
+.featured-project-hover-details { display:none; }
+.featured-project-mobile-details { display:block; }
+@media (hover:hover) and (min-width:640px) {
+  .featured-project-hover-details { display:block; }
+  .featured-project-mobile-details { display:none; }
+}
+
 @media (min-width:768px) {
   .faq-panel { display:block; }
   .faq-panel:not(.is-open) { display:none; }
@@ -298,13 +305,10 @@ button,a { -webkit-tap-highlight-color:transparent; }
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 22px rgba(0,0,0,.1);
 }
 .about-profile-copy {
-  border-color:rgba(245,241,232,.16);
-  color:var(--cream);
-  background:var(--viridian-950);
-  box-shadow:inset 1px 0 0 rgba(245,241,232,.08),0 10px 26px rgba(6,47,41,.12);
-}
-.about-portrait-frame {
-  box-shadow:0 12px 30px rgba(6,47,41,.12),0 0 18px rgba(11,74,63,.08),inset 0 1px 0 rgba(255,255,255,.65);
+  border-color:rgba(6,47,41,.14);
+  color:var(--viridian-950);
+  background:var(--cream);
+  box-shadow:inset 1px 0 0 rgba(255,255,255,.72),0 10px 26px rgba(6,47,41,.08);
 }
 @media (hover:hover) and (pointer:fine) {
   .about-page .premium-card.about-depth-card:hover,

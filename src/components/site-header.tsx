@@ -18,6 +18,9 @@ import MobileReveal from '@/components/mobile-reveal';
 
 const isRouteOrChild = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`);
+const getServiceNavLabel = (title: string) => title.replace(' & ', ' and ');
+const realEstateService = services.find((service) => service.title === 'Real Estate');
+const otherServices = services.filter((service) => service.title !== 'Real Estate');
 
 const configuredContactItems = [
   {
@@ -56,6 +59,8 @@ export default function SiteHeader() {
   const homeActive = pathname === '/';
   const aboutActive = isRouteOrChild(pathname, '/about');
   const servicesActive = isRouteOrChild(pathname, '/services');
+  const realEstateActive = realEstateService ? isRouteOrChild(pathname, realEstateService.href) : false;
+  const otherServicesActive = servicesActive && !realEstateActive;
   const workActive = isRouteOrChild(pathname, '/our-work') || isRouteOrChild(pathname, '/properties');
   const contactActive = isRouteOrChild(pathname, '/contact');
 
@@ -121,6 +126,7 @@ export default function SiteHeader() {
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-[var(--viridian-950)] md:flex">
             <Link href="/about" aria-current={aboutActive ? 'page' : undefined} data-active={aboutActive} className={`nav-indicator transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)] ${aboutActive ? 'text-[var(--viridian-700)]' : ''}`}>About</Link>
+            {realEstateService && <Link href={realEstateService.href} aria-current={realEstateActive ? 'page' : undefined} data-active={realEstateActive} className={`nav-indicator transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)] ${realEstateActive ? 'text-[var(--viridian-700)]' : ''}`}>{realEstateService.title}</Link>}
             <div className="relative">
               <button
                 ref={servicesButtonRef}
@@ -128,28 +134,27 @@ export default function SiteHeader() {
                 aria-haspopup="true"
                 aria-expanded={openDropdown === 'services'}
                 aria-controls="services-menu"
-                aria-current={servicesActive ? 'location' : undefined}
-                data-active={servicesActive}
+                aria-current={otherServicesActive ? 'location' : undefined}
+                data-active={otherServicesActive}
                 className="nav-indicator flex items-center gap-1 transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]"
                 onClick={() => setOpenDropdown(openDropdown === 'services' ? null : 'services')}
               >
-                Our Services
+                Other Services
                 <ChevronDown className={`h-4 w-4 transition ${openDropdown === 'services' ? 'rotate-180' : ''}`} />
               </button>
 
               {openDropdown === 'services' && (
                 <div id="services-menu" className="absolute left-0 top-full mt-3 w-72 rounded-2xl border border-black/5 bg-white p-2 shadow-xl">
-                  {services.map((service) => (
+                  {otherServices.map((service) => (
                     <Link
                       key={service.title}
                       href={service.href}
-                      aria-current={pathname === service.href ? 'page' : undefined}
-                      data-active={pathname === service.href}
+                      aria-current={isRouteOrChild(pathname, service.href) ? 'page' : undefined}
+                      data-active={isRouteOrChild(pathname, service.href)}
                       className="nav-indicator flex min-h-11 items-center justify-between rounded-xl px-3 py-2.5 text-sm text-[var(--viridian-950)] transition hover:bg-[var(--cream)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]"
                       onClick={() => setOpenDropdown(null)}
                     >
-                      <span>{service.title}</span>
-                      <span className="text-[10px] font-semibold tracking-[0.18em] text-[var(--gold)]">{service.kicker}</span>
+                      <span>{getServiceNavLabel(service.title)}</span>
                     </Link>
                   ))}
                 </div>
@@ -235,12 +240,13 @@ export default function SiteHeader() {
           >
             <div className={`flex max-h-[calc(100dvh-5.5rem-env(safe-area-inset-top,0px))] flex-col gap-3 overflow-y-auto py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-sm font-medium text-[var(--viridian-950)] transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0'}`}>
               <Link href="/about" aria-current={aboutActive ? 'page' : undefined} data-active={aboutActive} className={`mobile-nav-link nav-indicator touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] ${aboutActive ? 'text-[var(--viridian-700)]' : 'text-[var(--viridian-950)]'}`} onClick={() => setMobileOpen(false)}>About</Link>
+              {realEstateService && <Link href={realEstateService.href} aria-current={realEstateActive ? 'page' : undefined} data-active={realEstateActive} className={`mobile-nav-link nav-indicator touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)] ${realEstateActive ? 'text-[var(--viridian-700)]' : 'text-[var(--viridian-950)]'}`} onClick={() => setMobileOpen(false)}>{realEstateService.title}</Link>}
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
-                <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Our Services</p>
+                <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Other Services</p>
                 <div className="grid gap-2">
-                  {services.map((service) => (
-                    <Link key={service.title} href={service.href} aria-current={pathname === service.href ? 'page' : undefined} data-active={pathname === service.href} className="mobile-nav-link nav-indicator touch-press flex min-h-11 items-center text-sm text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
-                      {service.title}
+                  {otherServices.map((service) => (
+                    <Link key={service.title} href={service.href} aria-current={isRouteOrChild(pathname, service.href) ? 'page' : undefined} data-active={isRouteOrChild(pathname, service.href)} className="mobile-nav-link nav-indicator touch-press flex min-h-11 items-center text-sm text-[var(--viridian-950)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>
+                      {getServiceNavLabel(service.title)}
                     </Link>
                   ))}
                 </div>

@@ -106,7 +106,7 @@ export default function AboutPage() {
             <p className="max-w-xl text-sm leading-7 text-white/70 md:justify-self-end sm:text-base">Practical business and people-focused solutions, shaped around the requirements of organizations, professionals and institutions.</p>
           </div>
           <div className="mt-10 grid gap-2 sm:grid-cols-2 xl:grid-cols-5" data-reveal-stagger>
-            {capabilities.map((item, index) => {
+            {capabilities.map((item) => {
               return <article key={item.number} data-reveal className="premium-card about-depth-card group relative flex min-h-56 flex-col p-5 sm:p-6">
                 <span className="about-card-number text-[10px] font-semibold tracking-[0.18em] text-[var(--gold)]">{item.number}</span>
                 <h3 className="mt-8 font-display text-xl leading-snug text-[var(--cream)]">{item.title}</h3>
@@ -118,21 +118,13 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-16 sm:py-20 lg:py-24" data-reveal>
-        <div className="container-xl grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
-          <div className="relative mx-auto w-full max-w-[460px]">
-            <div className="about-portrait-frame relative aspect-[4/5] overflow-hidden border border-[var(--viridian-950)]/20 bg-[var(--sand)]/35 p-4 sm:p-5">
-              <div className="flex h-full items-end border border-[var(--viridian-950)]/10 p-5 sm:p-7">
-                <p className="max-w-[15rem] text-xs leading-5 text-[var(--muted)]">Managing Director portrait</p>
-              </div>
-            </div>
-            <p className="mt-3 text-[10px] tracking-[0.16em] text-[var(--muted)]">JLUXE LEADERSHIP</p>
-          </div>
-          <div className="about-profile-copy max-w-2xl border p-5 sm:p-7">
-            <Eyebrow light>MEET OUR MANAGING DIRECTOR</Eyebrow>
-            <h2 className="mt-4 font-display text-4xl leading-tight text-[var(--cream)] sm:text-5xl">Sarvesh Karthik N</h2>
-            <p className="mt-3 text-sm font-medium tracking-[0.08em] text-white/70">Managing Director — JLUXE</p>
-            <p className="mt-7 max-w-xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8">Sarvesh Karthik N is a business professional and entrepreneur with experience across Real Estate, Sales &amp; Marketing, Business Consulting, Recruitment, Training, Corporate Services and Education-focused initiatives.</p>
+      <section className="bg-[var(--sand)]/25 py-16 sm:py-20 lg:py-24" data-reveal>
+        <div className="container-xl">
+          <div className="w-full">
+            <Eyebrow>MEET OUR MANAGING DIRECTOR</Eyebrow>
+            <h2 className="mt-4 font-display text-4xl leading-tight text-[var(--viridian-950)] sm:text-5xl">Sarvesh Karthik N</h2>
+            <p className="mt-3 text-sm font-medium tracking-[0.08em] text-[var(--muted)]">Managing Director — JLUXE</p>
+            <p className="mt-7 max-w-3xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">Sarvesh Karthik N is a business professional and entrepreneur with experience across Real Estate, Sales &amp; Marketing, Business Consulting, Recruitment, Training, Corporate Services and Education-focused initiatives.</p>
             <JluxeCtaLink href="/about/managing-director" className="mt-7">Meet the Managing Director</JluxeCtaLink>
           </div>
         </div>

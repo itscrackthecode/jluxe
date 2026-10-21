@@ -2,7 +2,13 @@
 import { ArrowRight, BriefcaseBusiness, Building2, GraduationCap, House } from 'lucide-react';
 import { services } from '@/lib/data';
 
-const icons = [House, BriefcaseBusiness, GraduationCap, Building2];
+const serviceIcons = {
+  'Real Estate': House,
+  'Business Solutions': BriefcaseBusiness,
+  'Recruitment & Training': GraduationCap,
+  'Interior Design & Architecture': Building2,
+};
+const otherServices = services.filter((service) => service.title !== 'Real Estate');
 
 export default function ServicesCarousel() {
   return (
@@ -12,20 +18,20 @@ export default function ServicesCarousel() {
           <div>
             <div className="flex items-center gap-3">
               <span aria-hidden="true" className="h-px w-10 bg-[var(--gold)]/60" />
-              <p className="text-xs font-bold tracking-[.25em] text-[var(--gold)]">OUR SERVICES</p>
+              <p className="text-xs font-bold tracking-[.25em] text-[var(--gold)]">OTHER SERVICES</p>
             </div>
             <h2 className="mt-3 max-w-2xl font-display text-4xl leading-tight text-[var(--viridian-950)] sm:text-5xl">
               Different capabilities.<br />One JLUXE.
             </h2>
           </div>
           <p className="max-w-md text-sm leading-6 text-[var(--muted)]">
-            From property opportunities to business growth, people development and design, each service is built around a clear purpose.
+            Explore our business, recruitment and training, and design capabilities, each shaped around a clear purpose.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4" data-reveal-stagger>
-          {services.map((s, i) => {
-            const Icon = icons[i];
+        <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3" data-reveal-stagger>
+          {otherServices.map((s) => {
+            const Icon = serviceIcons[s.title as keyof typeof serviceIcons] ?? Building2;
 
             return (
               <a
