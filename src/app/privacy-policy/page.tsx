@@ -15,6 +15,7 @@ const sections = [
       'When you submit a Contact or Enquiry form, the site collects your name, email address, contact number, the service you are interested in, and your message. An enquiry may also be associated with a property reference.',
       'The Sell Property form collects your name, email address, contact number, property type, location, starting price, and any plot or land area and description you choose to provide. If you add photos, the site processes the images and their file and image details as part of your submission.',
       'The Buy Property form collects your contact details, preferred property type and subtype, location, budget range, purchase purpose and timeline, and the property-specific requirements you choose to provide.',
+      'A Careers application collects your name, email address, phone number, city, qualification, experience, skills, and resume for recruitment review. The form also records your privacy acknowledgement and its version. Do not include sensitive personal information that is not needed to assess your application.',
       'Property listings and related enquiry records are stored and managed by JLUXE. The site also stores administrative account details needed to operate the restricted admin area, including account identity, role, active status, and authentication data.',
     ],
   },
@@ -27,7 +28,7 @@ const sections = [
   {
     title: 'Storage and service providers',
     paragraphs: [
-      'Enquiries, buyer requirements, property submissions, listing information, and related records are stored in the PostgreSQL database configured for the website. Uploaded property and site images are stored and delivered through Cloudinary. Resend is used to deliver enquiry notification emails and receives the information included in those notifications, such as the submitter’s name, email, phone number, service interest, message, property preferences, and, where applicable, property reference.',
+      'Enquiries, buyer requirements, property submissions, listing information, Careers applications, and related records are stored in the PostgreSQL database configured for the website. Uploaded property and site images are stored and delivered through Cloudinary. Careers resumes are stored as private, authenticated Cloudinary files; access is limited to authorized administrators and is provided through a short-lived download link. Resend is used to deliver enquiry notification emails and receives the information included in those notifications, such as the submitter’s name, email, phone number, service interest, message, property preferences, and, where applicable, property reference.',
       'These providers process information to support the functions described above. Their own terms and privacy practices may also apply to their services.',
     ],
   },
@@ -36,13 +37,14 @@ const sections = [
     paragraphs: [
       'The restricted admin area uses a session cookie to keep an authenticated administrator signed in. This cookie is limited to the admin area and is configured as HTTP-only, with secure and same-site protections. Google Analytics is loaded across the website, including the admin area. The site does not currently present a cookie-consent interface.',
       'Public enquiry and property forms use Cloudflare Turnstile to reduce automated submissions. Cloudflare processes information such as the visitor’s IP address, browser and device signals, and challenge interaction to provide this protection.',
+      'The Careers application form also uses Cloudflare Turnstile to reduce automated submissions. Application data is made available to JLUXE administrators responsible for recruitment review.',
       'JLUXE uses access controls and server-side security measures in the application, and its service providers apply their own safeguards. No method of transmission or storage can be guaranteed to be completely secure.',
     ],
   },
   {
     title: 'Retention',
     paragraphs: [
-      'The website does not implement a published automatic retention schedule. Information may remain in the database or Cloudinary while it is needed to handle an enquiry or property submission, manage listings and services, maintain records, or protect the website, and until JLUXE removes it. TODO: JLUXE to set and document retention periods for enquiries, seller submissions, admin records, and uploaded media.',
+      'The website does not implement a published automatic retention schedule. Information may remain in the database or Cloudinary while it is needed to handle an enquiry or property submission, manage listings and services, maintain records, or protect the website, and until JLUXE removes it. Authorized Careers administrators can manually delete applications and their resumes after a selected number of days; this cleanup is not automatic and the website does not currently publish a retention period. JLUXE should set and document retention periods for enquiries, applications, property submissions, admin records, and uploaded media.',
     ],
   },
   {
