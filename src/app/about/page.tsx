@@ -106,7 +106,7 @@ export default function AboutPage() {
             <p className="max-w-xl text-sm leading-7 text-white/70 md:justify-self-end sm:text-base">Practical business and people-focused solutions, shaped around the requirements of organizations, professionals and institutions.</p>
           </div>
           <div className="mt-10 grid gap-2 sm:grid-cols-2 xl:grid-cols-5" data-reveal-stagger>
-            {capabilities.map((item, index) => {
+            {capabilities.map((item) => {
               return <article key={item.number} data-reveal className="premium-card about-depth-card group relative flex min-h-56 flex-col p-5 sm:p-6">
                 <span className="about-card-number text-[10px] font-semibold tracking-[0.18em] text-[var(--gold)]">{item.number}</span>
                 <h3 className="mt-8 font-display text-xl leading-snug text-[var(--cream)]">{item.title}</h3>
