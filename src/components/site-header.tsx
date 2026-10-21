@@ -157,6 +157,7 @@ export default function SiteHeader() {
             </div>
 
             <Link href={siteConfig.nav.work} aria-current={workActive ? (pathname === '/' ? 'location' : 'page') : undefined} data-active={workActive} className="nav-indicator transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">Our Work</Link>
+            <a href="https://careers.thejluxe.com/" className="nav-indicator transition hover:text-[var(--gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--gold)]">Careers</a>
 
             <div className="relative">
               <button
@@ -245,6 +246,7 @@ export default function SiteHeader() {
                 </div>
               </div>
               <Link href={siteConfig.nav.work} aria-current={workActive ? (pathname === '/' ? 'location' : 'page') : undefined} data-active={workActive} className="mobile-nav-link nav-indicator touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>Our Work</Link>
+              <a href="https://careers.thejluxe.com/" className="mobile-nav-link nav-indicator touch-press flex min-h-11 items-center rounded-xl px-3 py-2.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--gold)]" onClick={() => setMobileOpen(false)}>Careers</a>
               <div className="rounded-xl border border-black/5 bg-white px-3 py-2">
                 <p className="mb-2 text-[10px] font-semibold tracking-[0.2em] text-[var(--gold)]">Contact</p>
                 <div className="grid gap-2 text-sm">

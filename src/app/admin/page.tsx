@@ -55,6 +55,16 @@ export default async function AdminDashboardPage() {
               </span>
             </span>
           </Link>
+          <Link
+            href="/admin/careers"
+            className="block max-w-xl rounded-lg border border-white/10 bg-[#08201b] p-5 transition-colors hover:border-[var(--gold)]/60 hover:bg-[#0c2a23]"
+          >
+            <span className="text-xs font-semibold tracking-[0.16em] text-[var(--gold)]">CAREERS</span>
+            <span className="mt-2 flex items-baseline justify-between gap-4">
+              <span className="font-display text-2xl text-white">Manage vacancies and applications</span>
+              <span className="text-sm font-medium text-[#f5f1e8]">Open Careers <span aria-hidden="true">&rarr;</span></span>
+            </span>
+          </Link>
         </div>
 
         <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
