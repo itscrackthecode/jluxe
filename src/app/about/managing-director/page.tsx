@@ -29,12 +29,8 @@ export default function ManagingDirectorPage() {
       <SiteHeader />
 
       <section className="hero-glow relative isolate overflow-hidden bg-[var(--viridian-950)] py-16 text-white sm:py-20 lg:py-24" data-reveal>
-        <div className="container-xl grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-center lg:gap-16">
-          <div className="relative mx-auto w-full max-w-[390px] lg:mx-0">
-            <div className="about-portrait-frame aspect-[4/5] border border-white/25 bg-[var(--viridian-950)] p-4 sm:p-5"><div className="flex h-full items-end border border-white/15 p-5 sm:p-7"><p className="max-w-[15rem] text-xs leading-5 text-white/65">Managing Director portrait</p></div></div>
-            <p className="mt-3 text-[10px] tracking-[0.16em] text-[var(--gold)]">JLUXE LEADERSHIP</p>
-          </div>
-          <div className="relative z-10 max-w-3xl">
+        <div className="container-xl">
+          <div className="relative z-10 max-w-4xl">
             <Eyebrow light>MEET OUR MANAGING DIRECTOR</Eyebrow>
             <h1 className="mt-5 font-display text-[clamp(2.8rem,6vw,5.5rem)] leading-[1.04] tracking-[-0.03em] text-[var(--cream)]">Sarvesh Karthik N</h1>
             <p className="mt-4 text-sm font-medium tracking-[0.08em] text-white/75">Managing Director — JLUXE</p>
