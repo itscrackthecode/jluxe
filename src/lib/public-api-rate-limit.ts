@@ -37,13 +37,13 @@ const consumeQuery = `
     WHERE rate_limit.ctid = stale_rows.ctid
     RETURNING 1
   )
-  INSERT INTO public."PublicApiRateLimit" (
+  INSERT INTO public."PublicApiRateLimit" AS rate_limit (
     "endpoint", "clientKey", "windowStart", "requestCount", "expiresAt"
   )
   VALUES ($1, $2, $3, 1, $4)
   ON CONFLICT ("endpoint", "clientKey", "windowStart")
-  DO UPDATE SET "requestCount" = public."PublicApiRateLimit"."requestCount" + 1
-  WHERE public."PublicApiRateLimit"."requestCount" < $5
+  DO UPDATE SET "requestCount" = rate_limit."requestCount" + 1
+  WHERE rate_limit."requestCount" < $5
   RETURNING "requestCount"
 `;
 
@@ -68,6 +68,33 @@ function trustedClientIp(request: Request): string | null {
   }
 
   return null;
+}
+
+function getRateLimitDatabaseErrorContext(error: unknown) {
+  if (typeof error !== 'object' || error === null) {
+    return { errorName: error instanceof Error ? error.name : 'UnknownError' };
+  }
+
+  const candidate = error as Record<string, unknown>;
+  const context: Record<string, string> = {
+    errorName: error instanceof Error ? error.name : 'UnknownError',
+  };
+  if (typeof candidate.code !== 'string' || !/^[0-9A-Z]{5}$/.test(candidate.code)) return context;
+
+  context.databaseCode = candidate.code;
+  for (const field of ['table', 'column', 'constraint'] as const) {
+    const value = candidate[field];
+    if (typeof value === 'string' && value.length > 0) context[`database${field[0].toUpperCase()}${field.slice(1)}`] = value;
+  }
+  if (typeof candidate.message === 'string' && candidate.message.length > 0) {
+    context.databaseMessage = candidate.message.slice(0, 500);
+  }
+  if (typeof candidate.position === 'string' && /^\d+$/.test(candidate.position)) {
+    context.databasePosition = candidate.position;
+  } else if (typeof candidate.position === 'number' && Number.isInteger(candidate.position) && candidate.position > 0) {
+    context.databasePosition = String(candidate.position);
+  }
+  return context;
 }
 
 export async function consumeApiRateLimit(
@@ -97,9 +124,7 @@ export async function consumeApiRateLimit(
       retryAfterSeconds: Math.max(1, Math.ceil((windowEndMs - now) / 1000)),
     };
   } catch (error) {
-    console.error('Public API rate-limit storage is unavailable.', {
-      errorName: error instanceof Error ? error.name : 'UnknownError',
-    });
+    console.error('Public API rate-limit storage is unavailable.', getRateLimitDatabaseErrorContext(error));
     return { status: 'unavailable' };
   }
 }

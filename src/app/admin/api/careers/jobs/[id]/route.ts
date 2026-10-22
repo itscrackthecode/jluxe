@@ -4,7 +4,7 @@ import { getAdminSession, hasAdminPermission } from '@/lib/admin-session';
 import { hasSameOrigin } from '@/lib/admin-request';
 import { readJsonBody } from '@/lib/read-json-body';
 import { getAdminCareerJob, updateAdminCareerJob } from '@/lib/db/queries/careers';
-import { hasPostgresErrorCode } from '@/lib/db/errors';
+import { getCareerJobSaveErrorContext, hasPostgresErrorCode } from '@/lib/db/errors';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       : NextResponse.json({ success: false, error: 'Vacancy not found.' }, { status: 404 });
   } catch (error) {
     if (hasPostgresErrorCode(error, '23505')) return NextResponse.json({ success: false, error: 'A vacancy with this URL slug already exists.' }, { status: 409 });
-    console.error('Failed to update a Careers vacancy.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
+    console.error('Failed to update a Careers vacancy.', getCareerJobSaveErrorContext(error));
     return NextResponse.json({ success: false, error: 'Unable to save the vacancy right now.' }, { status: 500 });
   }
 }
