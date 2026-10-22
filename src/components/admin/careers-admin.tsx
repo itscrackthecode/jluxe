@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { CareerApplicationStatus, CareerJob, CareerJobStatus } from '@/lib/career-types';
+import { careerServiceAreaLabels, careerServiceAreas, type CareerApplicationStatus, type CareerJob, type CareerJobStatus, type CareerServiceArea } from '@/lib/career-types';
+import PrivateNotesEditor from '@/components/admin/private-notes-editor';
 
 type ApplicationRow = {
   id: string; applicantName: string; email: string; phone: string; city: string;
@@ -16,10 +17,12 @@ type ApplicationDetail = ApplicationRow & {
 };
 
 const jobStatuses: CareerJobStatus[] = ['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED'];
+const workTypes = ['ONSITE', 'HYBRID', 'REMOTE'] as const;
 const applicationStatuses: CareerApplicationStatus[] = ['NEW', 'REVIEWING', 'SHORTLISTED', 'INTERVIEW', 'SELECTED', 'REJECTED'];
 const employmentTypes = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'] as const;
-const blankJob = (): Omit<CareerJob, 'id' | 'publishedAt' | 'createdAt' | 'updatedAt' | 'applicationCount'> => ({
-  slug: '', title: '', department: '', openings: 1, experienceMinYears: 1,
+type CareerJobForm = Omit<CareerJob, 'id' | 'publishedAt' | 'createdAt' | 'updatedAt' | 'applicationCount' | 'openings'> & { openings: string };
+const blankJob = (): CareerJobForm => ({
+  slug: '', title: '', department: '', serviceArea: null, openings: '', experienceMinYears: 1,
   experienceMaxYears: 3, employmentType: 'FULL_TIME', location: null,
   workArrangement: null, salaryRange: null, deadline: null, summary: '',
   description: '', responsibilities: [], qualifications: [], status: 'DRAFT',
@@ -29,13 +32,23 @@ const inputClass = 'mt-1 min-h-11 w-full rounded-md border border-white/15 bg-[#
 const buttonClass = 'inline-flex min-h-10 items-center justify-center rounded-md border border-white/20 px-4 text-sm font-medium text-white transition hover:border-[var(--gold)] hover:bg-white/5 disabled:opacity-50';
 const labelClass = 'block text-xs font-medium text-[#c6d0cb]';
 
+function cleanSalaryInput(value: string) {
+  return value.replace(/[₹,\s]/g, '').split('.')[0].replace(/\D/g, '');
+}
+
+function formatSalaryInput(value: string) {
+  if (!value || !/^[₹\s\d,]*$/.test(value)) return value;
+  const digits = cleanSalaryInput(value);
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 function messageFrom(data: unknown, fallback: string) {
   return typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string' ? data.error : fallback;
 }
 
 export default function CareersAdmin({ canReviewApplications }: { canReviewApplications: boolean }) {
   const [jobs, setJobs] = useState<CareerJob[]>([]);
-  const [job, setJob] = useState(blankJob);
+  const [job, setJob] = useState<CareerJobForm>(blankJob);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [applicationSearch, setApplicationSearch] = useState('');
@@ -50,6 +63,7 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
   const [filterTo, setFilterTo] = useState('');
   const [retentionDays, setRetentionDays] = useState('365');
   const [busy, setBusy] = useState(false);
+  const [updatingJobStatus, setUpdatingJobStatus] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
@@ -100,23 +114,42 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
   }
 
   function editJob(value: CareerJob) {
-    const input = Object.fromEntries(Object.entries(value).filter(([key]) => !['id', 'publishedAt', 'createdAt', 'updatedAt', 'applicationCount'].includes(key))) as ReturnType<typeof blankJob>;
+    const input = Object.fromEntries(Object.entries(value).filter(([key]) => !['id', 'publishedAt', 'createdAt', 'updatedAt', 'applicationCount'].includes(key))) as CareerJobForm;
     setEditingId(value.id);
-    setJob(input);
+    setJob({ ...input, openings: String(value.openings) });
     setNotice(''); setError('');
     document.getElementById('careers-job-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function saveJob(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setNotice(''); setError('');
+    event.preventDefault(); setNotice(''); setError('');
+    if (!/^\d+$/.test(job.openings) || Number(job.openings) > 500) {
+      setError('Enter a whole-number opening count from 0 to 500.');
+      return;
+    }
+    setBusy(true);
     try {
       await request(editingId ? `/admin/api/careers/jobs/${editingId}` : '/admin/api/careers/jobs', {
-        method: editingId ? 'PATCH' : 'POST', body: JSON.stringify(job),
+        method: editingId ? 'PATCH' : 'POST', body: JSON.stringify({ ...job, openings: Number(job.openings) }),
       });
       setNotice(editingId ? 'Vacancy saved.' : 'Vacancy created.');
       setEditingId(null); setJob(blankJob()); await loadJobs();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save vacancy.'); }
     finally { setBusy(false); }
+  }
+
+  async function updateJobStatus(value: CareerJob, status: CareerJobStatus) {
+    const input = Object.fromEntries(Object.entries(value).filter(([key]) => !['id', 'publishedAt', 'createdAt', 'updatedAt', 'applicationCount'].includes(key))) as ReturnType<typeof blankJob>;
+    setUpdatingJobStatus(value.id); setNotice(''); setError('');
+    try {
+      await request(`/admin/api/careers/jobs/${value.id}`, { method: 'PATCH', body: JSON.stringify({ ...input, status }) });
+      setJobs((current) => current.map((item) => item.id === value.id ? { ...item, status } : item));
+      setNotice(`${value.title} status updated to ${status}.`);
+      try { await loadJobs(); }
+      catch { setError('Status was saved, but the vacancy list could not be refreshed.'); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to update vacancy status.');
+    } finally { setUpdatingJobStatus(null); }
   }
 
   async function saveApplication(event: React.FormEvent<HTMLFormElement>) {
@@ -156,6 +189,8 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
     setJob((current) => ({ ...current, [key]: value }));
   }
 
+  const salaryIsLegacyText = Boolean(job.salaryRange && !/^[₹\s\d,]*$/.test(job.salaryRange));
+
   return (
     <div className="space-y-8 text-[#f5f1e8]">
       <header>
@@ -173,8 +208,14 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
         </div>
         <div className="mt-5 divide-y divide-white/10">
           {jobs.map((item) => <article key={item.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><h3 className="font-medium text-white">{item.title}</h3><p className="mt-1 text-xs text-[#9caaa4]">{item.department} · {item.openings} opening{item.openings === 1 ? '' : 's'} · {item.applicationCount ?? 0} applications</p></div>
-            <div className="flex items-center gap-3"><span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#c6d0cb]">{item.status}</span><button className={buttonClass} type="button" onClick={() => editJob(item)}>Edit</button></div>
+            <div><h3 className="font-medium text-white">{item.title}</h3><p className="mt-1 text-xs text-[#9caaa4]">{item.department} · {item.openings === 0 ? 'Openings available' : `Openings available: ${item.openings}`} · {item.applicationCount ?? 0} applications</p></div>
+            <div className="flex items-center gap-3">
+              <label className="sr-only" htmlFor={`vacancy-status-${item.id}`}>Status for {item.title}</label>
+              <select id={`vacancy-status-${item.id}`} className="min-h-10 rounded-md border border-white/15 bg-[#061815] px-3 text-sm text-white focus:border-[var(--gold)] focus:outline-none disabled:opacity-50" value={item.status} disabled={updatingJobStatus !== null} onChange={(event) => void updateJobStatus(item, event.target.value as CareerJobStatus)}>
+                {jobStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+              <button className={buttonClass} type="button" onClick={() => editJob(item)}>Edit</button>
+            </div>
           </article>)}
           {!jobs.length && <p className="py-6 text-sm text-[#9caaa4]">No vacancies found.</p>}
         </div>
@@ -185,20 +226,20 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
         <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={saveJob}>
           <label className={labelClass}>Job title<input className={inputClass} required minLength={2} maxLength={180} value={job.title} onChange={(e) => setField('title', e.target.value)} /></label>
           <label className={labelClass}>Department<input className={inputClass} required minLength={2} maxLength={120} value={job.department} onChange={(e) => setField('department', e.target.value)} /></label>
+          <label className={labelClass}>Service Area<select className={inputClass} value={job.serviceArea ?? ''} onChange={(e) => setField('serviceArea', (e.target.value || null) as CareerServiceArea | null)}><option value="">Select a service area</option>{careerServiceAreas.map((serviceArea) => <option key={serviceArea} value={serviceArea}>{serviceArea === 'ALL_SERVICES' ? 'All JLUXE Services' : careerServiceAreaLabels[serviceArea]}</option>)}</select></label>
           <label className={labelClass}>URL slug (optional; generated from title)<input className={inputClass} maxLength={160} value={job.slug} onChange={(e) => setField('slug', e.target.value)} /></label>
-          <label className={labelClass}>Status<select className={inputClass} value={job.status} onChange={(e) => setField('status', e.target.value as CareerJobStatus)}>{jobStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
-          <label className={labelClass}>Openings<input className={inputClass} type="number" min="1" max="500" required value={job.openings} onChange={(e) => setField('openings', Number(e.target.value))} /></label>
+          <label className={labelClass}>Openings<input className={inputClass} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} required value={job.openings} onChange={(e) => setField('openings', e.target.value.replace(/\D/g, ''))} /></label>
           <label className={labelClass}>Employment type<select className={inputClass} value={job.employmentType} onChange={(e) => setField('employmentType', e.target.value as typeof job.employmentType)}>{employmentTypes.map((type) => <option key={type} value={type}>{type.replaceAll('_', ' ')}</option>)}</select></label>
           <label className={labelClass}>Minimum experience (years)<input className={inputClass} type="number" min="0" max="60" step="0.5" required value={job.experienceMinYears} onChange={(e) => setField('experienceMinYears', Number(e.target.value))} /></label>
           <label className={labelClass}>Maximum experience (years)<input className={inputClass} type="number" min="0" max="60" step="0.5" required value={job.experienceMaxYears} onChange={(e) => setField('experienceMaxYears', Number(e.target.value))} /></label>
           <label className={labelClass}>Location (only if confirmed)<input className={inputClass} maxLength={180} value={job.location ?? ''} onChange={(e) => setField('location', e.target.value || null)} /></label>
-          <label className={labelClass}>Work arrangement (only if confirmed)<input className={inputClass} maxLength={80} value={job.workArrangement ?? ''} onChange={(e) => setField('workArrangement', e.target.value || null)} /></label>
-          <label className={labelClass}>Salary range (only if confirmed)<input className={inputClass} maxLength={120} value={job.salaryRange ?? ''} onChange={(e) => setField('salaryRange', e.target.value || null)} /></label>
+          <label className={labelClass}>Work Type (only if confirmed)<select className={inputClass} value={job.workArrangement ?? ''} onChange={(e) => setField('workArrangement', e.target.value || null)}><option value="">Select work type</option>{job.workArrangement && !workTypes.includes(job.workArrangement as (typeof workTypes)[number]) && <option value={job.workArrangement}>{job.workArrangement}</option>}{workTypes.map((type) => <option key={type} value={type}>{type === 'ONSITE' ? 'Onsite' : type === 'HYBRID' ? 'Hybrid' : 'Remote'}</option>)}</select></label>
+          <label className={labelClass}>Salary (INR, optional)<span className="mt-1 flex min-h-11 items-center rounded-md border border-white/15 bg-[#061815] focus-within:border-[var(--gold)]">{!salaryIsLegacyText && <span className="px-3 text-sm text-white" aria-hidden="true">₹</span>}<input aria-label="Salary in Indian rupees" inputMode="numeric" value={formatSalaryInput(job.salaryRange ?? '')} onChange={(e) => setField('salaryRange', cleanSalaryInput(e.target.value) || null)} className={`min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-white outline-none ${salaryIsLegacyText ? 'pl-3' : ''}`} placeholder="Enter amount" /></span></label>
           <label className={labelClass}>Application deadline<input className={inputClass} type="date" value={job.deadline ?? ''} onChange={(e) => setField('deadline', e.target.value || null)} /></label>
-          <label className={`${labelClass} md:col-span-2`}>Short summary<textarea className={inputClass} rows={2} maxLength={1000} value={job.summary} onChange={(e) => setField('summary', e.target.value)} /></label>
-          <label className={`${labelClass} md:col-span-2`}>Description<textarea className={inputClass} rows={5} maxLength={10000} value={job.description} onChange={(e) => setField('description', e.target.value)} /></label>
-          <label className={`${labelClass} md:col-span-2`}>Responsibilities (one per line)<textarea className={inputClass} rows={4} value={job.responsibilities.join('\n')} onChange={(e) => setField('responsibilities', e.target.value.split('\n').map((line) => line.trim()).filter(Boolean))} /></label>
-          <label className={`${labelClass} md:col-span-2`}>Qualifications (one per line)<textarea className={inputClass} rows={4} value={job.qualifications.join('\n')} onChange={(e) => setField('qualifications', e.target.value.split('\n').map((line) => line.trim()).filter(Boolean))} /></label>
+          <div className="md:col-span-2"><h3 className={`${labelClass} mb-2`}>Short summary</h3><PrivateNotesEditor id="career-short-summary" label="Short summary in Markdown" placeholder="Write a short role summary. Markdown is supported." maxLength={1000} toolbar="full" value={job.summary} onChange={(value) => setField('summary', value)} /></div>
+          <div className="md:col-span-2"><h3 className={`${labelClass} mb-2`}>Description</h3><PrivateNotesEditor id="career-description" label="Description in Markdown" placeholder="Describe the role. Markdown is supported." maxLength={10000} toolbar="full" value={job.description} onChange={(value) => setField('description', value)} /></div>
+          <div className="md:col-span-2"><h3 className={`${labelClass} mb-2`}>Responsibilities <span className="font-normal">(one item per line)</span></h3><PrivateNotesEditor id="career-responsibilities" label="Responsibilities in Markdown, one item per line" placeholder="Enter one responsibility per line. Markdown is supported within each item." maxLength={15000} toolbar="inline" value={job.responsibilities.join('\n')} previewValue={job.responsibilities.map((item) => `- ${item}`).join('\n')} onChange={(value) => setField('responsibilities', value.split('\n').map((line) => line.trim()).filter(Boolean))} /></div>
+          <div className="md:col-span-2"><h3 className={`${labelClass} mb-2`}>Qualifications <span className="font-normal">(one item per line)</span></h3><PrivateNotesEditor id="career-qualifications" label="Qualifications in Markdown, one item per line" placeholder="Enter one qualification per line. Markdown is supported within each item." maxLength={15000} toolbar="inline" value={job.qualifications.join('\n')} previewValue={job.qualifications.map((item) => `- ${item}`).join('\n')} onChange={(value) => setField('qualifications', value.split('\n').map((line) => line.trim()).filter(Boolean))} /></div>
           <div className="flex flex-wrap gap-3 md:col-span-2"><button className={buttonClass} type="submit" disabled={busy}>{busy ? 'Saving…' : editingId ? 'Save vacancy' : 'Create vacancy'}</button><button className={buttonClass} type="button" onClick={() => { setEditingId(null); setJob(blankJob()); }}>Clear</button></div>
         </form>
       </section>

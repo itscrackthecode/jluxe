@@ -5,6 +5,8 @@ import { headers } from 'next/headers';
 import { careersHref } from '@/lib/careers-navigation';
 import { careersBasePath } from '@/lib/careers-navigation';
 import { findPublicCareerJobBySlug } from '@/lib/db/queries/careers';
+import MarkdownContent from '@/components/markdown-content';
+import { careerServiceAreaLabels } from '@/lib/career-types';
 
 export const dynamic = 'force-dynamic';
 type PageContext = { params: Promise<{ slug: string }> };
@@ -26,6 +28,17 @@ function experienceLabel(minimum: number, maximum: number) {
   return minimum === maximum ? `${minimum} ${minimum === 1 ? 'year' : 'years'}` : `${minimum}–${maximum} years`;
 }
 
+function workTypeLabel(value: string) {
+  if (value === 'ONSITE') return 'Onsite';
+  if (value === 'HYBRID') return 'Hybrid';
+  if (value === 'REMOTE') return 'Remote';
+  return value;
+}
+
+function salaryLabel(value: string) {
+  return /^\d+$/.test(value) ? `₹${value.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}` : value;
+}
+
 export default async function CareerJobDetailPage({ params }: PageContext) {
   const { slug } = await params;
   const job = await findPublicCareerJobBySlug(slug).catch(() => null);
@@ -39,14 +52,15 @@ export default async function CareerJobDetailPage({ params }: PageContext) {
       <header className="mt-8 border-b border-[#103D33]/15 pb-8 sm:pb-10">
         <p className="text-sm font-semibold text-[#8a6a3c]">{job.department}</p>
         <h1 className="mt-3 max-w-3xl font-display text-4xl leading-tight text-[#103D33] sm:text-5xl">{job.title}</h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-[#496259]">{job.summary}</p>
+        {job.serviceArea ? <p className="mt-2 text-sm font-medium text-[#496259]">Recruiting for JLUXE ({careerServiceAreaLabels[job.serviceArea]})</p> : null}
+        <div className="mt-4 max-w-3xl text-base leading-7 text-[#496259]"><MarkdownContent value={job.summary} /></div>
         <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#52675f]">
-          <li>{job.openings} {job.openings === 1 ? 'opening' : 'openings'}</li>
+          <li>{job.openings === 0 ? 'Openings available' : `Openings available: ${job.openings}`}</li>
           <li>{experienceLabel(job.experienceMinYears, job.experienceMaxYears)}</li>
           <li>{employmentType}</li>
           {job.location ? <li>{job.location}</li> : null}
-          {job.workArrangement ? <li>{job.workArrangement}</li> : null}
-          {job.salaryRange ? <li>{job.salaryRange}</li> : null}
+          {job.workArrangement ? <li>{workTypeLabel(job.workArrangement)}</li> : null}
+          <li>{job.salaryRange ? salaryLabel(job.salaryRange) : 'Compensation will be discussed during the interview process.'}</li>
           {job.deadline ? <li>Apply by {job.deadline}</li> : null}
         </ul>
         <Link href={careersHref(basePath, `/apply/${job.slug}`)} className="mt-7 inline-flex min-h-12 items-center bg-[#103D33] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#0a3028] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C5A46D]">Apply now</Link>
@@ -56,15 +70,15 @@ export default async function CareerJobDetailPage({ params }: PageContext) {
         <div className="space-y-8">
           <section>
             <h2 className="font-display text-2xl text-[#103D33]">About the role</h2>
-            <p className="mt-3 whitespace-pre-line text-[15px] leading-7 text-[#496259]">{job.description}</p>
+            <div className="mt-3 text-[15px] leading-7 text-[#496259]"><MarkdownContent value={job.description} /></div>
           </section>
           <section>
             <h2 className="font-display text-2xl text-[#103D33]">Responsibilities</h2>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-[#496259]">{job.responsibilities.map((item) => <li key={item}>{item}</li>)}</ul>
+            <div className="mt-3 text-[15px] leading-7 text-[#496259]"><MarkdownContent value={job.responsibilities.map((item) => `- ${item}`).join('\n')} /></div>
           </section>
           <section>
             <h2 className="font-display text-2xl text-[#103D33]">Qualifications</h2>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-[#496259]">{job.qualifications.map((item) => <li key={item}>{item}</li>)}</ul>
+            <div className="mt-3 text-[15px] leading-7 text-[#496259]"><MarkdownContent value={job.qualifications.map((item) => `- ${item}`).join('\n')} /></div>
           </section>
         </div>
         <aside className="h-fit border-t border-[#C5A46D] bg-[#E9EEE9] p-5 sm:p-6">
