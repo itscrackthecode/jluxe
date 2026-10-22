@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { careerEmploymentTypes, careerJobStatuses } from './career-types';
+import { careerEmploymentTypes, careerJobStatuses, careerServiceAreas } from './career-types';
 
 const nullableText = (maximum: number) => z.preprocess(
   (value) => typeof value === 'string' && value.trim() === '' ? null : value,
@@ -12,10 +12,14 @@ export const careerJobInputSchema = z.object({
   slug: z.string().trim().max(160).optional().default(''),
   title: z.string().trim().min(2).max(180),
   department: z.string().trim().min(2).max(120),
-  openings: z.number().int().min(1).max(500),
+  openings: z.number().int().min(0).max(500),
   experienceMinYears: z.number().min(0).max(60),
   experienceMaxYears: z.number().min(0).max(60),
   employmentType: z.enum(careerEmploymentTypes),
+  serviceArea: z.preprocess(
+    (value) => typeof value === 'string' && value.trim() === '' ? null : value,
+    z.enum(careerServiceAreas).nullable().optional().transform((value) => value ?? null),
+  ),
   location: nullableText(180),
   workArrangement: nullableText(80),
   salaryRange: nullableText(120),

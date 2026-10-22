@@ -9,7 +9,7 @@ type CareerJobRow = Omit<CareerJob, 'experienceMinYears' | 'experienceMaxYears'>
 };
 
 const careerJobColumns = `
-  j."id", j."slug", j."title", j."department", j."openings",
+  j."id", j."slug", j."title", j."department", j."serviceArea", j."openings",
   j."experienceMinYears"::float8 AS "experienceMinYears",
   j."experienceMaxYears"::float8 AS "experienceMaxYears",
   j."employmentType", j."location", j."workArrangement", j."salaryRange",
@@ -70,7 +70,7 @@ export async function getAdminCareerJob(id: string): Promise<CareerJob | null> {
 }
 
 const careerJobValues = (input: CareerJobInput) => [
-  input.slug, input.title, input.department, input.openings, input.experienceMinYears,
+  input.slug, input.title, input.department, input.serviceArea, input.openings, input.experienceMinYears,
   input.experienceMaxYears, input.employmentType, input.location, input.workArrangement,
   input.salaryRange, input.deadline, input.summary, input.description,
   input.responsibilities, input.qualifications, input.status,
@@ -79,12 +79,12 @@ const careerJobValues = (input: CareerJobInput) => [
 export async function createAdminCareerJob(input: CareerJobInput, adminId: string) {
   const result = await pool.query<{ id: string }>(
     `INSERT INTO public."CareerJob" (
-       "slug", "title", "department", "openings", "experienceMinYears", "experienceMaxYears",
+       "slug", "title", "department", "serviceArea", "openings", "experienceMinYears", "experienceMaxYears",
        "employmentType", "location", "workArrangement", "salaryRange", "deadline", "summary",
        "description", "responsibilities", "qualifications", "status", "publishedAt",
        "createdByAdminId", "updatedByAdminId", "updatedAt"
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::varchar(16),
-       CASE WHEN $16::varchar(16) = 'PUBLISHED' THEN NOW() ELSE NULL END, $17, $17, NOW())
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::varchar(16),
+       CASE WHEN $17::varchar(16) = 'PUBLISHED' THEN NOW() ELSE NULL END, $18, $18, NOW())
      RETURNING "id"`,
     [...careerJobValues(input), adminId],
   );
@@ -94,15 +94,15 @@ export async function createAdminCareerJob(input: CareerJobInput, adminId: strin
 export async function updateAdminCareerJob(id: string, input: CareerJobInput, adminId: string) {
   const result = await pool.query<{ id: string }>(
     `UPDATE public."CareerJob" SET
-       "slug"=$1, "title"=$2, "department"=$3, "openings"=$4,
-       "experienceMinYears"=$5, "experienceMaxYears"=$6, "employmentType"=$7,
-       "location"=$8, "workArrangement"=$9, "salaryRange"=$10, "deadline"=$11,
-       "summary"=$12, "description"=$13, "responsibilities"=$14, "qualifications"=$15,
-       "status"=$16::varchar(16),
-       "publishedAt"=CASE WHEN $16::varchar(16) = 'PUBLISHED' AND "publishedAt" IS NULL THEN NOW()
-                          WHEN $16::varchar(16) <> 'PUBLISHED' THEN NULL ELSE "publishedAt" END,
-       "updatedByAdminId"=$17, "updatedAt"=NOW()
-     WHERE "id"=$18 RETURNING "id"`,
+       "slug"=$1, "title"=$2, "department"=$3, "serviceArea"=$4, "openings"=$5,
+       "experienceMinYears"=$6, "experienceMaxYears"=$7, "employmentType"=$8,
+       "location"=$9, "workArrangement"=$10, "salaryRange"=$11, "deadline"=$12,
+       "summary"=$13, "description"=$14, "responsibilities"=$15, "qualifications"=$16,
+       "status"=$17::varchar(16),
+       "publishedAt"=CASE WHEN $17::varchar(16) = 'PUBLISHED' AND "publishedAt" IS NULL THEN NOW()
+                          WHEN $17::varchar(16) <> 'PUBLISHED' THEN NULL ELSE "publishedAt" END,
+       "updatedByAdminId"=$18, "updatedAt"=NOW()
+     WHERE "id"=$19 RETURNING "id"`,
     [...careerJobValues(input), adminId, id],
   );
   return result.rows[0] ? getAdminCareerJob(result.rows[0].id) : null;

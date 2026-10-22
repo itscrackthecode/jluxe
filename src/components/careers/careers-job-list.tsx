@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import type { CareerJob } from '@/lib/career-types';
+import { careerServiceAreaLabels, type CareerJob } from '@/lib/career-types';
 import { careersHref } from '@/lib/careers-navigation';
 
 const employmentLabels: Record<CareerJob['employmentType'], string> = {
@@ -51,9 +51,10 @@ export default function CareersJobList({ jobs, basePath }: { jobs: CareerJob[]; 
               <div>
                 <p className="text-sm font-semibold text-[#8a6a3c]">{job.department}</p>
                 <h3 className="mt-2 font-display text-2xl text-[#103D33] sm:text-[1.75rem]">{job.title}</h3>
+                {job.serviceArea ? <p className="mt-2 text-sm font-medium text-[#516b61]">Recruiting for JLUXE ({careerServiceAreaLabels[job.serviceArea]})</p> : null}
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-[#496259]">{job.summary}</p>
                 <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-[#516b61]">
-                  <li>{job.openings} {job.openings === 1 ? 'opening' : 'openings'}</li>
+                  <li>{job.openings === 0 ? 'Openings available' : `Openings available: ${job.openings}`}</li>
                   <li>{experienceLabel(job.experienceMinYears, job.experienceMaxYears)}</li>
                   <li>{employmentLabels[job.employmentType]}</li>
                   {job.location ? <li>{job.location}</li> : null}
