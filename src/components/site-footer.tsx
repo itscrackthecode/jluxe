@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { services, siteConfig } from '@/lib/data';
+import { careersEntryHref } from '@/lib/careers-navigation';
 
 export default function SiteFooter() {
   return (
@@ -23,7 +24,7 @@ export default function SiteFooter() {
             <Link href={siteConfig.nav.about} className="touch-press transition hover:text-white">About</Link>
             <Link href="/#services" className="touch-press transition hover:text-white">Our Services</Link>
             <Link href={siteConfig.nav.work} className="touch-press transition hover:text-white">Our Work</Link>
-            <a href="https://careers.thejluxe.com/" className="touch-press transition hover:text-white">Careers</a>
+            <a href={careersEntryHref} className="touch-press transition hover:text-white">Careers</a>
             <Link href={siteConfig.nav.contact} className="touch-press transition hover:text-white">Contact</Link>
           </div>
         </div>

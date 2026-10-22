@@ -25,36 +25,6 @@ const applicationSchema = z.object({
   turnstileToken: z.string().min(1).max(2048),
 });
 
-async function readFormDataWithLimit(request: Request): Promise<FormData | null> {
-  const contentType = request.headers.get('content-type') ?? '';
-  if (!contentType.toLowerCase().startsWith('multipart/form-data;')) return null;
-  const reader = request.body?.getReader();
-  if (!reader) return null;
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxRequestBytes) {
-        await reader.cancel();
-        return null;
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new Response(new Blob([body], { type: contentType })).formData();
-}
-
 export async function POST(request: Request) {
   if (!hasSameOrigin(request)) return NextResponse.json({ success: false, error: 'Request origin could not be verified.' }, { status: 403 });
 
@@ -70,19 +40,19 @@ export async function POST(request: Request) {
   if (declaredLength && Number(declaredLength) > maxRequestBytes) {
     return NextResponse.json({ success: false, error: 'Resume files must be 5 MB or smaller.' }, { status: 413 });
   }
-
-  let form: FormData | null;
-  try {
-    form = await readFormDataWithLimit(request);
-  } catch {
-    return NextResponse.json({ success: false, error: 'Unable to read the application form.' }, { status: 400 });
+  if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('multipart/form-data;')) {
+    return NextResponse.json({ success: false, error: 'Submit the application as a multipart form.' }, { status: 400 });
   }
-  if (!form) {
-    const isMultipart = (request.headers.get('content-type') ?? '').toLowerCase().startsWith('multipart/form-data;');
-    return NextResponse.json(
-      { success: false, error: isMultipart ? 'Resume files must be 5 MB or smaller.' : 'Submit the application as a multipart form.' },
-      { status: isMultipart ? 413 : 400 },
-    );
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch (error) {
+    console.error('Failed to parse the Careers application form.', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      errorMessage: error instanceof Error ? error.message.slice(0, 200) : undefined,
+    });
+    return NextResponse.json({ success: false, error: 'Unable to read the application form.' }, { status: 400 });
   }
 
   const parsed = applicationSchema.safeParse({
