@@ -2,6 +2,7 @@ import 'server-only';
 
 import { pool, withTransaction } from '../pool';
 import type { CareerApplicationStatus, CareerJob, CareerJobInput, CareerJobStatus } from '@/lib/career-types';
+import { careerJobSaveValues, createCareerJobSql, updateCareerJobSql } from './career-job-save-sql';
 
 type CareerJobRow = Omit<CareerJob, 'experienceMinYears' | 'experienceMaxYears'> & {
   experienceMinYears: number;
@@ -69,41 +70,18 @@ export async function getAdminCareerJob(id: string): Promise<CareerJob | null> {
   return result.rows[0] ?? null;
 }
 
-const careerJobValues = (input: CareerJobInput) => [
-  input.slug, input.title, input.department, input.openings, input.experienceMinYears,
-  input.experienceMaxYears, input.employmentType, input.location, input.workArrangement,
-  input.salaryRange, input.deadline, input.summary, input.description,
-  input.responsibilities, input.qualifications, input.status,
-];
-
 export async function createAdminCareerJob(input: CareerJobInput, adminId: string) {
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO public."CareerJob" (
-       "slug", "title", "department", "openings", "experienceMinYears", "experienceMaxYears",
-       "employmentType", "location", "workArrangement", "salaryRange", "deadline", "summary",
-       "description", "responsibilities", "qualifications", "status", "publishedAt",
-       "createdByAdminId", "updatedByAdminId", "updatedAt"
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-       CASE WHEN $16 = 'PUBLISHED' THEN NOW() ELSE NULL END, $17, $17, NOW())
-     RETURNING "id"`,
-    [...careerJobValues(input), adminId],
+    createCareerJobSql,
+    [...careerJobSaveValues(input), adminId],
   );
   return getAdminCareerJob(result.rows[0].id);
 }
 
 export async function updateAdminCareerJob(id: string, input: CareerJobInput, adminId: string) {
   const result = await pool.query<{ id: string }>(
-    `UPDATE public."CareerJob" SET
-       "slug"=$1, "title"=$2, "department"=$3, "openings"=$4,
-       "experienceMinYears"=$5, "experienceMaxYears"=$6, "employmentType"=$7,
-       "location"=$8, "workArrangement"=$9, "salaryRange"=$10, "deadline"=$11,
-       "summary"=$12, "description"=$13, "responsibilities"=$14, "qualifications"=$15,
-       "status"=$16,
-       "publishedAt"=CASE WHEN $16 = 'PUBLISHED' AND "publishedAt" IS NULL THEN NOW()
-                          WHEN $16 <> 'PUBLISHED' THEN NULL ELSE "publishedAt" END,
-       "updatedByAdminId"=$17, "updatedAt"=NOW()
-     WHERE "id"=$18 RETURNING "id"`,
-    [...careerJobValues(input), adminId, id],
+    updateCareerJobSql,
+    [...careerJobSaveValues(input), adminId, id],
   );
   return result.rows[0] ? getAdminCareerJob(result.rows[0].id) : null;
 }
