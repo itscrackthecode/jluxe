@@ -83,8 +83,8 @@ export async function createAdminCareerJob(input: CareerJobInput, adminId: strin
        "employmentType", "location", "workArrangement", "salaryRange", "deadline", "summary",
        "description", "responsibilities", "qualifications", "status", "publishedAt",
        "createdByAdminId", "updatedByAdminId", "updatedAt"
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-       CASE WHEN $16 = 'PUBLISHED' THEN NOW() ELSE NULL END, $17, $17, NOW())
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::varchar(16),
+       CASE WHEN $16::varchar(16) = 'PUBLISHED' THEN NOW() ELSE NULL END, $17, $17, NOW())
      RETURNING "id"`,
     [...careerJobValues(input), adminId],
   );
@@ -98,9 +98,9 @@ export async function updateAdminCareerJob(id: string, input: CareerJobInput, ad
        "experienceMinYears"=$5, "experienceMaxYears"=$6, "employmentType"=$7,
        "location"=$8, "workArrangement"=$9, "salaryRange"=$10, "deadline"=$11,
        "summary"=$12, "description"=$13, "responsibilities"=$14, "qualifications"=$15,
-       "status"=$16,
-       "publishedAt"=CASE WHEN $16 = 'PUBLISHED' AND "publishedAt" IS NULL THEN NOW()
-                          WHEN $16 <> 'PUBLISHED' THEN NULL ELSE "publishedAt" END,
+       "status"=$16::varchar(16),
+       "publishedAt"=CASE WHEN $16::varchar(16) = 'PUBLISHED' AND "publishedAt" IS NULL THEN NOW()
+                          WHEN $16::varchar(16) <> 'PUBLISHED' THEN NULL ELSE "publishedAt" END,
        "updatedByAdminId"=$17, "updatedAt"=NOW()
      WHERE "id"=$18 RETURNING "id"`,
     [...careerJobValues(input), adminId, id],
