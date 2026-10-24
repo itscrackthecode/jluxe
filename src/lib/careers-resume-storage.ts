@@ -57,11 +57,11 @@ export async function uploadPrivateCareerResume(bytes: Buffer) {
   const signatureMatches = ['sha1', 'sha256'].some((algorithm) => (
     result.signature === createHash(algorithm).update(signatureInput, 'utf8').digest('hex')
   ));
+  // The PDF bytes are validated before upload; raw Cloudinary responses may omit `format`.
   const responseChecks = {
     publicIdMatches: result.public_id === publicId,
     resourceTypeIsRaw: result.resource_type === 'raw',
     deliveryTypeIsAuthenticated: result.type === 'authenticated',
-    formatIsPdf: result.format === 'pdf',
     byteSizeMatches: result.bytes === bytes.byteLength,
     versionIsValid: Number.isInteger(result.version),
     signatureMatches: signatureMatches,
