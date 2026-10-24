@@ -4,6 +4,7 @@ import AdminShell from '@/components/admin/admin-shell';
 import { getAdminSession } from '@/lib/admin-session';
 import { countNewEnquiries } from '@/lib/db/queries/enquiries';
 import { getAdminDashboardCounts } from '@/lib/db/queries/dashboard';
+import { getCareerDashboardCounts } from '@/lib/db/queries/careers';
 
 export const metadata = {
   title: { absolute: 'Admin Dashboard | JLUXE' },
@@ -13,7 +14,11 @@ export const metadata = {
 export default async function AdminDashboardPage() {
   const admin = await getAdminSession();
   if (!admin) redirect('/admin/login');
-  const [newEnquiries, counts] = await Promise.all([countNewEnquiries(), getAdminDashboardCounts()]);
+  const [newEnquiries, counts, careerCounts] = await Promise.all([
+    countNewEnquiries(),
+    getAdminDashboardCounts(),
+    getCareerDashboardCounts(),
+  ]);
 
   return (
     <AdminShell admin={admin} active="Dashboard">
@@ -44,6 +49,19 @@ export default async function AdminDashboardPage() {
           </Link>
 
           <Link
+            href="/admin/careers"
+            className="block max-w-xl rounded-lg border border-white/10 bg-[#08201b] p-5 transition-colors hover:border-[var(--gold)]/60 hover:bg-[#0c2a23]"
+          >
+            <span className="text-xs font-semibold tracking-[0.16em] text-[var(--gold)]">NEW APPLICATIONS</span>
+            <span className="mt-2 flex items-baseline justify-between gap-4">
+              <span className="font-display text-3xl text-white">{careerCounts.newApplications}</span>
+              <span className="text-sm font-medium text-[#f5f1e8]">
+                Open applications <span aria-hidden="true">&rarr;</span>
+              </span>
+            </span>
+          </Link>
+
+          <Link
             href="/admin/properties"
             className="block max-w-xl rounded-lg border border-white/10 bg-[#08201b] p-5 transition-colors hover:border-[var(--gold)]/60 hover:bg-[#0c2a23]"
           >
@@ -67,11 +85,12 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+        <div className="mt-8 grid max-w-4xl gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             ['Properties', counts.properties, '/admin/properties'],
             ['Our Work', counts.portfolio, '/admin/our-work'],
             ['Enquiries', counts.enquiries, '/admin/enquiries'],
+            ['Careers', counts.careers, '/admin/careers'],
           ].map(([label, count, href]) => (
             <Link
               key={label}
