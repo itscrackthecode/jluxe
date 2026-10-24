@@ -71,7 +71,7 @@ export async function uploadPrivateCareerResume(bytes: Buffer) {
     if (result.public_id === publicId) await destroyPrivateCareerResume(publicId).catch(() => undefined);
     throw new Error('Private resume storage returned an invalid asset.');
   }
-  return { storageKey: publicId, byteSize: result.bytes };
+  return { storageKey: publicId, byteSize: bytes.byteLength };
 }
 
 export async function destroyPrivateCareerResume(storageKey: string) {
