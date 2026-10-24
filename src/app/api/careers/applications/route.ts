@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { destroyPrivateCareerResume, uploadPrivateCareerResume, validateResumePdf } from '@/lib/careers-resume-storage';
 import { careerApplicationConsentVersion } from '@/lib/career-types';
 import { createCareerApplication, findCareerApplicationByIdempotencyKey, findPublicCareerJobBySlug } from '@/lib/db/queries/careers';
+import { getPostgresErrorContext } from '@/lib/db/errors';
 import { hasSameOrigin } from '@/lib/admin-request';
 import { checkPublicApiRateLimit, publicApiRateLimitResponse } from '@/lib/public-api-rate-limit';
 import { turnstileResponse, verifyTurnstileToken } from '@/lib/turnstile';
@@ -73,17 +74,25 @@ export async function POST(request: Request) {
   const verification = await verifyTurnstileToken(parsed.data.turnstileToken, 'career_application', request.url);
   if (verification !== 'verified') return turnstileResponse(verification);
 
+  let failureStage = 'application_lookup';
   try {
+    failureStage = 'idempotency_lookup';
     const duplicate = await findCareerApplicationByIdempotencyKey(parsed.data.idempotencyKey);
     if (duplicate) return NextResponse.json({ success: true }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+
+    failureStage = 'job_lookup';
     const job = await findPublicCareerJobBySlug(parsed.data.jobSlug);
     if (!job) return NextResponse.json({ success: false, error: 'This position is no longer accepting applications.' }, { status: 404 });
 
+    failureStage = 'read_resume';
     const bytes = Buffer.from(await resume.arrayBuffer());
     if (!validateResumePdf(bytes)) return NextResponse.json({ success: false, error: 'The uploaded file is not a valid PDF.' }, { status: 400 });
     const safeFileName = resume.name.split(/[\\/]/).pop()?.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 255) || 'resume.pdf';
+
+    failureStage = 'upload_resume';
     const storedResume = await uploadPrivateCareerResume(bytes);
     try {
+      failureStage = 'save_application';
       const result = await createCareerApplication({
         jobSlug: job.slug,
         applicantName: parsed.data.name,
@@ -118,7 +127,10 @@ export async function POST(request: Request) {
       throw error;
     }
   } catch (error) {
-    console.error('Failed to process a Careers application.', { errorName: error instanceof Error ? error.name : 'UnknownError' });
+    console.error('Failed to process a Careers application.', {
+      failureStage,
+      ...getPostgresErrorContext(error),
+    });
     return NextResponse.json({ success: false, error: 'Unable to submit your application right now. Please try again.' }, { status: 500 });
   }
 }
