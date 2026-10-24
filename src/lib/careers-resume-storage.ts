@@ -53,16 +53,25 @@ export async function uploadPrivateCareerResume(bytes: Buffer) {
     public_id?: string; resource_type?: string; type?: string; format?: string;
     bytes?: number; version?: number; signature?: string;
   };
-  const expectedSignature = createHash('sha1')
-    .update(`public_id=${publicId}&version=${result.version}${credentials.apiSecret}`, 'utf8')
-    .digest('hex');
-  if (result.public_id !== publicId || result.resource_type !== 'raw' || result.type !== 'authenticated'
-    || result.format !== 'pdf' || result.bytes !== bytes.byteLength || !Number.isInteger(result.version)
-    || result.signature !== expectedSignature) {
+  const signatureInput = `public_id=${publicId}&version=${result.version}${credentials.apiSecret}`;
+  const signatureMatches = ['sha1', 'sha256'].some((algorithm) => (
+    result.signature === createHash(algorithm).update(signatureInput, 'utf8').digest('hex')
+  ));
+  const responseChecks = {
+    publicIdMatches: result.public_id === publicId,
+    resourceTypeIsRaw: result.resource_type === 'raw',
+    deliveryTypeIsAuthenticated: result.type === 'authenticated',
+    formatIsPdf: result.format === 'pdf',
+    byteSizeMatches: result.bytes === bytes.byteLength,
+    versionIsValid: Number.isInteger(result.version),
+    signatureMatches: signatureMatches,
+  };
+  if (Object.values(responseChecks).some((matches) => !matches)) {
+    console.error('Private career resume upload response failed validation.', responseChecks);
     if (result.public_id === publicId) await destroyPrivateCareerResume(publicId).catch(() => undefined);
     throw new Error('Private resume storage returned an invalid asset.');
   }
-  return { storageKey: publicId, byteSize: result.bytes };
+  return { storageKey: publicId, byteSize: bytes.byteLength };
 }
 
 export async function destroyPrivateCareerResume(storageKey: string) {
