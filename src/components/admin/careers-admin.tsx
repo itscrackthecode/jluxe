@@ -50,6 +50,7 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
   const [jobs, setJobs] = useState<CareerJob[]>([]);
   const [job, setJob] = useState<CareerJobForm>(blankJob);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [jobEditorOpen, setJobEditorOpen] = useState(false);
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [applicationSearch, setApplicationSearch] = useState('');
   const [applicationSearchInput, setApplicationSearchInput] = useState('');
@@ -117,8 +118,18 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
     const input = Object.fromEntries(Object.entries(value).filter(([key]) => !['id', 'publishedAt', 'createdAt', 'updatedAt', 'applicationCount'].includes(key))) as CareerJobForm;
     setEditingId(value.id);
     setJob({ ...input, openings: String(value.openings) });
+    setJobEditorOpen(true);
     setNotice(''); setError('');
-    document.getElementById('careers-job-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.requestAnimationFrame(() => document.getElementById('careers-job-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function openNewJob() {
+    setEditingId(null); setJob(blankJob()); setJobEditorOpen(true); setNotice(''); setError('');
+    window.requestAnimationFrame(() => document.getElementById('careers-job-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function closeJobEditor() {
+    setJobEditorOpen(false); setEditingId(null); setJob(blankJob());
   }
 
   async function saveJob(event: React.FormEvent<HTMLFormElement>) {
@@ -133,7 +144,7 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
         method: editingId ? 'PATCH' : 'POST', body: JSON.stringify({ ...job, openings: Number(job.openings) }),
       });
       setNotice(editingId ? 'Vacancy saved.' : 'Vacancy created.');
-      setEditingId(null); setJob(blankJob()); await loadJobs();
+      setEditingId(null); setJob(blankJob()); setJobEditorOpen(false); await loadJobs();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save vacancy.'); }
     finally { setBusy(false); }
   }
@@ -204,7 +215,7 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
       <section className="rounded-lg border border-white/10 bg-[#08201b] p-5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h2 className="font-display text-2xl text-white">Vacancies</h2><p className="mt-1 text-sm text-[#9caaa4]">Drafts remain private; publishing makes a vacancy visible on the public Careers site.</p></div>
-          <button className={buttonClass} type="button" onClick={() => { setEditingId(null); setJob(blankJob()); setNotice(''); setError(''); document.getElementById('careers-job-editor')?.scrollIntoView({ behavior: 'smooth' }); }}>New vacancy</button>
+          <button className={buttonClass} type="button" onClick={openNewJob}>New vacancy</button>
         </div>
         <div className="mt-5 divide-y divide-white/10">
           {jobs.map((item) => <article key={item.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -221,8 +232,8 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
         </div>
       </section>
 
-      <section id="careers-job-editor" className="scroll-mt-6 rounded-lg border border-white/10 bg-[#08201b] p-5 sm:p-6">
-        <h2 className="font-display text-2xl text-white">{editingId ? 'Edit vacancy' : 'Create vacancy'}</h2>
+      {jobEditorOpen && <section id="careers-job-editor" className="scroll-mt-6 rounded-lg border border-white/10 bg-[#08201b] p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3"><h2 className="font-display text-2xl text-white">{editingId ? 'Edit vacancy' : 'Create vacancy'}</h2><button className={buttonClass} type="button" onClick={closeJobEditor}>Close</button></div>
         <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={saveJob}>
           <label className={labelClass}>Job title<input className={inputClass} required minLength={2} maxLength={180} value={job.title} onChange={(e) => setField('title', e.target.value)} /></label>
           <label className={labelClass}>Department<input className={inputClass} required minLength={2} maxLength={120} value={job.department} onChange={(e) => setField('department', e.target.value)} /></label>
@@ -242,7 +253,7 @@ export default function CareersAdmin({ canReviewApplications }: { canReviewAppli
           <div className="md:col-span-2"><h3 className={`${labelClass} mb-2`}>Qualifications <span className="font-normal">(one item per line)</span></h3><PrivateNotesEditor id="career-qualifications" label="Qualifications in Markdown, one item per line" placeholder="Enter one qualification per line. Markdown is supported within each item." maxLength={15000} toolbar="inline" value={job.qualifications.join('\n')} previewValue={job.qualifications.map((item) => `- ${item}`).join('\n')} onChange={(value) => setField('qualifications', value.split('\n').map((line) => line.trim()).filter(Boolean))} /></div>
           <div className="flex flex-wrap gap-3 md:col-span-2"><button className={buttonClass} type="submit" disabled={busy}>{busy ? 'Saving…' : editingId ? 'Save vacancy' : 'Create vacancy'}</button><button className={buttonClass} type="button" onClick={() => { setEditingId(null); setJob(blankJob()); }}>Clear</button></div>
         </form>
-      </section>
+      </section>}
 
       {canReviewApplications && <section className="rounded-lg border border-white/10 bg-[#08201b] p-5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-2xl text-white">Applications</h2><p className="mt-1 text-sm text-[#9caaa4]">Candidate details and resumes are restricted to Owners and Admins.</p></div>
