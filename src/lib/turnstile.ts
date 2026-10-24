@@ -9,6 +9,7 @@ type SiteverifyResponse = {
   success?: boolean;
   hostname?: string;
   action?: string;
+  metadata?: { result_with_testing_key?: boolean };
   'error-codes'?: string[];
 };
 
@@ -46,14 +47,41 @@ export async function verifyTurnstileToken(
 
     const result = await response.json() as SiteverifyResponse;
     if (!result.success) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Turnstile Siteverify rejected the token.', {
+          hostname,
+          expectedAction,
+          errorCodes: result['error-codes'] ?? [],
+        });
+      }
       return result['error-codes']?.some((code) => ['internal-error', 'invalid-input-secret', 'missing-input-secret'].includes(code))
         ? 'unavailable'
         : 'invalid';
     }
 
-    return result.hostname?.toLowerCase().replace(/\.$/, '') === hostname && result.action === expectedAction
-      ? 'verified'
-      : 'invalid';
+    const isLocalTestEnvironment = process.env.NODE_ENV === 'development'
+      && process.env.TURNSTILE_ALLOW_TEST_ACTION === 'true'
+      && ['localhost', '127.0.0.1'].includes(hostname);
+
+    const returnedHostname = result.hostname?.toLowerCase().replace(/\.$/, '');
+    const isLocalTestKeyResponse = isLocalTestEnvironment && (
+      result.action === 'test'
+      || result.metadata?.result_with_testing_key === true
+      || (returnedHostname === 'example.com' && result.action == null)
+    );
+    const hostnameMatches = returnedHostname === hostname || isLocalTestKeyResponse;
+    const actionMatches = result.action === expectedAction || isLocalTestKeyResponse;
+    if ((!hostnameMatches || !actionMatches) && process.env.NODE_ENV === 'development') {
+      console.warn('Turnstile Siteverify response did not match the request.', {
+        hostname,
+        returnedHostname: returnedHostname ?? null,
+        expectedAction,
+        returnedAction: result.action ?? null,
+        localTestActionEnabled: process.env.TURNSTILE_ALLOW_TEST_ACTION === 'true',
+      });
+    }
+
+    return hostnameMatches && actionMatches ? 'verified' : 'invalid';
   } catch {
     return 'unavailable';
   }
