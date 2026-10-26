@@ -60,9 +60,11 @@ export default function SiteHeader() {
   const homeActive = pathname === '/';
   const aboutActive = isRouteOrChild(pathname, '/about');
   const servicesActive = isRouteOrChild(pathname, '/services');
-  const realEstateActive = realEstateService ? isRouteOrChild(pathname, realEstateService.href) : false;
+  const realEstateActive = realEstateService
+    ? isRouteOrChild(pathname, realEstateService.href) || isRouteOrChild(pathname, '/properties')
+    : false;
   const otherServicesActive = servicesActive && !realEstateActive;
-  const workActive = isRouteOrChild(pathname, '/our-work') || isRouteOrChild(pathname, '/properties');
+  const workActive = isRouteOrChild(pathname, '/our-work');
   const contactActive = isRouteOrChild(pathname, '/contact');
 
   useEffect(() => {
